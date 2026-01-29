@@ -80,7 +80,7 @@
 //! - [`vsa`]: Re-exports from `vsa-optim-rs`
 
 #![allow(clippy::type_complexity)]
-#![allow(clippy::useless_conversion)] // PyO3 macro generates false positives
+#![cfg_attr(feature = "python", allow(clippy::useless_conversion))] // PyO3 macro generates false positives
 
 // =============================================================================
 // CORE RUST API
@@ -111,24 +111,26 @@ pub mod ternary;
 pub mod vsa;
 
 // =============================================================================
-// PYTHON BINDINGS (PyO3)
+// PYTHON BINDINGS (PyO3) - Only compiled with "python" feature
 // =============================================================================
 
-use numpy::{PyArray1, PyArray2, PyArrayMethods, PyReadonlyArray1, PyReadonlyArray2, ToPyArray};
-use pyo3::exceptions::PyValueError;
-use pyo3::prelude::*;
-use pyo3::IntoPyObject;
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+#[cfg(feature = "python")]
+mod python_bindings {
+    use numpy::{PyArray1, PyArray2, PyArrayMethods, PyReadonlyArray1, PyReadonlyArray2, ToPyArray};
+    use pyo3::exceptions::PyValueError;
+    use pyo3::prelude::*;
+    use pyo3::IntoPyObject;
+    use std::collections::HashMap;
+    use std::sync::{Arc, Mutex};
 
-// Delegate to sister crates
-use bitnet_quantize::{quantize_weights as bitnet_quantize_weights, BitLinear, BitNetConfig};
-use candle_nn::Module;
-use trit_vsa::{PackedTritVec, Trit};
-use vsa_optim_rs::{DeterministicPhaseConfig, DeterministicPhaseTrainer};
+    // Delegate to sister crates
+    use bitnet_quantize::{quantize_weights as bitnet_quantize_weights, BitLinear, BitNetConfig};
+    use candle_nn::Module;
+    use trit_vsa::{PackedTritVec, Trit};
+    use vsa_optim_rs::{DeterministicPhaseConfig, DeterministicPhaseTrainer};
 
-#[cfg(feature = "cuda")]
-mod gpu;
+    #[cfg(feature = "cuda")]
+    mod gpu;
 
 // =============================================================================
 // PYTHON WRAPPER TYPES FOR STATEFUL OBJECTS
@@ -985,6 +987,11 @@ fn tritter_accel(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     Ok(())
 }
+} // End of python_bindings module
+
+// Re-export the Python module entry point when the python feature is enabled
+#[cfg(feature = "python")]
+pub use python_bindings::*;
 
 // =============================================================================
 // TESTS
@@ -992,7 +999,9 @@ fn tritter_accel(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use trit_vsa::{PackedTritVec, Trit};
+    use bitnet_quantize::{quantize_weights as bitnet_quantize_weights, BitLinear, BitNetConfig};
+    use candle_nn::Module;
 
     #[test]
     fn test_pack_unpack_roundtrip() {

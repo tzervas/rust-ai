@@ -1,6 +1,6 @@
 [package]
 name = "tritter-accel"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 rust-version = "1.92"
 license = "MIT"
@@ -11,7 +11,10 @@ keywords = ["machine-learning", "bitnet", "ternary", "python", "acceleration"]
 categories = ["science", "mathematics"]
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+# Why rlib only by default?
+# - rlib: Standard Rust library for Rust consumers
+# - cdylib: Only needed for Python extension, built via maturin when python feature enabled
+crate-type = ["rlib"]
 name = "tritter_accel"
 
 [dependencies]
@@ -24,9 +27,9 @@ vsa-optim-rs = { version = "0.1", path = "../vsa-optim-rs" }
 candle-core = { workspace = true }
 candle-nn = { workspace = true }
 
-# Python bindings
-pyo3 = { version = "0.27", features = ["extension-module"] }
-numpy = "0.27"
+# Python bindings (optional - enabled via python feature)
+pyo3 = { version = "0.27", features = ["extension-module"], optional = true }
+numpy = { version = "0.27", optional = true }
 
 # RNG for VSA
 rand = "0.8"
@@ -40,6 +43,8 @@ criterion = { workspace = true }
 
 [features]
 default = []
+# Python bindings - enables PyO3 and numpy for Python extension module
+python = ["dep:pyo3", "dep:numpy"]
 # CUDA GPU acceleration - enables GPU-accelerated VSA operations
 cuda = [
     "trit-vsa/cuda",

@@ -1,0 +1,95 @@
+[workspace]
+resolver = "2"
+members = [
+    "axolotl-rs",
+    "bitnet-quantize",
+    "peft-rs",
+    "qlora-rs",
+    "rust-ai-core",
+    "trit-vsa",
+    "tritter-accel",
+    "unsloth-rs",
+    "vsa-optim-rs",
+]
+
+# Ensure all crates use the local versions for development
+[patch.crates-io]
+peft-rs = { path = "peft-rs" }
+qlora-rs = { path = "qlora-rs" }
+unsloth-rs = { path = "unsloth-rs" }
+trit-vsa = { path = "trit-vsa" }
+bitnet-quantize = { path = "bitnet-quantize" }
+axolotl-rs = { path = "axolotl-rs" }
+vsa-optim-rs = { path = "vsa-optim-rs" }
+tritter-accel = { path = "tritter-accel" }
+rust-ai-core = { path = "rust-ai-core" }
+
+# Use maintained candle fork with qlora-gemm
+candle-core = { git = "https://github.com/tzervas/qlora-candle.git", branch = "use-qlora-gemm" }
+candle-nn = { git = "https://github.com/tzervas/qlora-candle.git", branch = "use-qlora-gemm" }
+candle-transformers = { git = "https://github.com/tzervas/qlora-candle.git", branch = "use-qlora-gemm" }
+
+# Patch git dependencies to use local paths for development
+[patch."https://github.com/tzervas/peft-rs"]
+peft-rs = { path = "peft-rs" }
+
+[patch."https://github.com/tzervas/qlora-rs"]
+qlora-rs = { path = "qlora-rs" }
+
+[patch."https://github.com/tzervas/unsloth-rs"]
+unsloth-rs = { path = "unsloth-rs" }
+
+[patch."https://github.com/tzervas/trit-vsa"]
+trit-vsa = { path = "trit-vsa" }
+
+[patch."https://github.com/tzervas/bitnet-quantize"]
+bitnet-quantize = { path = "bitnet-quantize" }
+
+[patch."https://github.com/tzervas/axolotl-rs"]
+axolotl-rs = { path = "axolotl-rs" }
+
+[patch."https://github.com/tzervas/vsa-optim-rs"]
+vsa-optim-rs = { path = "vsa-optim-rs" }
+
+[patch."https://github.com/tzervas/tritter-accel"]
+tritter-accel = { path = "tritter-accel" }
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.92"
+license = "MIT"
+description = "Rust AI training stack"
+repository = "https://github.com/tzervas/rust-ai"
+keywords = ["machine-learning", "llm", "fine-tuning"]
+categories = ["science"]
+
+[workspace.dependencies]
+candle-core = { version = "0.9.2", default-features = false }
+candle-nn = { version = "0.9.2", default-features = false }
+candle-transformers = { version = "0.9.2", default-features = false }
+tokenizers = { version = "0.15", default-features = false, features = ["onig"] }
+safetensors = "0.7"
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
+serde_json = "1.0"
+tokio = { version = "1.49", features = ["full"] }
+thiserror = "2.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+anyhow = "1.0"
+criterion = "0.8"
+half = "2.7"
+
+# CubeCL GPU compute
+cubecl = "0.9"
+cubecl-cuda = "0.9"
+cubecl-core = "0.9"
+cubecl-runtime = "0.9"
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+pedantic = "warn"

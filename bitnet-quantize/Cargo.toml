@@ -1,0 +1,51 @@
+[package]
+name = "bitnet-quantize"
+version = "0.2.1"
+edition = "2021"
+rust-version = "1.92"
+license = "MIT"
+authors = ["Tyler Zervas <tz-dev@vectorweight.com>"]
+description = "Microsoft BitNet b1.58 quantization and inference for Rust"
+repository = "https://github.com/tzervas/bitnet-quantize"
+homepage = "https://github.com/tzervas/bitnet-quantize"
+documentation = "https://docs.rs/bitnet-quantize"
+keywords = ["bitnet", "quantization", "ternary", "llm", "inference"]
+categories = ["science", "mathematics"]
+
+[dependencies]
+candle-core = { workspace = true }
+candle-nn = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Sister crate dependencies
+trit-vsa = { version = "0.3.0", path = "../trit-vsa" }
+peft-rs = { version = "1.0.0", optional = true }
+qlora-rs = { version = "1.0.0", optional = true }
+
+# GPU acceleration via CubeCL
+cubecl = { workspace = true, optional = true }
+cubecl-cuda = { workspace = true, optional = true }
+
+[dev-dependencies]
+criterion = { workspace = true }
+proptest = "1.4"
+
+[features]
+default = []
+cuda = [
+    "candle-core/cuda",
+    "dep:cubecl",
+    "dep:cubecl-cuda",
+    "trit-vsa/cuda",
+]
+peft = ["dep:peft-rs"]
+gguf-export = ["dep:qlora-rs"]
+
+[lints]
+workspace = true
+
+[[bench]]
+name = "bitnet_ops"
+harness = false

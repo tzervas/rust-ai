@@ -1,0 +1,161 @@
+name: tritter-accel CI
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - 'tritter-accel/**'
+      - 'trit-vsa/**'
+      - 'bitnet-quantize/**'
+      - 'vsa-optim-rs/**'
+      - 'rust-ai-core/**'
+      - '.github/workflows/tritter-accel.yml'
+  pull_request:
+    branches: [master, main]
+    paths:
+      - 'tritter-accel/**'
+      - 'trit-vsa/**'
+      - 'bitnet-quantize/**'
+      - 'vsa-optim-rs/**'
+      - 'rust-ai-core/**'
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-action@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Check compilation
+        run: cargo check -p tritter-accel --all-features
+
+      - name: Check formatting
+        run: cargo fmt -p tritter-accel -- --check
+
+      - name: Clippy lints
+        run: cargo clippy -p tritter-accel --all-features -- -D warnings
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-action@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Run tests
+        run: cargo test -p tritter-accel --all-features
+
+      - name: Run doc tests
+        run: cargo test -p tritter-accel --doc
+
+  docs:
+    name: Documentation
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-action@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Build documentation
+        run: cargo doc -p tritter-accel --no-deps --all-features
+        env:
+          RUSTDOCFLAGS: -D warnings
+
+  bench:
+    name: Benchmarks
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-action@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Check benchmarks compile
+        run: cargo check -p tritter-accel --benches
+
+  python:
+    name: Python Bindings
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-action@stable
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install maturin
+        run: pip install maturin numpy
+
+      - name: Build Python wheel
+        run: |
+          cd tritter-accel
+          maturin build --release
+
+      - name: Test Python import
+        run: |
+          pip install target/wheels/*.whl
+          python -c "import tritter_accel; print(f'tritter-accel v{tritter_accel.version()}')"

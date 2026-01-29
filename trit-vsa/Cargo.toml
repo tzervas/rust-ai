@@ -1,0 +1,37 @@
+[package]
+name = "trit-vsa"
+version = "0.3.0"
+edition = "2021"
+rust-version = "1.92"
+license = "MIT"
+authors = ["Tyler Zervas <tz-dev@vectorweight.com>"]
+description = "Balanced ternary arithmetic library with bitsliced storage and VSA operations"
+repository = "https://github.com/tzervas/trit-vsa"
+homepage = "https://github.com/tzervas/trit-vsa"
+documentation = "https://docs.rs/trit-vsa"
+keywords = ["ternary", "arithmetic", "vsa", "hyperdimensional", "bitsliced"]
+categories = ["mathematics", "data-structures", "science"]
+
+[dependencies]
+thiserror = { workspace = true }
+serde = { workspace = true }
+tracing = { workspace = true }
+candle-core = { workspace = true, optional = true }
+cubecl = { workspace = true, optional = true }
+cubecl-cuda = { workspace = true, optional = true }
+
+[dev-dependencies]
+criterion = { workspace = true }
+proptest = "1.9.0"
+
+[features]
+default = []
+simd = []
+cuda = ["dep:candle-core", "dep:cubecl", "dep:cubecl-cuda"]
+
+[lints]
+workspace = true
+
+[[bench]]
+name = "ternary_ops"
+harness = false

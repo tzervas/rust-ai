@@ -1,0 +1,54 @@
+# Rust
+/target/
+Cargo.lock
+**/*.rs.bk
+*.pdb
+
+# macOS
+.DS_Store
+
+# Editor
+*.swp
+*.swo
+.vscode/
+.idea/
+*.sublime-*
+
+# Local development
+*.local
+.env
+.env.*
+
+# Model weights (large files)
+*.bin
+*.safetensors
+*.gguf
+*.ggml
+
+# Checkpoints
+checkpoints/
+outputs/
+
+# CUDA artifacts
+*.ptx
+*.cubin
+
+# Downloaded packages
+*.deb
+
+# Temporary fix scripts
+fix_*.py
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+*.whl
+
+# Virtual environments
+venv/
+.venv/

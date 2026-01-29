@@ -1,0 +1,50 @@
+[package]
+name = "tritter-accel"
+version = "0.2.1"
+edition = "2021"
+rust-version = "1.92"
+license = "MIT"
+authors = ["Tyler Zervas <tz-dev@vectorweight.com>"]
+description = "Rust acceleration for Tritter - BitNet, ternary ops, VSA optimization"
+repository = "https://github.com/tzervas/rust-ai"
+keywords = ["machine-learning", "bitnet", "ternary", "python", "acceleration"]
+categories = ["science", "mathematics"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+name = "tritter_accel"
+
+[dependencies]
+# Sister crates (use crates.io versions for release, path for development)
+bitnet-quantize = { version = "0.2.1", path = "../bitnet-quantize" }
+trit-vsa = { version = "0.3", path = "../trit-vsa" }
+vsa-optim-rs = { version = "0.1", path = "../vsa-optim-rs" }
+
+# Tensor operations
+candle-core = { workspace = true }
+candle-nn = { workspace = true }
+
+# Python bindings
+pyo3 = { version = "0.27", features = ["extension-module"] }
+numpy = "0.27"
+
+# RNG for VSA
+rand = "0.8"
+rand_chacha = "0.3"
+
+# Core utilities
+thiserror = { workspace = true }
+
+[dev-dependencies]
+criterion = { workspace = true }
+
+[features]
+default = []
+# CUDA GPU acceleration - enables GPU-accelerated VSA operations
+cuda = [
+    "trit-vsa/cuda",
+]
+
+[[bench]]
+name = "accel_bench"
+harness = false

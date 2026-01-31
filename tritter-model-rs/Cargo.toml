@@ -15,12 +15,12 @@ categories = ["science", "machine-learning"]
 candle-core = "0.9"
 candle-nn = "0.9"
 
-# BitNet quantization
-bitnet-quantize = { path = "../bitnet-quantize" }
-trit-vsa = { path = "../trit-vsa" }
+# BitNet quantization (published on crates.io)
+bitnet-quantize = "0.2"
+trit-vsa = "0.3"
 
 # Hybrid predictive training
-hybrid-predict-trainer-rs = { path = "../hybrid-predict-trainer-rs" }
+hybrid-predict-trainer-rs = "0.1"
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }

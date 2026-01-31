@@ -1,0 +1,66 @@
+[package]
+name = "tritter-model-rs"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.92"
+authors = ["Tyler Zervas <tz-dev@vectorweight.com>"]
+description = "Pure Rust Tritter transformer model with BitNet quantization"
+license = "MIT"
+repository = "https://github.com/tzervas/rust-ai"
+keywords = ["llm", "transformer", "bitnet", "ternary", "training"]
+categories = ["science", "machine-learning"]
+
+[dependencies]
+# Core tensor operations
+candle-core = "0.9"
+candle-nn = "0.9"
+
+# BitNet quantization
+bitnet-quantize = { path = "../bitnet-quantize" }
+trit-vsa = { path = "../trit-vsa" }
+
+# Hybrid predictive training
+hybrid-predict-trainer-rs = { path = "../hybrid-predict-trainer-rs" }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling
+thiserror = "2.0"
+
+# Tokenization (HuggingFace tokenizers for BPE backend)
+tokenizers = "0.21"
+
+# Random number generation
+rand = "0.8"
+
+# Logging
+log = "0.4"
+
+# Half precision
+half = { version = "2.7", features = ["serde"] }
+
+# Arrow/Parquet for data loading (optional)
+arrow-array = { version = "54", optional = true }
+arrow-schema = { version = "54", optional = true }
+parquet = { version = "54", optional = true, default-features = false, features = ["arrow"] }
+
+[features]
+default = []
+cuda = ["candle-core/cuda"]
+parquet = ["dep:arrow-array", "dep:arrow-schema", "dep:parquet"]
+
+[dev-dependencies]
+criterion = "0.5"
+tokio = { version = "1", features = ["rt", "macros"] }
+anyhow = "1.0"
+tempfile = "3.15"
+
+[[example]]
+name = "train"
+path = "examples/train.rs"
+
+[[example]]
+name = "train_500m"
+path = "examples/train_500m.rs"

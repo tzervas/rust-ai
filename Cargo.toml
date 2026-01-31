@@ -3,11 +3,13 @@ resolver = "2"
 members = [
     "axolotl-rs",
     "bitnet-quantize",
+    "hybrid-predict-trainer-rs",
     "peft-rs",
     "qlora-rs",
     "rust-ai-core",
     "trit-vsa",
     "tritter-accel",
+    "tritter-model-rs",
     "unsloth-rs",
     "vsa-optim-rs",
 ]
@@ -23,6 +25,7 @@ axolotl-rs = { path = "axolotl-rs" }
 vsa-optim-rs = { path = "vsa-optim-rs" }
 tritter-accel = { path = "tritter-accel" }
 rust-ai-core = { path = "rust-ai-core" }
+hybrid-predict-trainer-rs = { path = "hybrid-predict-trainer-rs" }
 
 # Use maintained candle fork with qlora-gemm
 candle-core = { git = "https://github.com/tzervas/qlora-candle.git", branch = "use-qlora-gemm" }

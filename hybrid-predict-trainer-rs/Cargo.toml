@@ -1,0 +1,131 @@
+[package]
+name = "hybrid-predict-trainer-rs"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.92"
+license = "MIT"
+description = "Hybridized predictive training framework with warmup, full-train, predict, and residual correction phases for accelerated deep learning"
+authors = ["Tyler Zervas <tz-dev@vectorweight.com>"]
+repository = "https://github.com/tzervas/hybrid-predict-trainer-rs"
+homepage = "https://github.com/tzervas/hybrid-predict-trainer-rs"
+documentation = "https://docs.rs/hybrid-predict-trainer-rs"
+readme = "README.md"
+keywords = ["machine-learning", "deep-learning", "training", "predictive", "gpu"]
+categories = ["science", "mathematics", "algorithms"]
+
+[dependencies]
+# Core tensor operations and deep learning
+burn = { version = "0.20", default-features = false }
+burn-core = { version = "0.20", default-features = false }
+burn-tensor = { version = "0.20", default-features = false }
+
+# GPU compute acceleration
+cubecl = { version = "0.9", default-features = false, optional = true }
+cubecl-cuda = { version = "0.9", optional = true }
+cubecl-core = { version = "0.9", optional = true }
+cubecl-runtime = { version = "0.9", optional = true }
+
+# Candle for additional tensor ops and model compatibility
+candle-core = { version = "0.9", default-features = false, optional = true }
+candle-nn = { version = "0.9", default-features = false, optional = true }
+
+# Serialization and configuration
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0" }
+toml = { version = "0.9" }
+safetensors = { version = "0.7" }
+
+# Error handling
+thiserror = { version = "2.0" }
+anyhow = { version = "1.0" }
+
+# Async runtime
+tokio = { version = "1.49", features = ["full"], optional = true }
+
+# Logging and diagnostics
+tracing = { version = "0.1" }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Numeric types
+half = { version = "2.7", features = ["serde"] }
+
+# Synchronization primitives
+parking_lot = { version = "0.12" }
+
+# Random number generation
+rand = { version = "0.9" }
+rand_distr = { version = "0.5" }
+
+[dev-dependencies]
+criterion = { version = "0.8", features = ["html_reports"] }
+tokio-test = "0.4"
+tempfile = "3.19"
+approx = "0.5"
+
+[features]
+default = ["std"]
+std = ["burn/std", "burn-core/std", "burn-tensor/std"]
+
+# GPU acceleration backends
+cuda = [
+    "cubecl",
+    "cubecl-cuda",
+    "cubecl-core",
+    "cubecl-runtime",
+    "burn/cuda",
+]
+
+# Candle integration for model compatibility
+candle = ["candle-core", "candle-nn"]
+
+# Async support
+async = ["tokio"]
+
+# Full feature set
+full = ["std", "cuda", "candle", "async"]
+
+[[bench]]
+name = "phase_transitions"
+harness = false
+
+[[bench]]
+name = "predictor_performance"
+harness = false
+
+[[bench]]
+name = "residual_extraction"
+harness = false
+
+[[example]]
+name = "basic_training"
+
+[[example]]
+name = "gpu_accelerated"
+required-features = ["cuda"]
+
+[[example]]
+name = "custom_predictor"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[lints.rust]
+unsafe_code = "warn"
+
+[lints.clippy]
+# Lint groups with lower priority (processed first)
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+# Individual lints that override groups (higher priority = processed after)
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+missing_const_for_fn = "allow"
+significant_drop_tightening = "allow"
+needless_pass_by_ref_mut = "allow"
+unused_self = "allow"
+struct_excessive_bools = "allow"
+too_many_lines = "allow"
+cognitive_complexity = "allow"

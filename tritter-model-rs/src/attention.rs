@@ -235,7 +235,7 @@ impl TritterAttention {
             attn
         };
 
-        let attn = candle_nn::ops::softmax_last_dim(&attn)?;
+        let attn = crate::norm::manual_softmax_last_dim(&attn)?;
 
         // Attention output
         let out = attn.matmul(&v)?;

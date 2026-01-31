@@ -29,11 +29,12 @@ fn main() -> anyhow::Result<()> {
 
     println!("Device: {:?}", device);
 
-    // Model configuration - 500M with BitNet quantization
-    let mut model_config = TritterConfig::medium_500m();
+    // Model configuration - 100M fits in GPU memory with gradients
+    // 500M requires gradient checkpointing which candle doesn't support
+    let mut model_config = TritterConfig::small_100m();
     model_config.use_bitnet = true; // Enable ternary quantization
 
-    println!("Model: 500M parameters (BitNet ternary)");
+    println!("Model: 100M parameters (BitNet ternary)");
     println!("  Hidden size: {}", model_config.hidden_size);
     println!("  Layers: {}", model_config.num_layers);
     println!("  Heads: {}", model_config.num_heads);
@@ -60,23 +61,37 @@ fn main() -> anyhow::Result<()> {
     println!("  Confidence threshold: {}", trainer_config.confidence_threshold);
     println!();
 
-    // Data configuration
+    // Data configuration - tuned for GPU (100M model fits with batch 2, seq 256)
+    #[cfg(feature = "cuda")]
+    let batch_size = 2;
+    #[cfg(not(feature = "cuda"))]
+    let batch_size = 4;
+
+    #[cfg(feature = "cuda")]
+    let seq_length = 256; // Moderate sequences for GPU
+    #[cfg(not(feature = "cuda"))]
+    let seq_length = 512;
+
     let data_config = DataConfig::default()
-        .with_batch_size(2) // Small batch for 500M model
-        .with_max_seq_length(512); // 512 tokens per sequence
+        .with_batch_size(batch_size)
+        .with_max_seq_length(seq_length);
 
     println!("Data Config:");
     println!("  Batch size: {}", data_config.batch_size);
     println!("  Sequence length: {}", data_config.max_seq_length);
     println!();
 
-    // Load training data
-    let data_path = PathBuf::from(
-        "/home/kang/Documents/projects/github/python-ai/tritter/data/combined/all_data.jsonl",
-    );
-    if !data_path.exists() {
-        anyhow::bail!("Training data not found: {:?}", data_path);
-    }
+    // Load training data - use larger dataset if available
+    let data_paths = [
+        PathBuf::from("/home/kang/data/tritter/processed/curated_data.jsonl"),
+        PathBuf::from("/home/kang/Documents/projects/github/python-ai/tritter/data/combined/all_data.jsonl"),
+    ];
+
+    let data_path = data_paths.iter().find(|p| p.exists()).cloned();
+    let data_path = match data_path {
+        Some(p) => p,
+        None => anyhow::bail!("No training data found. Tried: {:?}", data_paths),
+    };
 
     let dataset = JsonlDataset::new(&data_path, data_config.max_seq_length)?;
     let dataset_box: Box<dyn StreamingDataset> = Box::new(dataset);
@@ -100,8 +115,8 @@ fn main() -> anyhow::Result<()> {
     println!();
 
     // Training loop
-    let max_steps = 10000;
-    let log_every = 50;
+    let max_steps = 50000; // Production training
+    let log_every = 100;
 
     println!("Starting training ({} steps)...", max_steps);
     println!("{:-<80}", "");

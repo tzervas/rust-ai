@@ -7,19 +7,20 @@
 //! - BitNet quantization via bitnet-quantize crate
 
 use candle_core::{DType, Device, Tensor, D};
-use candle_nn::{embedding, layer_norm, Embedding, LayerNorm, Module, VarBuilder, VarMap};
+use candle_nn::{embedding, Embedding, Module, VarBuilder, VarMap};
 use std::collections::HashMap;
 
 use crate::attention::create_causal_mask;
 use crate::config::TritterConfig;
 use crate::error::TritterResult;
 use crate::layer::TritterLayer;
+use crate::norm::{manual_layer_norm, ManualLayerNorm};
 
 /// The main Tritter transformer model
 pub struct TritterModel {
     embed_tokens: Embedding,
     layers: Vec<TritterLayer>,
-    final_norm: LayerNorm,
+    final_norm: ManualLayerNorm,
     lm_head: candle_nn::Linear,
     config: TritterConfig,
     device: Device,
@@ -60,8 +61,8 @@ impl TritterModel {
             layers.push(layer);
         }
 
-        // Final layer norm
-        let final_norm = layer_norm(config.hidden_size, config.layer_norm_eps, vb.pp("final_norm"))?;
+        // Final layer norm (using manual impl for CUDA compatibility)
+        let final_norm = manual_layer_norm(config.hidden_size, config.layer_norm_eps, vb.pp("final_norm"))?;
 
         // LM head (tied to embeddings in some models, separate here)
         let lm_head = candle_nn::linear_no_bias(

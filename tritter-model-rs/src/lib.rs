@@ -26,6 +26,7 @@ pub mod layer;
 pub mod memory;
 pub mod mlp;
 pub mod model;
+pub mod norm;
 pub mod tokenizer;
 pub mod trainer;
 

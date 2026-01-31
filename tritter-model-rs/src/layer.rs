@@ -6,19 +6,20 @@
 //! - Residual connections
 
 use candle_core::{Result, Tensor};
-use candle_nn::{layer_norm, LayerNorm, Module, VarBuilder};
+use candle_nn::{Module, VarBuilder};
 
 use crate::attention::TritterAttention;
 use crate::config::TritterConfig;
 use crate::mlp::TritterMLP;
+use crate::norm::{manual_layer_norm, ManualLayerNorm};
 use candle_core::Device;
 
 /// Single transformer layer
 pub struct TritterLayer {
     attention: TritterAttention,
     mlp: TritterMLP,
-    input_norm: LayerNorm,
-    post_attention_norm: LayerNorm,
+    input_norm: ManualLayerNorm,
+    post_attention_norm: ManualLayerNorm,
 }
 
 impl TritterLayer {
@@ -30,10 +31,10 @@ impl TritterLayer {
         let attention = TritterAttention::new(config, vb.pp("attention"), device)?;
         let mlp = TritterMLP::new(config, vb.pp("mlp"), device)?;
 
-        // Pre-attention normalization
-        let input_norm = layer_norm(hidden, eps, vb.pp("input_norm"))?;
+        // Pre-attention normalization (using manual impl for CUDA compatibility)
+        let input_norm = manual_layer_norm(hidden, eps, vb.pp("input_norm"))?;
         // Post-MLP normalization (Chameleon style)
-        let post_attention_norm = layer_norm(hidden, eps, vb.pp("post_attention_norm"))?;
+        let post_attention_norm = manual_layer_norm(hidden, eps, vb.pp("post_attention_norm"))?;
 
         Ok(Self {
             attention,

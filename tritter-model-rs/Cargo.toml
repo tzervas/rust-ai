@@ -8,7 +8,7 @@ description = "Pure Rust Tritter transformer model with BitNet quantization"
 license = "MIT"
 repository = "https://github.com/tzervas/rust-ai"
 keywords = ["llm", "transformer", "bitnet", "ternary", "training"]
-categories = ["science", "machine-learning"]
+categories = ["science", "algorithms"]
 
 [dependencies]
 # Core tensor operations

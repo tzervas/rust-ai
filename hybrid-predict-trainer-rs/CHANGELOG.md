@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-01-31
+
+### Added
+- **Weight delta prediction**: `decode_weight_delta()` in dynamics model that projects GRU hidden state to per-layer weight change estimates
+- **Full predict phase with weight updates**: Predict phase now applies predicted weight deltas rather than just loss prediction
+- **Residual store integration**: HybridTrainer stores residuals after predict steps for improved correction accuracy
+- **Layer-wise weight scaling**: Weight delta predictions include per-layer scales for embed, attention (Q/K/V/out), MLP (up/down), and LM head
+
+### Changed
+- Predict phase now captures state before prediction for residual extraction
+- Correction phase uses stored residuals for context-aware adjustment
+- Dynamics model tracks gradient norm and learning rate history for better scaling
+
+### Fixed
+- Residual corrector now receives proper state features for online learning
+
 ## [0.1.0] - 2026-01-30
 
 ### Added
@@ -58,6 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Benchmark scaffolding
 - Example programs
 
-[Unreleased]: https://github.com/tzervas/hybrid-predict-trainer-rs/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/tzervas/hybrid-predict-trainer-rs/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/tzervas/hybrid-predict-trainer-rs/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/tzervas/hybrid-predict-trainer-rs/compare/v0.0.1...v0.1.0
 [0.0.1]: https://github.com/tzervas/hybrid-predict-trainer-rs/releases/tag/v0.0.1

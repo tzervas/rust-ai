@@ -19,8 +19,8 @@ candle-nn = "0.9"
 bitnet-quantize = "0.2"
 trit-vsa = "0.3"
 
-# Hybrid predictive training
-hybrid-predict-trainer-rs = "0.1"
+# Hybrid predictive training (path for development)
+hybrid-predict-trainer-rs = { version = "0.2", path = "../hybrid-predict-trainer-rs" }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
@@ -48,7 +48,12 @@ parquet = { version = "54", optional = true, default-features = false, features 
 
 [features]
 default = []
-cuda = ["candle-core/cuda"]
+cuda = [
+    "candle-core/cuda",
+    "candle-nn/cuda",
+    "bitnet-quantize/cuda",
+    "hybrid-predict-trainer-rs/cuda",
+]
 parquet = ["dep:arrow-array", "dep:arrow-schema", "dep:parquet"]
 
 [dev-dependencies]

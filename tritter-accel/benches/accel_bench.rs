@@ -10,9 +10,9 @@
 //! - compress_gradients_vsa: throughput > 100MB/s
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
-use std::hint::black_box;
 use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
+use std::hint::black_box;
 
 use bitnet_quantize::{quantize_weights, BitNetConfig};
 use candle_core::{Device, Tensor};
@@ -25,9 +25,7 @@ use trit_vsa::{vsa, PackedTritVec, Trit};
 /// Create a random f32 weight matrix with normal distribution.
 fn create_random_weights(rows: usize, cols: usize, seed: u64) -> Vec<f32> {
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
-    (0..rows * cols)
-        .map(|_| rng.gen_range(-1.0..1.0))
-        .collect()
+    (0..rows * cols).map(|_| rng.gen_range(-1.0..1.0)).collect()
 }
 
 /// Create a random ternary vector.
@@ -71,9 +69,7 @@ fn bench_quantize_weights_absmean(c: &mut Criterion) {
         group.bench_with_input(
             BenchmarkId::new("matrix", format!("{}x{}", size, size)),
             &tensor,
-            |b, tensor| {
-                b.iter(|| quantize_weights(black_box(tensor), black_box(&config)).unwrap())
-            },
+            |b, tensor| b.iter(|| quantize_weights(black_box(tensor), black_box(&config)).unwrap()),
         );
     }
     group.finish();
@@ -93,9 +89,7 @@ fn bench_quantize_weights_group_sizes(c: &mut Criterion) {
         group.bench_with_input(
             BenchmarkId::new("group_size", group_size),
             &tensor,
-            |b, tensor| {
-                b.iter(|| quantize_weights(black_box(tensor), black_box(&config)).unwrap())
-            },
+            |b, tensor| b.iter(|| quantize_weights(black_box(tensor), black_box(&config)).unwrap()),
         );
     }
     group.finish();
@@ -222,7 +216,9 @@ fn bench_ternary_matmul(c: &mut Criterion) {
             weight_vecs.push(pvec);
         }
 
-        let scales: Vec<f32> = (0..out_features).map(|i| 0.1 + (i as f32 * 0.001)).collect();
+        let scales: Vec<f32> = (0..out_features)
+            .map(|i| 0.1 + (i as f32 * 0.001))
+            .collect();
         let input: Vec<f32> = (0..batch_size * in_features)
             .map(|_| rng.gen_range(-1.0f32..1.0f32))
             .collect();
@@ -291,7 +287,9 @@ fn bench_ternary_vs_float_matmul(c: &mut Criterion) {
         weight_vecs.push(pvec);
     }
 
-    let scales: Vec<f32> = (0..out_features).map(|i| 0.1 + (i as f32 * 0.001)).collect();
+    let scales: Vec<f32> = (0..out_features)
+        .map(|i| 0.1 + (i as f32 * 0.001))
+        .collect();
 
     // Setup for float matmul
     let weight_float: Vec<f32> = (0..out_features * in_features)
@@ -364,8 +362,7 @@ fn bench_compress_gradients_vsa(c: &mut Criterion) {
         group.throughput(Throughput::Bytes((grad_size * 4) as u64));
 
         for &compression_ratio in &[0.1, 0.01] {
-            let compressed_dim =
-                ((grad_size as f32 * compression_ratio).ceil() as usize).max(256);
+            let compressed_dim = ((grad_size as f32 * compression_ratio).ceil() as usize).max(256);
 
             group.bench_with_input(
                 BenchmarkId::new(
@@ -453,9 +450,11 @@ fn bench_vsa_bundle(c: &mut Criterion) {
 
         group.throughput(Throughput::Elements(*size as u64));
 
-        group.bench_with_input(BenchmarkId::new("size", size), &(&a, &b), |bench, (a, b)| {
-            bench.iter(|| black_box(vsa::bundle(black_box(a), black_box(b))))
-        });
+        group.bench_with_input(
+            BenchmarkId::new("size", size),
+            &(&a, &b),
+            |bench, (a, b)| bench.iter(|| black_box(vsa::bundle(black_box(a), black_box(b)))),
+        );
     }
     group.finish();
 }
@@ -469,9 +468,11 @@ fn bench_vsa_bind(c: &mut Criterion) {
 
         group.throughput(Throughput::Elements(*size as u64));
 
-        group.bench_with_input(BenchmarkId::new("size", size), &(&a, &b), |bench, (a, b)| {
-            bench.iter(|| black_box(vsa::bind(black_box(a), black_box(b))))
-        });
+        group.bench_with_input(
+            BenchmarkId::new("size", size),
+            &(&a, &b),
+            |bench, (a, b)| bench.iter(|| black_box(vsa::bind(black_box(a), black_box(b)))),
+        );
     }
     group.finish();
 }
@@ -505,9 +506,11 @@ fn bench_packed_dot_product(c: &mut Criterion) {
 
         group.throughput(Throughput::Elements(*size as u64));
 
-        group.bench_with_input(BenchmarkId::new("size", size), &(&a, &b), |bench, (a, b)| {
-            bench.iter(|| black_box(a.dot(black_box(b))))
-        });
+        group.bench_with_input(
+            BenchmarkId::new("size", size),
+            &(&a, &b),
+            |bench, (a, b)| bench.iter(|| black_box(a.dot(black_box(b)))),
+        );
     }
     group.finish();
 }

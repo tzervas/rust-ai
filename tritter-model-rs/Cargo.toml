@@ -1,0 +1,77 @@
+[package]
+name = "tritter-model-rs"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.92"
+authors = ["Tyler Zervas <tz-dev@vectorweight.com>"]
+description = "Pure Rust Tritter transformer model with BitNet quantization"
+license = "MIT"
+repository = "https://github.com/tzervas/rust-ai"
+keywords = ["llm", "transformer", "bitnet", "ternary", "training"]
+categories = ["science", "algorithms"]
+
+[dependencies]
+# Core tensor operations
+candle-core = "0.9"
+candle-nn = "0.9"
+
+# BitNet quantization (published on crates.io)
+bitnet-quantize = "0.2"
+trit-vsa = "0.3"
+
+# Hybrid predictive training (path for development)
+hybrid-predict-trainer-rs = { version = "0.2", path = "../hybrid-predict-trainer-rs" }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling
+thiserror = "2.0"
+
+# Tokenization (HuggingFace tokenizers for BPE backend)
+tokenizers = "0.21"
+
+# Random number generation
+rand = "0.8"
+
+# Logging
+log = "0.4"
+
+# Half precision
+half = { version = "2.7", features = ["serde"] }
+
+# Arrow/Parquet for data loading (optional)
+arrow-array = { version = "54", optional = true }
+arrow-schema = { version = "54", optional = true }
+parquet = { version = "54", optional = true, default-features = false, features = ["arrow", "snap"] }
+
+[features]
+default = []
+cuda = [
+    "candle-core/cuda",
+    "candle-nn/cuda",
+    "bitnet-quantize/cuda",
+    "hybrid-predict-trainer-rs/cuda",
+]
+parquet = ["dep:arrow-array", "dep:arrow-schema", "dep:parquet"]
+
+[dev-dependencies]
+criterion = "0.5"
+tokio = { version = "1", features = ["rt", "macros"] }
+anyhow = "1.0"
+tempfile = "3.15"
+training-tools = { path = "../training-tools", default-features = false }
+chrono = { version = "0.4", features = ["serde"] }
+
+[[example]]
+name = "train"
+path = "examples/train.rs"
+
+[[example]]
+name = "train_500m"
+path = "examples/train_500m.rs"
+
+[[example]]
+name = "train_100m"
+path = "examples/train_100m.rs"

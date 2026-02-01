@@ -1,0 +1,42 @@
+# Build artifacts
+/target/
+**/*.rs.bk
+
+# Local development
+.env
+.env.*
+*.local
+
+# Checklists and trackers (local only)
+*-checklist.md
+*-plan.md
+*CHECKLIST*.md
+*DELIVERABLES*.md
+*ROADMAP*.md
+*REPORT*.md
+*SUMMARY*.md
+*HANDOFF*.md
+PHASE2_*.md
+START_HERE.md
+report.md
+NEXT_PHASE_PLAN.md
+.polish/
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# macOS
+.DS_Store
+
+# Model weights
+*.bin
+*.safetensors
+*.gguf
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/

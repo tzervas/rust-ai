@@ -17,8 +17,9 @@ thiserror = { workspace = true }
 serde = { workspace = true }
 tracing = { workspace = true }
 candle-core = { workspace = true, optional = true }
-cubecl = { workspace = true, optional = true }
-cubecl-cuda = { workspace = true, optional = true }
+# NOTE: CubeCL disabled due to uuid/js-sys conflict with burn-core
+# cubecl = { version = "0.9", optional = true }
+# cubecl-cuda = { version = "0.9", optional = true }
 
 [dev-dependencies]
 criterion = { workspace = true }
@@ -27,7 +28,12 @@ proptest = "1.9.0"
 [features]
 default = []
 simd = []
-cuda = ["dep:candle-core", "dep:cubecl", "dep:cubecl-cuda"]
+# CUDA feature temporarily reduced due to cubecl/uuid conflict
+cuda = [
+    "dep:candle-core",
+    # "dep:cubecl",  # Disabled: uuid/js-sys conflict with burn-core
+    # "dep:cubecl-cuda",  # Disabled: uuid/js-sys conflict with burn-core
+]
 
 [lints]
 workspace = true

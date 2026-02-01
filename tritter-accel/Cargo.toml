@@ -45,9 +45,9 @@ criterion = { workspace = true }
 default = []
 # Python bindings - enables PyO3 and numpy for Python extension module
 python = ["dep:pyo3", "dep:numpy"]
-# CUDA GPU acceleration - enables GPU-accelerated VSA operations
+# CUDA GPU acceleration - temporarily reduced due to cubecl/uuid conflict
 cuda = [
-    "trit-vsa/cuda",
+    # "trit-vsa/cuda",  # Disabled: cubecl uuid/js-sys conflict
 ]
 
 [[bench]]

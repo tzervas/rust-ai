@@ -52,3 +52,42 @@ build/
 # Virtual environments
 venv/
 .venv/
+
+# Large files / datasets (protect GitHub from large uploads)
+*.pt
+*.pth
+*.h5
+*.hdf5
+*.onnx
+*.tflite
+*.parquet
+*.arrow
+datasets/
+data/
+*.tar
+*.tar.gz
+*.tar.zst
+*.zip
+
+# Training runs and logs
+runs/
+logs/
+*.log
+wandb/
+mlruns/
+
+# HuggingFace cache (use HF CLI for model uploads)
+.cache/
+huggingface/
+
+# Credentials (never commit)
+*.pem
+*.key
+*_rsa
+*_ed25519
+*.gpg
+secrets/
+credentials/
+
+# Gitleaks reports (config is tracked)
+.gitleaks-report.json

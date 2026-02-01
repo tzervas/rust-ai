@@ -1,0 +1,57 @@
+# Gitleaks configuration for rust-ai workspace
+# https://github.com/gitleaks/gitleaks
+
+title = "rust-ai gitleaks config"
+
+[extend]
+# Use the default gitleaks rules
+useDefault = true
+
+[allowlist]
+description = "Allowlisted patterns"
+paths = [
+    '''\.lock$''',
+    '''target/''',
+    '''\.git/''',
+]
+
+# Additional rules for ML/AI projects
+[[rules]]
+id = "huggingface-token"
+description = "HuggingFace API Token"
+regex = '''hf_[a-zA-Z0-9]{34}'''
+tags = ["api", "huggingface"]
+
+[[rules]]
+id = "openai-key"
+description = "OpenAI API Key"
+regex = '''sk-[a-zA-Z0-9]{48}'''
+tags = ["api", "openai"]
+
+[[rules]]
+id = "anthropic-key"
+description = "Anthropic API Key"
+regex = '''sk-ant-[a-zA-Z0-9\-_]{95}'''
+tags = ["api", "anthropic"]
+
+[[rules]]
+id = "wandb-key"
+description = "Weights & Biases API Key"
+regex = '''[a-f0-9]{40}'''
+path = '''wandb'''
+tags = ["api", "wandb"]
+
+# Entropy-based detection for high-entropy strings that might be secrets
+[[rules]]
+id = "high-entropy-base64"
+description = "High entropy base64 string (potential secret)"
+regex = '''[A-Za-z0-9+/=]{40,}'''
+entropy = 4.5
+tags = ["entropy"]
+[rules.allowlist]
+paths = [
+    '''\.lock$''',
+    '''Cargo\.toml$''',
+    '''README''',
+    '''\.md$''',
+]

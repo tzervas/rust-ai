@@ -163,6 +163,7 @@ pub mod gpu;
 pub use config::HybridTrainerConfig;
 pub use error::{HybridResult, HybridTrainingError, RecoveryAction};
 pub use phases::{Phase, PhaseController, PhaseDecision, PhaseOutcome};
+pub use residuals::{Residual, ResidualStore};
 pub use state::TrainingState;
 pub use timing::{Duration, Timer, TimingMetrics, TimingStats};
 
@@ -362,6 +363,9 @@ pub struct HybridTrainer<M, O> {
     /// Residual corrector for prediction adjustment.
     residual_corrector: corrector::ResidualCorrector,
 
+    /// Storage for residuals extracted from prediction errors.
+    residual_store: residuals::ResidualStore,
+
     /// Metrics collector for training statistics.
     metrics: metrics::MetricsCollector,
 }
@@ -388,6 +392,7 @@ impl<M, O> HybridTrainer<M, O> {
         let dynamics_model = dynamics::RSSMLite::new(&config.predictor_config)?;
         let divergence_monitor = divergence::DivergenceMonitor::new(&config);
         let residual_corrector = corrector::ResidualCorrector::new(&config);
+        let residual_store = residuals::ResidualStore::new(1000);
         let metrics = metrics::MetricsCollector::new(config.collect_metrics);
 
         Ok(Self {
@@ -399,6 +404,7 @@ impl<M, O> HybridTrainer<M, O> {
             dynamics_model,
             divergence_monitor,
             residual_corrector,
+            residual_store,
             metrics,
         })
     }
@@ -554,6 +560,7 @@ impl<M, O> HybridTrainer<M, O> {
             was_predicted,
             prediction_error,
             confidence,
+            gradient_norm: self.state.gradient_norm,
             step_time_ms: elapsed_ms,
             metrics: step_metrics,
         })
@@ -608,8 +615,13 @@ impl<M, O> HybridTrainer<M, O> {
     {
         let mut model = self.model.write();
 
+        // Capture state before prediction for residual extraction
+        let state_features_before = self.state.compute_features();
+        let confidence = self.dynamics_model.prediction_confidence(&self.state);
+
         // Get prediction from dynamics model
         let (prediction, _uncertainty) = self.dynamics_model.predict_y_steps(&self.state, 1);
+        let predicted_loss = prediction.predicted_final_loss;
 
         // Apply predicted weight delta
         model.apply_weight_delta(&prediction.weight_delta)?;
@@ -617,8 +629,27 @@ impl<M, O> HybridTrainer<M, O> {
         // Forward pass to get actual loss (for validation)
         let actual_loss = model.forward(batch)?;
 
-        // Compute prediction error
-        let prediction_error = (actual_loss - prediction.predicted_final_loss).abs();
+        // Compute prediction error (absolute difference)
+        let prediction_error = (actual_loss - predicted_loss).abs();
+
+        // Create and store residual (actual - predicted)
+        let loss_residual = actual_loss - predicted_loss;
+        let residual = residuals::Residual {
+            step: self.state.step,
+            phase: Phase::Predict,
+            prediction_horizon: 1,
+            loss_residual,
+            gradient_residuals: Vec::new(), // No gradient info in predict phase
+            state_features: state_features_before,
+            prediction_confidence: confidence,
+        };
+
+        // Store the residual for future correction
+        self.residual_store.add(residual.clone());
+
+        // Update the corrector's online model with this residual
+        self.residual_corrector
+            .update_from_residual(&residual, &self.state);
 
         Ok((actual_loss, true, Some(prediction_error)))
     }
@@ -626,6 +657,7 @@ impl<M, O> HybridTrainer<M, O> {
     /// Executes a correction step (apply residual corrections).
     ///
     /// Used during Correct phase to adjust for accumulated prediction errors.
+    /// Uses stored residuals from prediction phase to compute corrections.
     fn execute_correct_step<B>(&mut self, batch: &B) -> HybridResult<(f32, bool, Option<f32>)>
     where
         B: Batch,
@@ -633,18 +665,42 @@ impl<M, O> HybridTrainer<M, O> {
     {
         let mut model = self.model.write();
 
-        // Apply residual correction
-        let correction = self
-            .residual_corrector
-            .compute_simple_correction(&self.state);
-        if let Some(delta) = correction {
-            model.apply_weight_delta(&delta)?;
+        // Compute correction using stored residuals for context-aware adjustment
+        let correction = if self.residual_store.is_empty() {
+            // Fall back to simple correction if no residuals available
+            corrector::Correction::zero()
+        } else {
+            // Use full correction with residual store for better estimates
+            let predicted_loss = self.state.loss; // Use current loss as baseline
+            self.residual_corrector
+                .compute_correction(&self.state, &self.residual_store, predicted_loss)
+        };
+
+        // Apply weight delta correction if one was computed and significant
+        if let Some(ref delta) = correction.weight_correction {
+            model.apply_weight_delta(delta)?;
+        } else if correction.is_significant(0.01) {
+            // If no weight correction but loss correction is significant,
+            // apply a simple scaled correction
+            let simple_delta = self
+                .residual_corrector
+                .compute_simple_correction(&self.state);
+            if let Some(delta) = simple_delta {
+                model.apply_weight_delta(&delta)?;
+            }
         }
 
         // Forward pass to validate correction
         let loss = model.forward(batch)?;
 
-        Ok((loss, false, None))
+        // Compute how much the correction changed the loss (for metrics)
+        let correction_effect = if correction.loss_correction.abs() > 0.001 {
+            Some((self.state.loss - loss).abs())
+        } else {
+            None
+        };
+
+        Ok((loss, false, correction_effect))
     }
 
     /// Forces the trainer into full training mode for the specified number of steps.
@@ -681,6 +737,9 @@ pub struct StepResult {
 
     /// The predictor's confidence for this step.
     pub confidence: f32,
+
+    /// Gradient norm from the backward pass (0.0 if predicted step).
+    pub gradient_norm: f32,
 
     /// Wall-clock time for this step in milliseconds.
     pub step_time_ms: f64,

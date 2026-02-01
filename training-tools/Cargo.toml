@@ -1,0 +1,88 @@
+[package]
+name = "training-tools"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.92"
+license = "MIT"
+description = "Training monitoring, HuggingFace integration, and checkpoint management for rust-ai"
+repository = "https://github.com/tzervas/rust-ai"
+keywords = ["machine-learning", "training", "monitoring", "huggingface"]
+categories = ["command-line-utilities", "science"]
+
+[dependencies]
+# Workspace crates
+tritter-model-rs = { path = "../tritter-model-rs" }
+hybrid-predict-trainer-rs = { path = "../hybrid-predict-trainer-rs" }
+# Note: rust-ai-core excluded due to peft-rs safetensors version conflict
+
+# Tensor operations
+candle-core = { workspace = true }
+candle-nn = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+
+# Async runtime
+tokio = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# TUI for monitor
+ratatui = "0.29"
+crossterm = "0.28"
+
+# Progress bars
+indicatif = "0.17"
+
+# Time and formatting
+chrono = { version = "0.4", features = ["serde"] }
+humansize = "2.1"
+
+# HTTP client for HuggingFace API
+reqwest = { version = "0.12", features = ["json", "stream", "multipart"] }
+
+# File compression
+flate2 = "1.0"
+zstd = "0.13"
+
+# Random for training
+rand = "0.8"
+
+# CLI argument parsing
+clap = { version = "4.5", features = ["derive"] }
+
+# File watching
+notify = "7.0"
+
+# UUID for run IDs
+uuid = { version = "1.11", features = ["v4"] }
+
+[features]
+default = ["cuda"]
+cuda = [
+    "tritter-model-rs/cuda",
+    "hybrid-predict-trainer-rs/cuda",
+    "candle-core/cuda",
+    "candle-nn/cuda",
+]
+parquet = ["tritter-model-rs/parquet"]
+
+[[bin]]
+name = "train-monitor"
+path = "src/bin/train_monitor.rs"
+
+[[bin]]
+name = "train"
+path = "src/bin/train.rs"
+
+[[bin]]
+name = "hf-upload"
+path = "src/bin/hf_upload.rs"

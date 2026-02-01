@@ -65,6 +65,14 @@ notify = "7.0"
 # UUID for run IDs
 uuid = { version = "1.11", features = ["v4"] }
 
+# Parquet export (optional)
+parquet = { version = "54", optional = true, default-features = false, features = ["arrow"] }
+arrow-array = { version = "54", optional = true }
+arrow-schema = { version = "54", optional = true }
+
+# Cryptographic hashing for config versioning
+sha2 = "0.10"
+
 [features]
 default = ["cuda"]
 cuda = [
@@ -73,7 +81,7 @@ cuda = [
     "candle-core/cuda",
     "candle-nn/cuda",
 ]
-parquet = ["tritter-model-rs/parquet"]
+parquet = ["dep:parquet", "dep:arrow-array", "dep:arrow-schema", "tritter-model-rs/parquet"]
 
 [[bin]]
 name = "train-monitor"

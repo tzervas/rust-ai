@@ -30,7 +30,8 @@ use crate::hf::{
 };
 use crate::memory::{find_optimal_params, query_gpu_memory, MemoryBudget, MemoryMonitor};
 use crate::training_state::{
-    RunManager, StepMetrics, TrainingConfig, TrainingPhase, TrainingRun, TrainingStatus,
+    compute_config_hash, RunManager, StepMetrics, TrainingConfig, TrainingPhase, TrainingRun,
+    TrainingStatus,
 };
 
 /// Progressive training stage.
@@ -146,7 +147,7 @@ pub struct ProgressiveTrainer {
     hf_uploader: Option<HuggingFaceUploader>,
     current_stage: TrainingStage,
     metrics_file: Option<fs::File>,
-    memory_monitor: MemoryMonitor,
+    _memory_monitor: MemoryMonitor,
     gpu_stats_monitor: GpuStatsMonitor,
     /// Data loader for real datasets (None = use random tokens)
     data_loader: Option<DataLoader>,
@@ -282,7 +283,7 @@ impl ProgressiveTrainer {
             checkpoint_manager: None,
             hf_uploader,
             metrics_file: None,
-            memory_monitor,
+            _memory_monitor: memory_monitor,
             gpu_stats_monitor,
             data_loader,
         })
@@ -362,7 +363,9 @@ impl ProgressiveTrainer {
         )?);
 
         // Create training run record
-        let training_config = TrainingConfig {
+        let mut training_config = TrainingConfig {
+            config_version: 1,
+            config_hash: String::new(),
             model_size: stage.size_str().to_string(),
             num_parameters: model_config.parameter_count(),
             hidden_size: model_config.hidden_size,
@@ -376,6 +379,7 @@ impl ProgressiveTrainer {
             checkpoint_interval: self.config.gradient_checkpoint_interval,
             device: format!("{:?}", self.device),
         };
+        training_config.config_hash = compute_config_hash(&training_config);
 
         let mut run = TrainingRun::new(
             &format!("tritter-{}", stage.size_str().to_lowercase()),
@@ -613,7 +617,7 @@ impl ProgressiveTrainer {
 
                 // Upload to HuggingFace if configured
                 if self.config.upload_to_hf {
-                    if let Some(ref uploader) = self.hf_uploader {
+                    if let Some(ref _uploader) = self.hf_uploader {
                         run.start_checkpoint_upload(checkpoint_idx);
                         tracing::info!("Uploading checkpoint to HuggingFace...");
 
@@ -828,7 +832,7 @@ impl ProgressiveTrainer {
         let config = stage.config();
 
         // Create model card
-        let model_card = ModelCardData {
+        let _model_card = ModelCardData {
             model_name: format!("Tritter-{}", stage.size_str()),
             model_size: stage.size_str().to_string(),
             num_parameters: config.parameter_count(),

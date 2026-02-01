@@ -35,8 +35,7 @@ use ratatui::{
 
 use crate::gpu_stats::{GpuStats, GpuStatsMonitor};
 use crate::training_state::{
-    CheckpointEvent, PhaseTransition, RunManager, StepMetrics, TrainingPhase, TrainingRun,
-    TrainingStatus,
+    RunManager, StepMetrics, TrainingPhase, TrainingRun, TrainingStatus,
 };
 
 /// View mode for the monitor.
@@ -883,13 +882,13 @@ impl TrainingMonitor {
             .rev()
             .take(8)
             .map(|pt| {
-                let from_color = match pt.from_phase {
+                let _from_color = match pt.from_phase {
                     TrainingPhase::Warmup => Color::Yellow,
                     TrainingPhase::Full => Color::Blue,
                     TrainingPhase::Predict => Color::Green,
                     TrainingPhase::Correct => Color::Magenta,
                 };
-                let to_color = match pt.to_phase {
+                let _to_color = match pt.to_phase {
                     TrainingPhase::Warmup => Color::Yellow,
                     TrainingPhase::Full => Color::Blue,
                     TrainingPhase::Predict => Color::Green,
@@ -1160,7 +1159,7 @@ impl TrainingMonitor {
         ]
     }
 
-    fn format_phase_stats(&self, run: &TrainingRun) -> Vec<Line<'static>> {
+    fn format_phase_stats(&self, _run: &TrainingRun) -> Vec<Line<'static>> {
         // Count phases from metrics
         let mut warmup = 0;
         let mut full = 0;

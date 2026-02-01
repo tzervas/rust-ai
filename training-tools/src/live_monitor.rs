@@ -13,7 +13,7 @@ use std::io::{self, BufRead, BufReader, Seek, SeekFrom, Stdout};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use crossterm::{
     event::{self, Event, KeyCode, KeyEventKind, KeyModifiers},
     execute,
@@ -34,6 +34,16 @@ use ratatui::{
 
 use crate::gpu_stats::GpuStatsMonitor;
 use crate::training_state::{RunManager, StepMetrics, TrainingPhase, TrainingRun, TrainingStatus};
+
+/// RAII guard to ensure terminal state is restored even on panic.
+struct TerminalCleanup;
+
+impl Drop for TerminalCleanup {
+    fn drop(&mut self) {
+        let _ = disable_raw_mode();
+        let _ = execute!(std::io::stdout(), LeaveAlternateScreen);
+    }
+}
 
 /// High contrast color palette for better visibility.
 pub mod colors {
@@ -391,7 +401,7 @@ pub struct GpuTimingSample {
 
 /// Live training monitor with streaming updates.
 pub struct LiveMonitor {
-    runs_dir: PathBuf,
+    _runs_dir: PathBuf,
     run_manager: RunManager,
     selected_run_id: Option<String>,
     metrics_readers: HashMap<String, LiveMetricsReader>,
@@ -415,7 +425,7 @@ pub struct LiveMonitor {
 impl LiveMonitor {
     pub fn new(runs_dir: PathBuf) -> Self {
         Self {
-            runs_dir: runs_dir.clone(),
+            _runs_dir: runs_dir.clone(),
             run_manager: RunManager::new(runs_dir),
             selected_run_id: None,
             metrics_readers: HashMap::new(),
@@ -437,6 +447,10 @@ impl LiveMonitor {
         enable_raw_mode()?;
         let mut stdout = io::stdout();
         execute!(stdout, EnterAlternateScreen)?;
+
+        // RAII guard ensures terminal cleanup even on panic
+        let _cleanup = TerminalCleanup;
+
         let backend = CrosstermBackend::new(stdout);
         let mut terminal = Terminal::new(backend)?;
 
@@ -452,8 +466,12 @@ impl LiveMonitor {
 
         let result = self.main_loop(&mut terminal);
 
+        // Explicit cleanup (guard will also clean up on drop, but explicit is clearer)
         disable_raw_mode()?;
         execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+
+        // Forget the guard to avoid double cleanup
+        std::mem::forget(_cleanup);
 
         result
     }
@@ -523,7 +541,7 @@ impl LiveMonitor {
         Ok(())
     }
 
-    fn handle_key(&mut self, key: KeyCode, modifiers: KeyModifiers) {
+    fn handle_key(&mut self, key: KeyCode, _modifiers: KeyModifiers) {
         // Help overlay takes priority
         if self.show_help_overlay {
             match key {
@@ -1539,7 +1557,7 @@ impl LiveMonitor {
             .map(|(i, s)| (i as f64, s.memory_mb / 1024.0))
             .collect();
 
-        let max_mem = data.iter().map(|(_, v)| *v).fold(0.0f64, f64::max);
+        let _max_mem = data.iter().map(|(_, v)| *v).fold(0.0f64, f64::max);
         let total_mem = self.gpu_monitor.current().map(|s| s.memory_total as f64 / 1e9).unwrap_or(16.0);
 
         let datasets = vec![Dataset::default()
@@ -1582,7 +1600,7 @@ impl LiveMonitor {
 
         let data: Vec<(f64, f64)> = self.gpu_history.iter().enumerate().map(|(i, s)| (i as f64, s.temp_c as f64)).collect();
 
-        let max_temp = data.iter().map(|(_, v)| *v).fold(0.0f64, f64::max);
+        let _max_temp = data.iter().map(|(_, v)| *v).fold(0.0f64, f64::max);
 
         let datasets = vec![Dataset::default()
             .name("Temp (°C)")

@@ -20,6 +20,8 @@ pub mod live_monitor;
 pub mod lr_scheduler;
 pub mod memory;
 pub mod monitor;
+#[cfg(feature = "parquet")]
+pub mod parquet_export;
 pub mod progressive;
 pub mod training_state;
 
@@ -33,4 +35,7 @@ pub use memory::{
 };
 pub use monitor::{TrainingMonitor, ViewMode};
 pub use progressive::ProgressiveTrainer;
-pub use training_state::{CheckpointEvent, PhaseTransition, TrainingRun, TrainingStatus};
+pub use training_state::{
+    capture_git_info, compute_config_hash, CheckpointEvent, GitInfo, PhaseTransition,
+    TrainingConfig, TrainingRun, TrainingStatus,
+};

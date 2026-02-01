@@ -8,7 +8,6 @@
 
 use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
 
 /// GPU memory information.
 #[derive(Debug, Clone, Copy)]

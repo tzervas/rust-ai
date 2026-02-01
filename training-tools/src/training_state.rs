@@ -7,9 +7,52 @@ use std::collections::HashMap;
 use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+
+/// Git information captured at training start.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct GitInfo {
+    /// Git commit SHA (from `git rev-parse HEAD`)
+    pub commit_sha: Option<String>,
+    /// Git branch name (from `git branch --show-current`)
+    pub branch: Option<String>,
+}
+
+/// Capture current git commit SHA and branch name.
+///
+/// Returns `GitInfo` with `None` fields if git commands fail
+/// (e.g., not in a git repository).
+pub fn capture_git_info() -> GitInfo {
+    let commit_sha = Command::new("git")
+        .args(["rev-parse", "HEAD"])
+        .output()
+        .ok()
+        .filter(|output| output.status.success())
+        .and_then(|output| {
+            String::from_utf8(output.stdout)
+                .ok()
+                .map(|s| s.trim().to_string())
+        })
+        .filter(|s| !s.is_empty());
+
+    let branch = Command::new("git")
+        .args(["branch", "--show-current"])
+        .output()
+        .ok()
+        .filter(|output| output.status.success())
+        .and_then(|output| {
+            String::from_utf8(output.stdout)
+                .ok()
+                .map(|s| s.trim().to_string())
+        })
+        .filter(|s| !s.is_empty());
+
+    GitInfo { commit_sha, branch }
+}
 
 /// Status of a training run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -111,6 +154,12 @@ pub struct StepMetrics {
 /// Configuration for a training run.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrainingConfig {
+    /// Config schema version for tracking hyperparameter changes
+    #[serde(default = "default_config_version")]
+    pub config_version: u32,
+    /// SHA-256 hash of the serialized config (first 12 hex chars)
+    #[serde(default)]
+    pub config_hash: String,
     /// Model size identifier
     pub model_size: String,
     /// Number of parameters
@@ -135,6 +184,70 @@ pub struct TrainingConfig {
     pub checkpoint_interval: usize,
     /// Device (cpu/cuda:N)
     pub device: String,
+}
+
+/// Default config version (1).
+fn default_config_version() -> u32 {
+    1
+}
+
+/// Compute a SHA-256 hash of a TrainingConfig (first 12 hex characters).
+///
+/// This excludes the `config_hash` field itself to avoid circular dependency.
+/// Allows comparing configs across runs to detect hyperparameter changes.
+///
+/// # Example
+///
+/// ```
+/// use training_tools::TrainingConfig;
+/// use training_tools::compute_config_hash;
+///
+/// let config = TrainingConfig {
+///     config_version: 1,
+///     config_hash: String::new(),
+///     model_size: "100m".to_string(),
+///     num_parameters: 100_000_000,
+///     hidden_size: 768,
+///     num_layers: 12,
+///     num_heads: 12,
+///     max_seq_length: 512,
+///     batch_size: 8,
+///     learning_rate: 1e-4,
+///     max_steps: 10000,
+///     gradient_checkpointing: true,
+///     checkpoint_interval: 4,
+///     device: "cuda:0".to_string(),
+/// };
+/// let hash = compute_config_hash(&config);
+/// assert_eq!(hash.len(), 12);
+/// ```
+pub fn compute_config_hash(config: &TrainingConfig) -> String {
+    // Create a copy without config_hash to avoid circular dependency
+    let hashable = TrainingConfig {
+        config_version: config.config_version,
+        config_hash: String::new(), // Exclude from hash computation
+        model_size: config.model_size.clone(),
+        num_parameters: config.num_parameters,
+        hidden_size: config.hidden_size,
+        num_layers: config.num_layers,
+        num_heads: config.num_heads,
+        max_seq_length: config.max_seq_length,
+        batch_size: config.batch_size,
+        learning_rate: config.learning_rate,
+        max_steps: config.max_steps,
+        gradient_checkpointing: config.gradient_checkpointing,
+        checkpoint_interval: config.checkpoint_interval,
+        device: config.device.clone(),
+    };
+
+    // Serialize to JSON and compute SHA-256
+    let json = serde_json::to_string(&hashable).unwrap_or_default();
+    let mut hasher = Sha256::new();
+    hasher.update(json.as_bytes());
+    let result = hasher.finalize();
+
+    // Return first 12 hex characters
+    format!("{:x}", result)[..12].to_string()
 }
 
 /// Checkpoint save/upload event.
@@ -274,6 +387,12 @@ pub struct TrainingRun {
     /// Tokens per second (throughput)
     #[serde(default)]
     pub tokens_per_second: Option<f64>,
+    /// Git commit SHA at training start
+    #[serde(default)]
+    pub git_commit_sha: Option<String>,
+    /// Git branch name at training start
+    #[serde(default)]
+    pub git_branch: Option<String>,
 }
 
 impl TrainingRun {
@@ -283,6 +402,7 @@ impl TrainingRun {
         let now = Utc::now();
         let metrics_file = run_dir.join("metrics.jsonl");
         let tokens_per_step = (config.batch_size * config.max_seq_length) as u64;
+        let git_info = capture_git_info();
 
         Self {
             run_id,
@@ -316,6 +436,8 @@ impl TrainingRun {
             total_tokens_trained: 0,
             tokens_per_step,
             tokens_per_second: None,
+            git_commit_sha: git_info.commit_sha,
+            git_branch: git_info.branch,
         }
     }
 

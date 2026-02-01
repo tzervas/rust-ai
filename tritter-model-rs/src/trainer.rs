@@ -60,6 +60,10 @@ impl Batch for TritterBatch {
 }
 
 /// Wrapper around TritterModel that implements the hybrid trainer Model trait.
+///
+/// This wrapper integrates gradient checkpointing for memory-efficient training.
+/// When checkpointing is enabled, activations are cached at checkpoint boundaries
+/// during the forward pass and cleared after backward.
 pub struct TritterModelWrapper {
     model: TritterModel,
     /// Last computed loss (for backward pass)
@@ -87,6 +91,26 @@ impl TritterModelWrapper {
     pub fn inner_mut(&mut self) -> &mut TritterModel {
         &mut self.model
     }
+
+    /// Check if gradient checkpointing is enabled
+    pub fn is_checkpointing_enabled(&self) -> bool {
+        self.model.is_checkpointing_enabled()
+    }
+
+    /// Enable or disable gradient checkpointing
+    pub fn set_checkpointing(&mut self, enabled: bool, interval: Option<usize>) {
+        self.model.set_checkpointing(enabled, interval);
+    }
+
+    /// Get checkpoint memory usage in bytes
+    pub fn checkpoint_memory_usage(&self) -> usize {
+        self.model.checkpoint_memory_usage()
+    }
+
+    /// Get number of stored checkpoints
+    pub fn num_checkpoints(&self) -> usize {
+        self.model.num_checkpoints()
+    }
 }
 
 impl Model<TritterBatch> for TritterModelWrapper {
@@ -112,8 +136,17 @@ impl Model<TritterBatch> for TritterModelWrapper {
             .ok_or_else(|| training_error("No loss computed - call forward() first"))?;
 
         // Compute gradients via backward pass
+        // Note: Candle's autograd handles the backward computation through the
+        // computation graph. When checkpointing is enabled, we've stored activations
+        // at checkpoint boundaries during forward. The backward pass uses these
+        // cached tensors and recomputes intermediates as needed.
         let grads = loss.backward()
             .map_err(|e| training_error(format!("Backward failed: {}", e)))?;
+
+        // Clear checkpoint store after backward to free memory
+        // This is important for memory efficiency - we don't need the cached
+        // activations anymore after gradients are computed
+        self.model.clear_checkpoints();
 
         // Collect gradient info from VarMap
         let var_map = self.model.var_map();
@@ -347,6 +380,65 @@ pub fn create_trainer_with_config(
     Ok(trainer)
 }
 
+/// Create a trainer with gradient checkpointing explicitly enabled.
+///
+/// This is a convenience function that ensures gradient checkpointing is active,
+/// which reduces memory usage at the cost of additional compute.
+///
+/// # Arguments
+/// * `model_config` - Model configuration (gradient_checkpointing will be enabled)
+/// * `trainer_config` - Hybrid trainer configuration
+/// * `learning_rate` - Learning rate for AdamW optimizer
+/// * `checkpoint_interval` - Cache activations every N layers (4 is typical)
+/// * `device` - Device for training (CPU or CUDA)
+///
+/// # Memory Savings
+///
+/// With `checkpoint_interval=4` on a 24-layer model:
+/// - Memory reduction: ~75% of activation memory
+/// - Compute overhead: ~33% additional forward passes
+///
+/// # Example
+///
+/// ```no_run
+/// use tritter_model_rs::{TritterConfig, trainer::create_trainer_with_checkpointing};
+/// use hybrid_predict_trainer_rs::HybridTrainerConfig;
+/// use candle_core::Device;
+///
+/// let model_config = TritterConfig::medium_500m();
+/// let trainer_config = HybridTrainerConfig::default();
+/// let device = Device::Cpu;
+///
+/// let trainer = create_trainer_with_checkpointing(
+///     &model_config,
+///     trainer_config,
+///     1e-4,
+///     4, // checkpoint every 4 layers
+///     &device,
+/// ).unwrap();
+/// ```
+pub fn create_trainer_with_checkpointing(
+    model_config: &TritterConfig,
+    trainer_config: HybridTrainerConfig,
+    learning_rate: f32,
+    checkpoint_interval: usize,
+    device: &Device,
+) -> TritterResult<TritterTrainer> {
+    // Clone config and enable checkpointing
+    let mut config = model_config.clone();
+    config.gradient_checkpointing = true;
+    config.checkpoint_every_n_layers = checkpoint_interval.max(1);
+
+    let model = TritterModel::new(&config, device)?;
+    let model_wrapper = TritterModelWrapper::new(model);
+    let optimizer = TritterOptimizer::new(learning_rate);
+
+    let trainer = HybridTrainer::new(model_wrapper, optimizer, trainer_config)
+        .map_err(|(e, _)| crate::error::TritterError::Training(e.to_string()))?;
+
+    Ok(trainer)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -364,5 +456,99 @@ mod tests {
     fn test_optimizer_creation() {
         let optimizer = TritterOptimizer::new(1e-4);
         assert_eq!(optimizer.learning_rate(), 1e-4);
+    }
+
+    #[test]
+    fn test_model_wrapper_checkpointing() {
+        let mut config = TritterConfig::test();
+        config.gradient_checkpointing = true;
+        config.checkpoint_every_n_layers = 1;
+
+        let device = Device::Cpu;
+        let model = TritterModel::new(&config, &device).unwrap();
+        let wrapper = TritterModelWrapper::new(model);
+
+        assert!(wrapper.is_checkpointing_enabled());
+    }
+
+    #[test]
+    fn test_model_wrapper_toggle_checkpointing() {
+        let config = TritterConfig::test();
+        let device = Device::Cpu;
+        let model = TritterModel::new(&config, &device).unwrap();
+        let mut wrapper = TritterModelWrapper::new(model);
+
+        // Initially disabled
+        assert!(!wrapper.is_checkpointing_enabled());
+
+        // Enable
+        wrapper.set_checkpointing(true, Some(2));
+        assert!(wrapper.is_checkpointing_enabled());
+
+        // Disable
+        wrapper.set_checkpointing(false, None);
+        assert!(!wrapper.is_checkpointing_enabled());
+    }
+
+    #[test]
+    fn test_forward_with_checkpointing() {
+        let mut config = TritterConfig::test();
+        config.gradient_checkpointing = true;
+        config.checkpoint_every_n_layers = 1;
+        config.num_layers = 4;
+
+        let device = Device::Cpu;
+        let model = TritterModel::new(&config, &device).unwrap();
+        let mut wrapper = TritterModelWrapper::new(model);
+
+        let ids: Vec<u32> = vec![0; 8];
+        let batch = TritterBatch::from_ids(&ids, 2, 4, &device).unwrap();
+
+        // Forward should work and cache checkpoints
+        let loss = <TritterModelWrapper as Model<TritterBatch>>::forward(&mut wrapper, &batch);
+        assert!(loss.is_ok());
+
+        // Should have stored checkpoints
+        assert!(wrapper.num_checkpoints() > 0);
+    }
+
+    #[test]
+    fn test_backward_clears_checkpoints() {
+        let mut config = TritterConfig::test();
+        config.gradient_checkpointing = true;
+        config.checkpoint_every_n_layers = 1;
+        config.num_layers = 4;
+
+        let device = Device::Cpu;
+        let model = TritterModel::new(&config, &device).unwrap();
+        let mut wrapper = TritterModelWrapper::new(model);
+
+        let ids: Vec<u32> = vec![0; 8];
+        let batch = TritterBatch::from_ids(&ids, 2, 4, &device).unwrap();
+
+        // Forward pass
+        let _ = <TritterModelWrapper as Model<TritterBatch>>::forward(&mut wrapper, &batch);
+        assert!(wrapper.num_checkpoints() > 0);
+
+        // Backward pass should clear checkpoints
+        let _ = <TritterModelWrapper as Model<TritterBatch>>::backward(&mut wrapper);
+        assert_eq!(wrapper.num_checkpoints(), 0);
+    }
+
+    #[test]
+    fn test_create_trainer_with_checkpointing() {
+        let config = TritterConfig::test();
+        let trainer_config = HybridTrainerConfig::default();
+        let device = Device::Cpu;
+
+        let trainer = create_trainer_with_checkpointing(
+            &config,
+            trainer_config,
+            1e-4,
+            2,
+            &device,
+        );
+
+        assert!(trainer.is_ok());
     }
 }

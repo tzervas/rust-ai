@@ -368,6 +368,9 @@ pub struct HybridTrainer<M, O> {
 
     /// Metrics collector for training statistics.
     metrics: metrics::MetricsCollector,
+
+    /// Current phase and remaining steps (for respecting multi-step phase decisions).
+    phase_budget: Option<(Phase, usize)>,
 }
 
 impl<M, O> HybridTrainer<M, O> {
@@ -406,6 +409,7 @@ impl<M, O> HybridTrainer<M, O> {
             residual_corrector,
             residual_store,
             metrics,
+            phase_budget: None,
         })
     }
 
@@ -448,6 +452,60 @@ impl<M, O> HybridTrainer<M, O> {
     #[must_use]
     pub fn statistics(&self) -> metrics::TrainingStatistics {
         self.metrics.statistics()
+    }
+
+    /// Returns a read lock on the model.
+    ///
+    /// Use this to access model state for checkpointing or inspection.
+    #[must_use]
+    pub fn model(&self) -> parking_lot::RwLockReadGuard<'_, M> {
+        self.model.read()
+    }
+
+    /// Returns a write lock on the model.
+    ///
+    /// Use this for operations that need to modify the model directly.
+    #[must_use]
+    pub fn model_mut(&self) -> parking_lot::RwLockWriteGuard<'_, M> {
+        self.model.write()
+    }
+
+    /// Sets the learning rate on the underlying optimizer.
+    ///
+    /// This is used for learning rate scheduling (warmup, decay, etc.).
+    ///
+    /// # Arguments
+    ///
+    /// * `lr` - The new learning rate
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// // Update learning rate based on schedule
+    /// let lr = scheduler.get_lr(trainer.current_step());
+    /// trainer.set_learning_rate(lr);
+    /// ```
+    pub fn set_learning_rate<B>(&self, lr: f32)
+    where
+        B: Batch,
+        M: Model<B>,
+        O: Optimizer<M, B>,
+    {
+        self.optimizer.write().set_learning_rate(lr);
+    }
+
+    /// Returns the current learning rate from the optimizer.
+    ///
+    /// # Returns
+    ///
+    /// The current learning rate value.
+    pub fn learning_rate<B>(&self) -> f32
+    where
+        B: Batch,
+        M: Model<B>,
+        O: Optimizer<M, B>,
+    {
+        self.optimizer.read().learning_rate()
     }
 }
 
@@ -495,13 +553,33 @@ impl<M, O> HybridTrainer<M, O> {
     {
         let start_time = Instant::now();
 
-        // Get current phase decision
-        let decision = self.phase_controller.select_next_phase(&self.state);
-        let phase = decision.phase();
-
         // Update predictor confidence for phase controller
         let confidence = self.dynamics_model.prediction_confidence(&self.state);
         self.phase_controller.set_predictor_confidence(confidence);
+
+        // Get phase from budget or request new decision
+        let phase = match &mut self.phase_budget {
+            Some((current_phase, remaining)) if *remaining > 0 => {
+                // Use current phase and decrement budget
+                *remaining -= 1;
+                *current_phase
+            }
+            _ => {
+                // Budget exhausted or None - get new phase decision
+                let decision = self.phase_controller.select_next_phase(&self.state);
+                let new_phase = decision.phase();
+                let steps = decision.steps();
+
+                // Set budget for remaining steps (steps-1 since we're using one now)
+                if steps > 1 {
+                    self.phase_budget = Some((new_phase, steps - 1));
+                } else {
+                    self.phase_budget = None;
+                }
+
+                new_phase
+            }
+        };
 
         // Execute the appropriate phase
         let (loss, was_predicted, prediction_error) = match phase {
@@ -510,22 +588,26 @@ impl<M, O> HybridTrainer<M, O> {
             Phase::Correct => self.execute_correct_step(batch)?,
         };
 
-        // Check for divergence
-        let divergence_result = self.divergence_monitor.check(&self.state, prediction_error);
-        if divergence_result.level > error::DivergenceLevel::Caution {
-            let recovery = self
-                .phase_controller
-                .handle_divergence(divergence_result.level);
-            if !recovery.can_continue() {
-                return Err((
-                    HybridTrainingError::PredictionDivergence {
-                        actual: loss,
-                        predicted: self.state.loss,
-                        delta: (loss - self.state.loss).abs(),
-                        step: self.state.step,
-                    },
-                    Some(recovery),
-                ));
+        // Check for divergence (skip during warmup - NaN values are expected initially)
+        if phase != Phase::Warmup {
+            let divergence_result = self.divergence_monitor.check(&self.state, prediction_error);
+            if divergence_result.level > error::DivergenceLevel::Caution {
+                let recovery = self
+                    .phase_controller
+                    .handle_divergence(divergence_result.level);
+                if !recovery.can_continue() {
+                    return Err((
+                        HybridTrainingError::PredictionDivergence {
+                            actual: loss,
+                            predicted: self.state.loss,
+                            delta: (loss - self.state.loss).abs(),
+                            step: self.state.step,
+                        },
+                        Some(recovery),
+                    ));
+                }
+                // Reset phase budget to force Full training after divergence
+                self.phase_budget = Some((Phase::Full, self.config.full_steps));
             }
         }
 
@@ -712,8 +794,8 @@ impl<M, O> HybridTrainer<M, O> {
     /// * `steps` - Number of full steps to force
     pub fn force_full_phase(&mut self, steps: usize) {
         self.phase_controller.force_phase(Phase::Full);
-        // The phase controller will handle the step count
-        let _ = steps; // TODO: Implement step count tracking
+        // Set the phase budget to enforce the requested number of steps
+        self.phase_budget = Some((Phase::Full, steps));
     }
 }
 

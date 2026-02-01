@@ -1,0 +1,10 @@
+{"text": "The quick brown fox jumps over the lazy dog. This is a simple test sentence."}
+{"text": "Machine learning is revolutionizing how we build software systems."}
+{"text": "Rust is a systems programming language focused on safety and performance."}
+{"text": "def fibonacci(n): return n if n <= 1 else fibonacci(n-1) + fibonacci(n-2)"}
+{"text": "In the beginning was the Word, and the Word was with God, and the Word was God."}
+{"text": "fn main() { println!(\"Hello, World!\"); }"}
+{"text": "The model successfully learned to predict the next token in the sequence."}
+{"text": "Gradient descent iteratively adjusts weights to minimize the loss function."}
+{"text": "Transformers use self-attention mechanisms to process sequential data efficiently."}
+{"text": "BitNet quantization reduces model weights to ternary values while maintaining accuracy."}

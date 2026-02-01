@@ -32,6 +32,7 @@ use std::thread::{self, JoinHandle};
 
 use candle_core::{DType, Device, Tensor};
 use serde::{Deserialize, Serialize};
+use tokenizers::Tokenizer;
 
 use crate::error::{TritterError, TritterResult};
 use crate::trainer::TritterBatch;
@@ -127,6 +128,22 @@ pub trait StreamingDataset: Send {
 ///
 /// Reads JSONL files line by line, extracting text from the specified column
 /// and tokenizing on the fly. Memory-efficient for large datasets.
+///
+/// # Tokenization
+///
+/// By default, uses simple UTF-8 byte tokenization. For production training,
+/// set a real tokenizer via [`with_tokenizer`]:
+///
+/// ```no_run
+/// use tritter_model_rs::data::JsonlDataset;
+/// use tokenizers::Tokenizer;
+/// use std::sync::Arc;
+///
+/// let tokenizer = Tokenizer::from_file("tokenizer.json").unwrap();
+/// let dataset = JsonlDataset::new("data/train.jsonl", 2048)
+///     .unwrap()
+///     .with_tokenizer(Arc::new(tokenizer));
+/// ```
 pub struct JsonlDataset {
     /// Files to read from
     files: Vec<PathBuf>,
@@ -140,6 +157,8 @@ pub struct JsonlDataset {
     text_column: Option<String>,
     /// Common text column names to auto-detect
     text_columns: Vec<String>,
+    /// Optional tokenizer for real tokenization
+    tokenizer: Option<Arc<Tokenizer>>,
 }
 
 impl JsonlDataset {
@@ -184,6 +203,7 @@ impl JsonlDataset {
                 "input".to_string(),
                 "question".to_string(),
             ],
+            tokenizer: None,
         };
 
         dataset.open_current_file()?;
@@ -194,6 +214,35 @@ impl JsonlDataset {
     pub fn with_text_column(mut self, column: impl Into<String>) -> Self {
         self.text_column = Some(column.into());
         self
+    }
+
+    /// Set a tokenizer for real tokenization.
+    ///
+    /// When a tokenizer is set, text will be tokenized using the provided
+    /// tokenizer instead of the simple byte tokenization fallback.
+    ///
+    /// # Arguments
+    /// * `tokenizer` - Arc-wrapped tokenizer instance
+    ///
+    /// # Example
+    /// ```no_run
+    /// use tritter_model_rs::data::JsonlDataset;
+    /// use tokenizers::Tokenizer;
+    /// use std::sync::Arc;
+    ///
+    /// let tokenizer = Tokenizer::from_file("tokenizer.json").unwrap();
+    /// let dataset = JsonlDataset::new("data.jsonl", 2048)
+    ///     .unwrap()
+    ///     .with_tokenizer(Arc::new(tokenizer));
+    /// ```
+    pub fn with_tokenizer(mut self, tokenizer: Arc<Tokenizer>) -> Self {
+        self.tokenizer = Some(tokenizer);
+        self
+    }
+
+    /// Check if a tokenizer is configured.
+    pub fn has_tokenizer(&self) -> bool {
+        self.tokenizer.is_some()
     }
 
     fn collect_jsonl_files(dir: &Path) -> TritterResult<Vec<PathBuf>> {
@@ -257,11 +306,36 @@ impl JsonlDataset {
         None
     }
 
-    /// Simple byte-based tokenizer (placeholder for real tokenizer integration).
-    /// In production, this should use a proper BPE/SentencePiece tokenizer.
+    /// Tokenize text using the configured tokenizer or byte fallback.
+    ///
+    /// If a tokenizer is set via `with_tokenizer()`, uses real BPE tokenization.
+    /// Otherwise, falls back to simple UTF-8 byte tokenization.
     fn tokenize(&self, text: &str) -> Vec<u32> {
-        // Simple UTF-8 byte tokenization as placeholder
-        // Real implementation should integrate with a tokenizer
+        if let Some(tokenizer) = &self.tokenizer {
+            // Use real tokenizer
+            match tokenizer.encode(text, false) {
+                Ok(encoding) => {
+                    let ids: Vec<u32> = encoding.get_ids().to_vec();
+                    // Truncate if needed
+                    if ids.len() > self.max_seq_length {
+                        ids[..self.max_seq_length].to_vec()
+                    } else {
+                        ids
+                    }
+                }
+                Err(_) => {
+                    // Fallback to byte tokenization on error
+                    self.tokenize_bytes(text)
+                }
+            }
+        } else {
+            // Fallback to byte tokenization
+            self.tokenize_bytes(text)
+        }
+    }
+
+    /// Simple byte-based tokenizer (fallback when no tokenizer is configured).
+    fn tokenize_bytes(&self, text: &str) -> Vec<u32> {
         let bytes: Vec<u32> = text.bytes().map(|b| b as u32).collect();
 
         // Truncate if needed
@@ -340,6 +414,22 @@ impl StreamingDataset for JsonlDataset {
 ///
 /// Uses Arrow to efficiently read Parquet files in batches, extracting text
 /// from the specified column. Memory-efficient for large datasets.
+///
+/// # Tokenization
+///
+/// By default, uses simple UTF-8 byte tokenization. For production training,
+/// set a real tokenizer via [`with_tokenizer`]:
+///
+/// ```no_run
+/// use tritter_model_rs::data::ParquetDataset;
+/// use tokenizers::Tokenizer;
+/// use std::sync::Arc;
+///
+/// let tokenizer = Tokenizer::from_file("tokenizer.json").unwrap();
+/// let dataset = ParquetDataset::new("data/train.parquet", 2048)
+///     .unwrap()
+///     .with_tokenizer(Arc::new(tokenizer));
+/// ```
 #[cfg(feature = "parquet")]
 pub struct ParquetDataset {
     /// Files to read from
@@ -360,6 +450,8 @@ pub struct ParquetDataset {
     detected_column: Option<String>,
     /// Common text column names to auto-detect
     text_columns: Vec<String>,
+    /// Optional tokenizer for real tokenization
+    tokenizer: Option<Arc<Tokenizer>>,
 }
 
 #[cfg(feature = "parquet")]
@@ -408,6 +500,7 @@ impl ParquetDataset {
                 "input".to_string(),
                 "question".to_string(),
             ],
+            tokenizer: None,
         };
 
         dataset.open_current_file()?;
@@ -418,6 +511,20 @@ impl ParquetDataset {
     pub fn with_text_column(mut self, column: impl Into<String>) -> Self {
         self.text_column = Some(column.into());
         self
+    }
+
+    /// Set a tokenizer for real tokenization.
+    ///
+    /// When a tokenizer is set, text will be tokenized using the provided
+    /// tokenizer instead of the simple byte tokenization fallback.
+    pub fn with_tokenizer(mut self, tokenizer: Arc<Tokenizer>) -> Self {
+        self.tokenizer = Some(tokenizer);
+        self
+    }
+
+    /// Check if a tokenizer is configured.
+    pub fn has_tokenizer(&self) -> bool {
+        self.tokenizer.is_some()
     }
 
     fn collect_parquet_files(dir: &Path) -> TritterResult<Vec<PathBuf>> {
@@ -541,8 +648,28 @@ impl ParquetDataset {
         None
     }
 
-    /// Simple byte-based tokenizer (placeholder for real tokenizer integration).
+    /// Tokenize text using the configured tokenizer or byte fallback.
     fn tokenize(&self, text: &str) -> Vec<u32> {
+        if let Some(tokenizer) = &self.tokenizer {
+            // Use real tokenizer
+            match tokenizer.encode(text, false) {
+                Ok(encoding) => {
+                    let ids: Vec<u32> = encoding.get_ids().to_vec();
+                    if ids.len() > self.max_seq_length {
+                        ids[..self.max_seq_length].to_vec()
+                    } else {
+                        ids
+                    }
+                }
+                Err(_) => self.tokenize_bytes(text),
+            }
+        } else {
+            self.tokenize_bytes(text)
+        }
+    }
+
+    /// Simple byte-based tokenizer (fallback when no tokenizer is configured).
+    fn tokenize_bytes(&self, text: &str) -> Vec<u32> {
         let bytes: Vec<u32> = text.bytes().map(|b| b as u32).collect();
 
         if bytes.len() > self.max_seq_length {
@@ -742,8 +869,8 @@ impl DataLoader {
             return None;
         }
 
-        // Collate into batch
-        Some(collate_batch(&examples, device))
+        // Collate into batch with max_seq_length enforcement
+        Some(collate_batch_with_max_len(&examples, device, Some(config.max_seq_length)))
     }
 
     /// Get the next batch (blocking).
@@ -836,12 +963,45 @@ impl Drop for DataLoader {
 /// - `input_ids`: Padded tensor of shape `(batch_size, max_len_in_batch)`
 /// - `attention_mask`: Binary mask where 1 = real token, 0 = padding
 pub fn collate_batch(examples: &[TokenizedExample], device: &Device) -> TritterResult<TritterBatch> {
+    collate_batch_with_max_len(examples, device, None)
+}
+
+/// Collate a batch of tokenized examples with dynamic padding and optional max length enforcement.
+///
+/// Truncates sequences to `max_seq_length` if provided, then pads to the maximum length in the batch.
+/// This ensures tensor dimensions stay within model limits while reducing wasted computation.
+///
+/// # Arguments
+/// * `examples` - Slice of tokenized examples
+/// * `device` - Device to create tensors on
+/// * `max_seq_length` - Optional maximum sequence length (truncates longer sequences)
+///
+/// # Returns
+/// A [`TritterBatch`] with:
+/// - `input_ids`: Padded tensor of shape `(batch_size, effective_max_len)`
+/// - `attention_mask`: Binary mask where 1 = real token, 0 = padding
+///
+/// # Shape Guarantees
+/// - Output `input_ids` shape: `[batch_size, seq_len]` where `seq_len <= max_seq_length`
+/// - Output `attention_mask` shape: same as `input_ids`
+pub fn collate_batch_with_max_len(
+    examples: &[TokenizedExample],
+    device: &Device,
+    max_seq_length: Option<usize>,
+) -> TritterResult<TritterBatch> {
     if examples.is_empty() {
         return Err(TritterError::Data("Cannot collate empty batch".to_string()));
     }
 
-    // Find max length in this batch
-    let max_len = examples.iter().map(|ex| ex.input_ids.len()).max().unwrap();
+    // Find max length in this batch, respecting max_seq_length limit
+    let batch_max_len = examples.iter().map(|ex| ex.input_ids.len()).max().unwrap();
+    let max_len = match max_seq_length {
+        Some(limit) => batch_max_len.min(limit),
+        None => batch_max_len,
+    };
+
+    // Ensure we have at least 2 tokens for next-token prediction
+    let max_len = max_len.max(2);
 
     // Pad sequences and create attention masks
     let batch_size = examples.len();
@@ -849,11 +1009,12 @@ pub fn collate_batch(examples: &[TokenizedExample], device: &Device) -> TritterR
     let mut attention_mask_flat: Vec<u8> = Vec::with_capacity(batch_size * max_len);
 
     for example in examples {
-        let seq_len = example.input_ids.len();
+        // Truncate sequence if it exceeds max_len
+        let seq_len = example.input_ids.len().min(max_len);
         let padding_len = max_len - seq_len;
 
-        // Add tokens
-        input_ids_flat.extend_from_slice(&example.input_ids);
+        // Add tokens (truncated if necessary)
+        input_ids_flat.extend_from_slice(&example.input_ids[..seq_len]);
         // Add padding (token 0)
         input_ids_flat.extend(std::iter::repeat(0u32).take(padding_len));
 
@@ -862,13 +1023,27 @@ pub fn collate_batch(examples: &[TokenizedExample], device: &Device) -> TritterR
         attention_mask_flat.extend(std::iter::repeat(0u8).take(padding_len));
     }
 
-    // Create tensors
+    // Create tensors with shape [batch_size, seq_len]
     let input_ids = Tensor::from_slice(&input_ids_flat, (batch_size, max_len), device)?;
 
-    // Convert attention mask to bool tensor
-    let attention_mask_bool: Vec<u8> = attention_mask_flat;
+    // Convert attention mask to U8 tensor
     let attention_mask =
-        Tensor::from_slice(&attention_mask_bool, (batch_size, max_len), device)?.to_dtype(DType::U8)?;
+        Tensor::from_slice(&attention_mask_flat, (batch_size, max_len), device)?.to_dtype(DType::U8)?;
+
+    // Validate tensor shapes before returning
+    let input_dims = input_ids.dims();
+    if input_dims.len() != 2 {
+        return Err(TritterError::Data(format!(
+            "Expected input_ids to have 2 dimensions [batch_size, seq_len], got {:?}",
+            input_dims
+        )));
+    }
+    if input_dims[0] != batch_size || input_dims[1] != max_len {
+        return Err(TritterError::Data(format!(
+            "input_ids shape mismatch: expected [{}, {}], got {:?}",
+            batch_size, max_len, input_dims
+        )));
+    }
 
     Ok(TritterBatch::new(input_ids, Some(attention_mask)))
 }
@@ -1057,5 +1232,85 @@ mod tests {
 
         let example = dataset.next_example().unwrap().unwrap();
         assert!(example.input_ids.len() <= 5);
+    }
+
+    #[test]
+    fn test_collate_batch_with_max_len_truncation() {
+        // Create examples that exceed the max length
+        let examples = vec![
+            TokenizedExample {
+                input_ids: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10], // 10 tokens
+            },
+            TokenizedExample {
+                input_ids: vec![11, 12, 13, 14, 15], // 5 tokens
+            },
+        ];
+
+        let device = Device::Cpu;
+
+        // Collate with max_seq_length = 6 (should truncate first example)
+        let batch = collate_batch_with_max_len(&examples, &device, Some(6)).unwrap();
+
+        // Check shape: [batch_size=2, seq_len=6]
+        assert_eq!(batch.input_ids.dims(), &[2, 6]);
+
+        // Check attention mask shape
+        let mask = batch.attention_mask.as_ref().unwrap();
+        assert_eq!(mask.dims(), &[2, 6]);
+    }
+
+    #[test]
+    fn test_collate_batch_shape_validation() {
+        use hybrid_predict_trainer_rs::Batch;
+
+        let examples = vec![
+            TokenizedExample {
+                input_ids: vec![1, 2, 3],
+            },
+        ];
+
+        let device = Device::Cpu;
+        let batch = collate_batch(&examples, &device).unwrap();
+
+        // Shape should be [1, 3]
+        assert_eq!(batch.input_ids.dims(), &[1, 3]);
+
+        // Verify batch_size() method from Batch trait
+        assert_eq!(batch.batch_size(), 1);
+    }
+
+    #[test]
+    fn test_data_loader_enforces_max_seq_length() {
+        let file = create_test_jsonl();
+        // Use a very short max_seq_length to test truncation
+        let config = DataConfig::test().with_max_seq_length(10).with_batch_size(2);
+        let device = Device::Cpu;
+
+        let dataset = JsonlDataset::new(file.path(), config.max_seq_length).unwrap();
+        let loader = DataLoader::new(Box::new(dataset), config, device);
+
+        for batch in loader {
+            let batch = batch.unwrap();
+            // All batches should have seq_len <= 10
+            assert!(batch.input_ids.dims()[1] <= 10);
+            // First dimension should be batch_size
+            assert!(batch.input_ids.dims()[0] <= 2);
+        }
+    }
+
+    #[test]
+    fn test_minimum_sequence_length() {
+        // Test that we get at least 2 tokens (for next-token prediction)
+        let examples = vec![
+            TokenizedExample {
+                input_ids: vec![1], // Only 1 token
+            },
+        ];
+
+        let device = Device::Cpu;
+        let batch = collate_batch_with_max_len(&examples, &device, Some(100)).unwrap();
+
+        // Should be padded to at least 2 tokens
+        assert!(batch.input_ids.dims()[1] >= 2);
     }
 }

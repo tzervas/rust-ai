@@ -271,6 +271,10 @@ pub struct DefaultPhaseController {
     /// Whether warmup has completed.
     warmup_complete: bool,
 
+    /// Whether at least one Full cycle has completed after warmup.
+    /// This ensures we collect real gradient data before allowing predictions.
+    had_full_after_warmup: bool,
+
     /// Current predictor confidence (updated externally).
     predictor_confidence: f32,
 
@@ -321,6 +325,7 @@ impl DefaultPhaseController {
             _steps_remaining: ctrl_config.warmup_steps,
             config: ctrl_config,
             warmup_complete: false,
+            had_full_after_warmup: false,
             predictor_confidence: 0.0,
             consecutive_predict_phases: 0,
             last_checkpoint_step: 0,
@@ -383,6 +388,16 @@ impl PhaseController for DefaultPhaseController {
             }
 
             Phase::Full | Phase::Correct => {
+                // Mark that we've completed at least one Full cycle after warmup
+                if !self.had_full_after_warmup {
+                    self.had_full_after_warmup = true;
+                    // First Full after warmup - stay in Full to collect gradient data
+                    self.current_phase = Phase::Full;
+                    return PhaseDecision::Full {
+                        steps: self.config.full_steps,
+                    };
+                }
+
                 // After Full or Correct, decide between Predict and Full
                 if self.predictor_confidence >= self.config.confidence_threshold
                     && self.consecutive_predict_phases < self.config.max_consecutive_predicts

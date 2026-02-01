@@ -61,6 +61,7 @@ criterion = "0.5"
 tokio = { version = "1", features = ["rt", "macros"] }
 anyhow = "1.0"
 tempfile = "3.15"
+training-tools = { path = "../training-tools", default-features = false }
 
 [[example]]
 name = "train"
@@ -69,3 +70,7 @@ path = "examples/train.rs"
 [[example]]
 name = "train_500m"
 path = "examples/train_500m.rs"
+
+[[example]]
+name = "train_100m"
+path = "examples/train_100m.rs"

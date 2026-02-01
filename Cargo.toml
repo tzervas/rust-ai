@@ -7,12 +7,14 @@ members = [
     "peft-rs",
     "qlora-rs",
     "rust-ai-core",
+    "training-tools",
     "trit-vsa",
     "tritter-accel",
     "tritter-model-rs",
     "unsloth-rs",
     "vsa-optim-rs",
 ]
+exclude = ["moltbook-proposal/src/web/wasm"]
 
 # Ensure all crates use the local versions for development
 [patch.crates-io]

@@ -1,41 +1,40 @@
 //! Memory management and gradient checkpointing utilities.
 //!
-//! # Gradient Checkpointing Status
+//! # Gradient Checkpointing
 //!
-//! **Important**: Candle (the underlying tensor library) does not natively support
-//! gradient checkpointing / activation recomputation as of candle 0.9.x.
+//! Gradient checkpointing trades compute for memory by caching activations at
+//! checkpoint boundaries and recomputing intermediates during backward pass.
 //!
-//! ## What Gradient Checkpointing Does
+//! ## Implementation Status
 //!
-//! In PyTorch, `torch.utils.checkpoint` allows you to:
-//! 1. Store only a subset of activations during the forward pass
-//! 2. Recompute the discarded activations during the backward pass
-//! 3. Trade ~33% extra compute for ~50-75% activation memory reduction
+//! The actual gradient checkpointing implementation is in the [`crate::checkpoint`] module.
+//! This module provides memory estimation and planning utilities.
 //!
-//! ## Current Implementation Status
+//! - **Activation caching**: [`crate::checkpoint::CheckpointStore`] caches activations
+//! - **Memory estimation**: [`CheckpointConfig`] and [`TritterConfig`] estimate savings
+//! - **Segment recomputation**: [`crate::model::TritterModel::recompute_segment`]
 //!
-//! The `TritterConfig::gradient_checkpointing` flag currently:
-//! - **Does**: Adjust memory estimates to reflect checkpointed memory usage
-//! - **Does NOT**: Actually implement checkpointing (activations are still stored)
+//! ## Memory Savings
 //!
-//! ## Why Candle Doesn't Support This
+//! | Checkpoint Interval | Memory Reduction | Compute Overhead |
+//! |---------------------|------------------|------------------|
+//! | Every 4 layers      | ~75% reduction   | ~33% overhead    |
+//! | Every 8 layers      | ~87.5% reduction | ~75% overhead    |
 //!
-//! Gradient checkpointing requires:
-//! 1. Hooking into the autograd tape to insert recomputation
-//! 2. Marking tensors as "checkpoint boundaries"
-//! 3. Re-running forward during backward at these boundaries
+//! ## Usage
 //!
-//! Candle's autograd is simpler and doesn't expose these hooks.
+//! Enable checkpointing in model config:
 //!
-//! ## Alternatives for Memory Reduction
+//! ```rust
+//! use tritter_model_rs::TritterConfig;
 //!
-//! Until native checkpointing is available, consider:
+//! let mut config = TritterConfig::large_1b();
+//! config.gradient_checkpointing = true;
+//! config.checkpoint_every_n_layers = 4;
 //!
-//! 1. **Reduce batch size**: Most direct memory reduction
-//! 2. **Gradient accumulation**: Simulate larger batches with smaller micro-batches
-//! 3. **Mixed precision**: Use FP16/BF16 for 2x memory reduction
-//! 4. **Model parallelism**: Split model across devices (future work)
-//! 5. **Activation offloading**: Move activations to CPU during forward (custom impl)
+//! let estimate = config.total_training_memory_estimate(4, 2048);
+//! println!("{}", estimate.format());
+//! ```
 //!
 //! ## Memory Planning
 //!
@@ -49,12 +48,16 @@
 //! println!("{}", estimate.format());
 //! ```
 //!
-//! ## Future Work
+//! ## Candle Limitations
 //!
-//! When/if Candle adds checkpointing support, the implementation will:
-//! 1. Modify `TritterLayer::forward()` to checkpoint when enabled
-//! 2. Use Candle's checkpoint API (once available)
-//! 3. Maintain backward compatibility via config flag
+//! Note: Candle's autograd doesn't have native checkpoint support. Our implementation:
+//! 1. Caches activations at checkpoint boundaries during forward
+//! 2. Clears checkpoints after backward to free memory
+//! 3. Provides segment recomputation utilities for custom backward implementations
+//!
+//! The automatic gradient computation uses Candle's standard backward pass.
+//! Full recomputation during backward (like PyTorch's `torch.utils.checkpoint`)
+//! would require deeper autograd integration.
 
 use crate::config::TritterConfig;
 

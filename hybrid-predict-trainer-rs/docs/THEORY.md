@@ -19,6 +19,30 @@ of conventional training.
 
 ## 1. Introduction
 
+### 1.0 The Core Insight
+
+**Training dynamics are predictable.**
+
+The weights, loss, gradients, and their evolution during training are not random—
+they follow structured, learnable patterns determined by:
+
+1. **Loss landscape geometry**: The curvature of the loss function dictates how
+   weights change in response to gradients
+2. **Optimization momentum**: Adam/AdamW maintain moving averages that create
+   predictable update patterns
+3. **Data distribution**: The statistical properties of training data create
+   consistent gradient signals
+4. **Architecture constraints**: Network topology constrains the space of
+   possible weight configurations
+
+This means we can build a model that learns these dynamics and predicts:
+- What the weights will be after N more training steps
+- What the loss will be at step T+Y
+- What corrections are needed when predictions drift
+
+The computational savings come from skipping the expensive backward pass
+(gradient computation) when we can predict the outcome with sufficient confidence.
+
 ### 1.1 The Problem
 
 Training large language models requires:

@@ -6,6 +6,7 @@
 //! - Safetensors checkpointing
 //! - JSONL/Parquet data loading
 //! - Hybrid predictive training phases
+//! - Train-monitor compatible metrics output
 //!
 //! # Usage
 //!
@@ -30,11 +31,14 @@
 //! - Alignment: `/data/datasets/tritter/alignment/` (764MB)
 //! - Instruction: `/data/datasets/tritter/instruction/` (13GB)
 
+use std::fs::{self, OpenOptions};
+use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 
 use candle_core::Device;
+use chrono::Utc;
 use tokenizers::Tokenizer;
 
 use hybrid_predict_trainer_rs::{HybridTrainerConfig, Phase};
@@ -44,6 +48,7 @@ use tritter_model_rs::{
     trainer::create_trainer_with_config,
 };
 use training_tools::lr_scheduler::{LRScheduler, WSDScheduler};
+use training_tools::{TrainingConfig, TrainingRun, TrainingStatus};
 
 /// Command-line arguments
 struct Args {
@@ -69,6 +74,28 @@ struct Args {
     num_workers: usize,
     /// Model size preset
     model_size: String,
+    /// Run name for logging
+    run_name: String,
+}
+
+/// Convert hybrid-predict-trainer Phase to lowercase string for metrics
+fn phase_to_string(phase: Phase) -> &'static str {
+    match phase {
+        Phase::Warmup => "warmup",
+        Phase::Full => "full",
+        Phase::Predict => "predict",
+        Phase::Correct => "correct",
+    }
+}
+
+/// Convert Phase to TrainingPhase for run state
+fn phase_to_training_phase(phase: Phase) -> training_tools::training_state::TrainingPhase {
+    match phase {
+        Phase::Warmup => training_tools::training_state::TrainingPhase::Warmup,
+        Phase::Full => training_tools::training_state::TrainingPhase::Full,
+        Phase::Predict => training_tools::training_state::TrainingPhase::Predict,
+        Phase::Correct => training_tools::training_state::TrainingPhase::Correct,
+    }
 }
 
 impl Default for Args {
@@ -80,11 +107,12 @@ impl Default for Args {
             batch_size: 8,
             max_seq_length: 2048,
             checkpoint_interval: 1000,
-            output_dir: PathBuf::from("./checkpoints"),
+            output_dir: PathBuf::from("./runs"),
             peak_lr: 3e-4,
             min_lr: 3e-6,
             num_workers: 4,
             model_size: "100m".to_string(),
+            run_name: "tritter".to_string(),
         }
     }
 }
@@ -150,6 +178,11 @@ fn parse_args() -> Args {
                     args.model_size = s;
                 }
             }
+            "--name" | "-n" => {
+                if let Some(s) = argv.next() {
+                    args.run_name = s;
+                }
+            }
             "--help" | "-h" => {
                 print_help();
                 std::process::exit(0);
@@ -177,11 +210,12 @@ OPTIONS:
     -b, --batch-size <N>        Batch size [default: 8]
         --seq-len <N>           Maximum sequence length [default: 2048]
         --checkpoint-interval   Steps between checkpoints [default: 1000]
-    -o, --output <PATH>         Output directory for checkpoints [default: ./checkpoints]
+    -o, --output <PATH>         Output directory for runs [default: ./runs]
         --lr <FLOAT>            Peak learning rate [default: 3e-4]
         --min-lr <FLOAT>        Minimum learning rate [default: 3e-6]
     -w, --workers <N>           Number of data loading workers [default: 4]
     -m, --model <SIZE>          Model size: test, 100m, 500m, 1b [default: 100m]
+    -n, --name <NAME>           Run name for logging [default: tritter]
     -h, --help                  Print this help message
 
 EXAMPLES:
@@ -191,8 +225,8 @@ EXAMPLES:
     # Train with custom tokenizer
     train_100m --tokenizer gpt2_tokenizer.json --steps 50000
 
-    # Train larger model
-    train_100m --model 500m --batch-size 4 --seq-len 1024
+    # Train larger model with custom run name
+    train_100m --model 500m --batch-size 4 --seq-len 1024 --name tritter_500m
 "#
     );
 }
@@ -311,9 +345,44 @@ fn main() -> anyhow::Result<()> {
     println!("  Decay: {} steps", lr_scheduler.decay_steps());
     println!();
 
-    // Create output directory
-    std::fs::create_dir_all(&args.output_dir)?;
-    println!("Checkpoints: {}", args.output_dir.display());
+    // Create run directory with timestamp
+    let timestamp = Utc::now().format("%Y%m%d_%H%M%S");
+    let run_dir_name = format!("{}_{}", args.run_name, timestamp);
+    let run_dir = args.output_dir.join(&run_dir_name);
+    fs::create_dir_all(&run_dir)?;
+    println!("Run directory: {}", run_dir.display());
+
+    // Device string for config
+    #[cfg(feature = "cuda")]
+    let device_str = "cuda:0".to_string();
+    #[cfg(not(feature = "cuda"))]
+    let device_str = "cpu".to_string();
+
+    // Initialize TrainingRun for monitor compatibility
+    let training_config = TrainingConfig {
+        config_version: 1,
+        config_hash: String::new(),
+        model_size: args.model_size.clone(),
+        num_parameters: model_config.parameter_count(),
+        hidden_size: model_config.hidden_size,
+        num_layers: model_config.num_layers,
+        num_heads: model_config.num_heads,
+        max_seq_length: effective_seq_len,
+        batch_size: args.batch_size,
+        learning_rate: args.peak_lr,
+        max_steps: args.total_steps,
+        gradient_checkpointing: false,
+        checkpoint_interval: args.checkpoint_interval,
+        device: device_str,
+    };
+
+    let mut training_run = TrainingRun::new(&args.run_name, training_config, run_dir.clone());
+    training_run.status = TrainingStatus::Running;
+    training_run.save()?;
+
+    // Create metrics file
+    let metrics_file_path = run_dir.join("metrics.jsonl");
+    println!("Metrics: {}", metrics_file_path.display());
     println!();
 
     // Training loop
@@ -405,7 +474,60 @@ fn main() -> anyhow::Result<()> {
 
             let step_time_ms = step_start.elapsed().as_millis();
 
-            // Log progress
+            // Write metrics to JSONL file (after every step)
+            let was_predicted = matches!(result.phase, Phase::Predict);
+            let prediction_error_str = match result.prediction_error {
+                Some(e) => format!("{}", e),
+                None => "null".to_string(),
+            };
+            let metrics_json = format!(
+                r#"{{"step":{},"loss":{},"gradient_norm":{},"phase":"{}","was_predicted":{},"prediction_error":{},"step_time_ms":{},"timestamp":"{}"}}"#,
+                step,
+                if result.loss.is_finite() { result.loss } else { 0.0 },
+                result.gradient_norm,
+                phase_to_string(result.phase),
+                was_predicted,
+                prediction_error_str,
+                step_time_ms,
+                Utc::now().to_rfc3339()
+            );
+
+            // Append to metrics file
+            if let Ok(mut file) = OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&metrics_file_path)
+            {
+                let _ = writeln!(file, "{}", metrics_json);
+            }
+
+            // Update run state periodically (every 100 steps) and on phase change
+            if step % 100 == 0 || result.phase != last_phase {
+                // Track phase transitions
+                if result.phase != last_phase && step > 0 {
+                    training_run.record_phase_transition(
+                        phase_to_training_phase(last_phase),
+                        phase_to_training_phase(result.phase),
+                    );
+                }
+
+                training_run.current_step = step;
+                training_run.current_loss = result.loss;
+                training_run.current_phase = phase_to_training_phase(result.phase);
+                training_run.total_forward = total_forward;
+                training_run.total_backward = total_backward;
+                if result.loss < training_run.best_loss && result.loss.is_finite() {
+                    training_run.best_loss = result.loss;
+                    training_run.best_step = step;
+                }
+                let elapsed_secs = training_start.elapsed().as_secs_f64();
+                if elapsed_secs > 0.0 {
+                    training_run.steps_per_second = Some(step as f64 / elapsed_secs);
+                }
+                let _ = training_run.save();
+            }
+
+            // Log progress to console
             if step % 100 == 0 || result.phase != last_phase {
                 let phase_str = match result.phase {
                     Phase::Warmup => "WARMUP",
@@ -426,9 +548,13 @@ fn main() -> anyhow::Result<()> {
 
             // Save checkpoint
             if step > 0 && step % args.checkpoint_interval as u64 == 0 {
-                let checkpoint_path = args.output_dir.join(format!("step_{}.safetensors", step));
+                let checkpoint_path = run_dir.join(format!("step_{}.safetensors", step));
                 match trainer.model().inner().save_safetensors(&checkpoint_path) {
-                    Ok(()) => println!(">>> Checkpoint saved: {}", checkpoint_path.display()),
+                    Ok(()) => {
+                        println!(">>> Checkpoint saved: {}", checkpoint_path.display());
+                        training_run.latest_checkpoint = Some(checkpoint_path);
+                        let _ = training_run.save();
+                    }
                     Err(e) => eprintln!(">>> Checkpoint save failed: {}", e),
                 }
             }
@@ -463,9 +589,22 @@ fn main() -> anyhow::Result<()> {
     println!("Best loss: {:.4}", best_loss);
 
     // Save final model
-    let final_path = args.output_dir.join("model_final.safetensors");
+    let final_path = run_dir.join("model_final.safetensors");
     trainer.model().inner().save_safetensors(&final_path)?;
     println!("\nFinal model saved: {}", final_path.display());
+
+    // Update final run state
+    training_run.status = TrainingStatus::Completed;
+    training_run.current_step = step;
+    training_run.total_forward = total_forward;
+    training_run.total_backward = total_backward;
+    training_run.ended_at = Some(Utc::now());
+    training_run.latest_checkpoint = Some(final_path);
+    if total_time.as_secs_f64() > 0.0 {
+        training_run.steps_per_second = Some(step as f64 / total_time.as_secs_f64());
+    }
+    training_run.save()?;
+    println!("Run state saved: {}", run_dir.join("run_state.json").display());
 
     Ok(())
 }

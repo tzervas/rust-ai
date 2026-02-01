@@ -33,6 +33,9 @@ pub struct CheckpointMetadata {
     pub total_forward: u64,
     /// Total backward passes
     pub total_backward: u64,
+    /// Total tokens trained (batch_size * seq_length * step)
+    #[serde(default)]
+    pub tokens_trained: u64,
     /// Timestamp
     pub timestamp: String,
     /// Model configuration hash (for compatibility check)
@@ -69,8 +72,10 @@ pub struct CheckpointOptions {
     pub upload_to_hf: bool,
     /// Delete local after upload
     pub delete_after_upload: bool,
-    /// Keep last N local checkpoints
+    /// Keep last N local checkpoints (by recency)
     pub keep_last_n: usize,
+    /// Keep best N checkpoints (by lowest loss)
+    pub keep_best_n: usize,
 }
 
 impl Default for CheckpointOptions {
@@ -82,6 +87,7 @@ impl Default for CheckpointOptions {
             upload_to_hf: false,
             delete_after_upload: false,
             keep_last_n: 3,
+            keep_best_n: 2,
         }
     }
 }
@@ -224,6 +230,7 @@ impl CheckpointManager {
             phase: format!("{:?}", run.current_phase),
             total_forward: run.total_forward,
             total_backward: run.total_backward,
+            tokens_trained: run.total_tokens_trained,
             timestamp: chrono::Utc::now().to_rfc3339(),
             config_hash: self.compute_config_hash(&run.config),
             has_optimizer_state: optimizer_state.is_some() && self.options.save_optimizer,
@@ -292,11 +299,147 @@ impl CheckpointManager {
         self.checkpoints.iter().find(|c| c.step == step)
     }
 
+    /// Save checkpoint with explicit metrics (alternative to save_checkpoint).
+    ///
+    /// This method allows saving checkpoints with custom metadata, useful for
+    /// resuming training from exact state or manual checkpoint creation.
+    pub fn save_with_metrics(
+        &mut self,
+        step: u64,
+        model_weights: &[u8],
+        optimizer_state: Option<&[u8]>,
+        metadata: CheckpointMetadata,
+    ) -> anyhow::Result<PathBuf> {
+        let compressed = self.options.compress;
+
+        // Save model weights
+        let model_path = self.checkpoint_path(step, compressed);
+        if compressed {
+            self.compress_and_write(&model_path, model_weights)?;
+        } else {
+            fs::write(&model_path, model_weights)?;
+        }
+
+        // Save optimizer state if provided
+        if self.options.save_optimizer {
+            if let Some(opt_state) = optimizer_state {
+                let opt_path = self.optimizer_path(step, compressed);
+                if compressed {
+                    self.compress_and_write(&opt_path, opt_state)?;
+                } else {
+                    fs::write(&opt_path, opt_state)?;
+                }
+            }
+        }
+
+        // Save metadata
+        let meta_path = self.metadata_path(step);
+        fs::write(&meta_path, serde_json::to_string_pretty(&metadata)?)?;
+
+        self.checkpoints.push(metadata);
+
+        // Cleanup old checkpoints
+        self.cleanup_old_checkpoints()?;
+
+        Ok(model_path)
+    }
+
+    /// Load checkpoint with its metadata.
+    ///
+    /// Returns both the model/optimizer weights and the checkpoint metadata.
+    pub fn load_with_metrics(
+        &self,
+        step: u64,
+    ) -> anyhow::Result<(Vec<u8>, Option<Vec<u8>>, CheckpointMetadata)> {
+        // Load weights
+        let (model_weights, optimizer_state) = self.load_checkpoint(step)?;
+
+        // Load metadata
+        let meta_path = self.metadata_path(step);
+        let metadata: CheckpointMetadata = serde_json::from_str(&fs::read_to_string(&meta_path)?)?;
+
+        Ok((model_weights, optimizer_state, metadata))
+    }
+
+    /// Find the best checkpoint (lowest loss).
+    ///
+    /// Returns the path to the best checkpoint, or None if no checkpoints exist.
+    pub fn find_best_checkpoint(&self) -> Option<PathBuf> {
+        let best_meta = self.checkpoints.iter().min_by(|a, b| {
+            a.loss
+                .partial_cmp(&b.loss)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })?;
+
+        let compressed = self.options.compress;
+        let path = self.checkpoint_path(best_meta.step, compressed);
+
+        if path.exists() {
+            Some(path)
+        } else {
+            // Try uncompressed
+            let uncompressed = self.checkpoint_path(best_meta.step, false);
+            if uncompressed.exists() {
+                Some(uncompressed)
+            } else {
+                None
+            }
+        }
+    }
+
+    /// Get the best checkpoint metadata.
+    pub fn get_best_metadata(&self) -> Option<&CheckpointMetadata> {
+        self.checkpoints.iter().min_by(|a, b| {
+            a.loss
+                .partial_cmp(&b.loss)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
+    }
+
+    /// List all checkpoints sorted by step (ascending).
+    pub fn list_checkpoints(&self) -> &[CheckpointMetadata] {
+        &self.checkpoints
+    }
+
+    /// List checkpoints sorted by loss (ascending, best first).
+    pub fn list_checkpoints_by_loss(&self) -> Vec<&CheckpointMetadata> {
+        let mut sorted: Vec<_> = self.checkpoints.iter().collect();
+        sorted.sort_by(|a, b| {
+            a.loss
+                .partial_cmp(&b.loss)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        sorted
+    }
+
+    /// Get checkpoint statistics summary.
+    pub fn checkpoint_stats(&self) -> CheckpointStats {
+        if self.checkpoints.is_empty() {
+            return CheckpointStats::default();
+        }
+
+        let total = self.checkpoints.len();
+        let best_loss = self
+            .checkpoints
+            .iter()
+            .map(|c| c.loss)
+            .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+            .unwrap_or(f32::INFINITY);
+        let latest_loss = self.checkpoints.last().map(|c| c.loss).unwrap_or(0.0);
+        let latest_step = self.checkpoints.last().map(|c| c.step).unwrap_or(0);
+
+        CheckpointStats {
+            total_checkpoints: total,
+            best_loss,
+            latest_loss,
+            latest_step,
+        }
+    }
+
     /// Compress and write data to file.
     fn compress_and_write(&self, path: &Path, data: &[u8]) -> anyhow::Result<()> {
         let file = File::create(path)?;
-        let mut encoder =
-            GzEncoder::new(file, Compression::new(self.options.compression_level));
+        let mut encoder = GzEncoder::new(file, Compression::new(self.options.compression_level));
         encoder.write_all(data)?;
         encoder.finish()?;
         Ok(())
@@ -312,10 +455,7 @@ impl CheckpointManager {
     }
 
     /// Compute a hash of the model config for compatibility checking.
-    fn compute_config_hash(
-        &self,
-        config: &crate::training_state::TrainingConfig,
-    ) -> String {
+    fn compute_config_hash(&self, config: &crate::training_state::TrainingConfig) -> String {
         use std::hash::{Hash, Hasher};
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
         config.hidden_size.hash(&mut hasher);
@@ -324,16 +464,59 @@ impl CheckpointManager {
         format!("{:016x}", hasher.finish())
     }
 
-    /// Cleanup old checkpoints, keeping only the last N.
+    /// Cleanup old checkpoints, keeping N best (by loss) + N most recent.
+    ///
+    /// Strategy:
+    /// 1. Identify the N best checkpoints (lowest loss)
+    /// 2. Identify the N most recent checkpoints
+    /// 3. Keep the union of both sets
+    /// 4. Delete all others
     fn cleanup_old_checkpoints(&mut self) -> anyhow::Result<()> {
-        if self.checkpoints.len() <= self.options.keep_last_n {
+        let keep_best = self.options.keep_best_n;
+        let keep_recent = self.options.keep_last_n;
+
+        // Early exit if we have few checkpoints
+        if self.checkpoints.len() <= keep_best.max(keep_recent) {
             return Ok(());
         }
 
-        let to_remove = self.checkpoints.len() - self.options.keep_last_n;
-        let removed: Vec<_> = self.checkpoints.drain(..to_remove).collect();
+        // Find N best checkpoints (by lowest loss)
+        let mut best_steps = std::collections::HashSet::new();
+        let mut sorted_by_loss = self.checkpoints.clone();
+        sorted_by_loss.sort_by(|a, b| {
+            a.loss
+                .partial_cmp(&b.loss)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        for meta in sorted_by_loss.iter().take(keep_best) {
+            best_steps.insert(meta.step);
+        }
 
-        for meta in removed {
+        // Find N most recent checkpoints
+        let mut recent_steps = std::collections::HashSet::new();
+        let recent_count = self.checkpoints.len().min(keep_recent);
+        for meta in self.checkpoints.iter().rev().take(recent_count) {
+            recent_steps.insert(meta.step);
+        }
+
+        // Union: keep checkpoints that are either best or recent
+        let keep_steps: std::collections::HashSet<_> =
+            best_steps.union(&recent_steps).copied().collect();
+
+        // Identify checkpoints to remove
+        let to_remove: Vec<_> = self
+            .checkpoints
+            .iter()
+            .filter(|meta| !keep_steps.contains(&meta.step))
+            .cloned()
+            .collect();
+
+        // Remove from tracking
+        self.checkpoints
+            .retain(|meta| keep_steps.contains(&meta.step));
+
+        // Delete files
+        for meta in to_remove {
             // Delete checkpoint files
             for compressed in [true, false] {
                 let model_path = self.checkpoint_path(meta.step, compressed);
@@ -353,10 +536,37 @@ impl CheckpointManager {
                 fs::remove_file(&meta_path)?;
             }
 
-            tracing::info!("Cleaned up checkpoint at step {}", meta.step);
+            tracing::info!(
+                "Cleaned up checkpoint at step {} (loss: {:.6})",
+                meta.step,
+                meta.loss
+            );
         }
 
         Ok(())
+    }
+
+    /// Manually cleanup old checkpoints with custom retention policy.
+    ///
+    /// Allows overriding the configured keep_best_n and keep_last_n values.
+    pub fn cleanup_with_policy(
+        &mut self,
+        keep_best: usize,
+        keep_recent: usize,
+    ) -> anyhow::Result<()> {
+        let old_best = self.options.keep_best_n;
+        let old_recent = self.options.keep_last_n;
+
+        self.options.keep_best_n = keep_best;
+        self.options.keep_last_n = keep_recent;
+
+        let result = self.cleanup_old_checkpoints();
+
+        // Restore original settings
+        self.options.keep_best_n = old_best;
+        self.options.keep_last_n = old_recent;
+
+        result
     }
 
     /// Save residual data with compression.
@@ -460,4 +670,17 @@ impl CheckpointManager {
 
         Ok(Some(repo_id))
     }
+}
+
+/// Statistics summary for checkpoints.
+#[derive(Debug, Clone, Default)]
+pub struct CheckpointStats {
+    /// Total number of checkpoints
+    pub total_checkpoints: usize,
+    /// Best (lowest) loss across all checkpoints
+    pub best_loss: f32,
+    /// Loss of the most recent checkpoint
+    pub latest_loss: f32,
+    /// Step number of the most recent checkpoint
+    pub latest_step: u64,
 }

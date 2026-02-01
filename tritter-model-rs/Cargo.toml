@@ -44,7 +44,7 @@ half = { version = "2.7", features = ["serde"] }
 # Arrow/Parquet for data loading (optional)
 arrow-array = { version = "54", optional = true }
 arrow-schema = { version = "54", optional = true }
-parquet = { version = "54", optional = true, default-features = false, features = ["arrow"] }
+parquet = { version = "54", optional = true, default-features = false, features = ["arrow", "snap"] }
 
 [features]
 default = []

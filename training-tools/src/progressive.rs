@@ -16,22 +16,26 @@ use candle_nn::VarMap;
 use serde::{Deserialize, Serialize};
 
 use hybrid_predict_trainer_rs::{HybridTrainerConfig, Phase};
+#[cfg(feature = "parquet")]
+use tritter_model_rs::data::ParquetDataset;
+use tritter_model_rs::data::{
+    CompositeDataset, DataConfig, DataLoader, DatasetBlendingStrategy, JsonlDataset,
+    StreamingDataset,
+};
 use tritter_model_rs::{
     create_trainer_with_checkpointing, TritterBatch, TritterConfig, TritterModel,
 };
-use tritter_model_rs::data::{DataConfig, DataLoader, JsonlDataset, StreamingDataset};
-#[cfg(feature = "parquet")]
-use tritter_model_rs::data::ParquetDataset;
 
 use crate::checkpoint_manager::{CheckpointManager, CheckpointOptions};
 use crate::gpu_stats::{query_gpu_stats, GpuStatsMonitor};
 use crate::hf::{
     ArchitectureDetails, HuggingFaceUploader, ModelCardData, PerformanceMetrics, TrainingDetails,
 };
+use crate::lr_controller::AdaptiveLRController;
 use crate::memory::{find_optimal_params, query_gpu_memory, MemoryBudget, MemoryMonitor};
 use crate::training_state::{
-    compute_config_hash, RunManager, StepMetrics, TrainingConfig, TrainingPhase, TrainingRun,
-    TrainingStatus,
+    compute_config_hash, LossDynamicsTracker, RunManager, StepMetrics, TrainingConfig,
+    TrainingPhase, TrainingRun, TrainingStatus,
 };
 
 /// Progressive training stage.
@@ -112,9 +116,27 @@ pub struct ProgressiveConfig {
     pub delete_after_upload: bool,
     /// Path to dataset (JSONL or Parquet files)
     /// If None, uses random tokens (for testing only)
+    /// DEPRECATED: Use `dataset_paths` for multi-dataset support
     pub dataset_path: Option<PathBuf>,
+    /// Paths to multiple datasets (JSONL or Parquet files/directories)
+    /// Datasets are blended according to `dataset_blend_strategy`
+    pub dataset_paths: Vec<PathBuf>,
+    /// Strategy for blending multiple datasets
+    pub dataset_blend_strategy: DatasetBlendStrategy,
     /// Text column name in dataset (auto-detected if None)
     pub text_column: Option<String>,
+}
+
+/// Strategy for blending multiple datasets during training.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+pub enum DatasetBlendStrategy {
+    /// Process datasets sequentially (finish one before starting next)
+    #[default]
+    Sequential,
+    /// Cycle through datasets in round-robin fashion
+    RoundRobin,
+    /// Interleave with configurable weights (requires weights in config)
+    Weighted,
 }
 
 impl Default for ProgressiveConfig {
@@ -133,6 +155,8 @@ impl Default for ProgressiveConfig {
             hf_username: None,
             delete_after_upload: false,
             dataset_path: None,
+            dataset_paths: Vec::new(),
+            dataset_blend_strategy: DatasetBlendStrategy::default(),
             text_column: None,
         }
     }
@@ -151,6 +175,8 @@ pub struct ProgressiveTrainer {
     gpu_stats_monitor: GpuStatsMonitor,
     /// Data loader for real datasets (None = use random tokens)
     data_loader: Option<DataLoader>,
+    /// Tracker for loss velocity and acceleration computation
+    loss_dynamics_tracker: LossDynamicsTracker,
 }
 
 impl ProgressiveTrainer {
@@ -200,80 +226,8 @@ impl ProgressiveTrainer {
             );
         }
 
-        // Initialize data loader if dataset path is provided
-        let data_loader = if let Some(ref dataset_path) = config.dataset_path {
-            let data_config = DataConfig {
-                max_seq_length: config.seq_length,
-                batch_size: config.batch_size,
-                num_workers: 4,
-                prefetch_factor: 2,
-                text_column: config.text_column.clone(),
-                seed: 42,
-            };
-
-            // Detect dataset format and create loader
-            let dataset: Box<dyn StreamingDataset> = if dataset_path.is_file() {
-                let ext = dataset_path.extension().and_then(|e| e.to_str()).unwrap_or("");
-                match ext {
-                    #[cfg(feature = "parquet")]
-                    "parquet" => {
-                        let ds = ParquetDataset::new(dataset_path, config.seq_length)
-                            .map_err(|e| anyhow::anyhow!("Failed to open parquet dataset: {}", e))?;
-                        Box::new(ds)
-                    }
-                    "jsonl" | "json" => {
-                        let ds = JsonlDataset::new(dataset_path, config.seq_length)
-                            .map_err(|e| anyhow::anyhow!("Failed to open JSONL dataset: {}", e))?;
-                        Box::new(ds)
-                    }
-                    #[cfg(not(feature = "parquet"))]
-                    "parquet" => {
-                        return Err(anyhow::anyhow!(
-                            "Parquet support not enabled. Build with --features parquet"
-                        ));
-                    }
-                    _ => {
-                        // Default to JSONL
-                        let ds = JsonlDataset::new(dataset_path, config.seq_length)
-                            .map_err(|e| anyhow::anyhow!("Failed to open dataset: {}", e))?;
-                        Box::new(ds)
-                    }
-                }
-            } else if dataset_path.is_dir() {
-                // Directory: check for parquet or jsonl files
-                #[cfg(feature = "parquet")]
-                {
-                    // Prefer parquet if available
-                    let has_parquet = std::fs::read_dir(dataset_path)?
-                        .filter_map(|e| e.ok())
-                        .any(|e| e.path().extension().map_or(false, |ext| ext == "parquet"));
-
-                    if has_parquet {
-                        let ds = ParquetDataset::new(dataset_path, config.seq_length)
-                            .map_err(|e| anyhow::anyhow!("Failed to open parquet dataset: {}", e))?;
-                        Box::new(ds)
-                    } else {
-                        let ds = JsonlDataset::new(dataset_path, config.seq_length)
-                            .map_err(|e| anyhow::anyhow!("Failed to open JSONL dataset: {}", e))?;
-                        Box::new(ds)
-                    }
-                }
-                #[cfg(not(feature = "parquet"))]
-                {
-                    let ds = JsonlDataset::new(dataset_path, config.seq_length)
-                        .map_err(|e| anyhow::anyhow!("Failed to open JSONL dataset: {}", e))?;
-                    Box::new(ds)
-                }
-            } else {
-                return Err(anyhow::anyhow!("Dataset path does not exist: {:?}", dataset_path));
-            };
-
-            tracing::info!("Loaded dataset from: {:?}", dataset_path);
-            Some(DataLoader::new(dataset, data_config, device.clone()))
-        } else {
-            tracing::warn!("No dataset path provided - using random tokens (testing mode)");
-            None
-        };
+        // Initialize data loader from dataset paths
+        let data_loader = Self::create_data_loader(&config, &device)?;
 
         Ok(Self {
             current_stage: config.start_stage,
@@ -286,7 +240,168 @@ impl ProgressiveTrainer {
             _memory_monitor: memory_monitor,
             gpu_stats_monitor,
             data_loader,
+            loss_dynamics_tracker: LossDynamicsTracker::new(30),
         })
+    }
+
+    /// Create a data loader from configuration, supporting multiple datasets.
+    fn create_data_loader(
+        config: &ProgressiveConfig,
+        device: &Device,
+    ) -> anyhow::Result<Option<DataLoader>> {
+        let data_config = DataConfig {
+            max_seq_length: config.seq_length,
+            batch_size: config.batch_size,
+            num_workers: 4,
+            prefetch_factor: 2,
+            text_column: config.text_column.clone(),
+            seed: 42,
+        };
+
+        // Collect all dataset paths (new multi-path + legacy single path)
+        let mut all_paths: Vec<PathBuf> = config.dataset_paths.clone();
+        if let Some(ref legacy_path) = config.dataset_path {
+            if !all_paths.contains(legacy_path) {
+                all_paths.push(legacy_path.clone());
+            }
+        }
+
+        if all_paths.is_empty() {
+            tracing::warn!("No dataset path provided - using random tokens (testing mode)");
+            return Ok(None);
+        }
+
+        // Create a dataset for each path
+        let mut datasets: Vec<Box<dyn StreamingDataset>> = Vec::new();
+        let mut total_size_bytes: u64 = 0;
+
+        for path in &all_paths {
+            if !path.exists() {
+                tracing::warn!("Dataset path does not exist, skipping: {:?}", path);
+                continue;
+            }
+
+            // Estimate size for logging
+            if let Ok(meta) = std::fs::metadata(path) {
+                if meta.is_dir() {
+                    // Recursively sum file sizes
+                    if let Ok(size) = Self::dir_size(path) {
+                        total_size_bytes += size;
+                    }
+                } else {
+                    total_size_bytes += meta.len();
+                }
+            }
+
+            let dataset = Self::create_single_dataset(path, config.seq_length)?;
+            datasets.push(dataset);
+            tracing::info!("Added dataset: {:?}", path);
+        }
+
+        if datasets.is_empty() {
+            tracing::warn!("No valid datasets found - using random tokens (testing mode)");
+            return Ok(None);
+        }
+
+        // Log total dataset size
+        let size_gb = total_size_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+        tracing::info!(
+            "Loaded {} dataset(s), total size: {:.1} GB",
+            datasets.len(),
+            size_gb
+        );
+
+        // Create composite or single dataset
+        let final_dataset: Box<dyn StreamingDataset> = if datasets.len() == 1 {
+            datasets.pop().unwrap()
+        } else {
+            // Convert blend strategy
+            let blend_strategy = match config.dataset_blend_strategy {
+                DatasetBlendStrategy::Sequential => DatasetBlendingStrategy::Sequential,
+                DatasetBlendStrategy::RoundRobin => DatasetBlendingStrategy::RoundRobin,
+                DatasetBlendStrategy::Weighted => DatasetBlendingStrategy::Weighted,
+            };
+
+            tracing::info!(
+                "Using {:?} blending strategy for {} datasets",
+                blend_strategy,
+                datasets.len()
+            );
+
+            Box::new(
+                CompositeDataset::new(datasets).with_strategy(blend_strategy),
+            )
+        };
+
+        Ok(Some(DataLoader::new(final_dataset, data_config, device.clone())))
+    }
+
+    /// Create a single dataset from a path (file or directory).
+    fn create_single_dataset(
+        path: &Path,
+        seq_length: usize,
+    ) -> anyhow::Result<Box<dyn StreamingDataset>> {
+        if path.is_file() {
+            let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+            match ext {
+                #[cfg(feature = "parquet")]
+                "parquet" => {
+                    let ds = ParquetDataset::new(path, seq_length)
+                        .map_err(|e| anyhow::anyhow!("Failed to open parquet dataset: {}", e))?;
+                    Ok(Box::new(ds))
+                }
+                "jsonl" | "json" => {
+                    let ds = JsonlDataset::new(path, seq_length)
+                        .map_err(|e| anyhow::anyhow!("Failed to open JSONL dataset: {}", e))?;
+                    Ok(Box::new(ds))
+                }
+                #[cfg(not(feature = "parquet"))]
+                "parquet" => Err(anyhow::anyhow!(
+                    "Parquet support not enabled. Build with --features parquet"
+                )),
+                _ => {
+                    // Default to JSONL
+                    let ds = JsonlDataset::new(path, seq_length)
+                        .map_err(|e| anyhow::anyhow!("Failed to open dataset: {}", e))?;
+                    Ok(Box::new(ds))
+                }
+            }
+        } else if path.is_dir() {
+            #[cfg(feature = "parquet")]
+            {
+                // Check for parquet files first
+                let has_parquet = std::fs::read_dir(path)?
+                    .filter_map(|e| e.ok())
+                    .any(|e| e.path().extension().map_or(false, |ext| ext == "parquet"));
+
+                if has_parquet {
+                    let ds = ParquetDataset::new(path, seq_length)
+                        .map_err(|e| anyhow::anyhow!("Failed to open parquet dataset: {}", e))?;
+                    return Ok(Box::new(ds));
+                }
+            }
+
+            let ds = JsonlDataset::new(path, seq_length)
+                .map_err(|e| anyhow::anyhow!("Failed to open JSONL dataset: {}", e))?;
+            Ok(Box::new(ds))
+        } else {
+            Err(anyhow::anyhow!("Dataset path does not exist: {:?}", path))
+        }
+    }
+
+    /// Calculate total size of a directory recursively.
+    fn dir_size(path: &Path) -> anyhow::Result<u64> {
+        let mut total = 0u64;
+        for entry in std::fs::read_dir(path)? {
+            let entry = entry?;
+            let meta = entry.metadata()?;
+            if meta.is_dir() {
+                total += Self::dir_size(&entry.path()).unwrap_or(0);
+            } else {
+                total += meta.len();
+            }
+        }
+        Ok(total)
     }
 
     /// Run the full progressive training pipeline.
@@ -338,10 +453,9 @@ impl ProgressiveTrainer {
         let (batch_size, seq_length) = self.auto_configure_params(&model_config)?;
 
         // Create run directory
-        let run_dir = self.run_manager.create_run_dir(&format!(
-            "tritter_{}",
-            stage.size_str().to_lowercase()
-        ))?;
+        let run_dir = self
+            .run_manager
+            .create_run_dir(&format!("tritter_{}", stage.size_str().to_lowercase()))?;
 
         // Setup checkpoint manager
         let checkpoints_dir = run_dir.join("checkpoints");
@@ -354,6 +468,7 @@ impl ProgressiveTrainer {
             upload_to_hf: false, // We handle this separately
             delete_after_upload: false,
             keep_last_n: 3,
+            keep_best_n: 5,
         };
 
         self.checkpoint_manager = Some(CheckpointManager::new(
@@ -419,7 +534,7 @@ impl ProgressiveTrainer {
             .warmup_steps(100)
             .full_steps(20)
             .max_predict_steps(80)
-            .confidence_threshold(0.30)  // Lowered from 0.85 to enable predictive phases
+            .confidence_threshold(0.30) // Lowered from 0.85 to enable predictive phases
             .build();
 
         let model_wrapper = tritter_model_rs::TritterModelWrapper::new(model);
@@ -429,10 +544,20 @@ impl ProgressiveTrainer {
                 .map_err(|(e, _)| anyhow::anyhow!("Trainer creation failed: {}", e))?;
 
         // Training loop
-        tracing::info!("Starting training for {} steps...", self.config.steps_per_stage);
+        tracing::info!(
+            "Starting training for {} steps...",
+            self.config.steps_per_stage
+        );
         let train_start = Instant::now();
         let mut rng = rand::thread_rng();
         let mut last_phase = TrainingPhase::Warmup;
+
+        // Adaptive learning rate controller for plateau/oscillation handling
+        let base_lr = self.config.learning_rate;
+        let min_lr = base_lr * 0.01;  // 1% of base LR
+        let max_lr = base_lr * 3.0;   // 3x base LR for plateau escape
+        let mut lr_controller = AdaptiveLRController::new(base_lr, min_lr, max_lr);
+        let mut current_lr = base_lr;
 
         for step in 0..self.config.steps_per_stage {
             let step_start = Instant::now();
@@ -457,11 +582,19 @@ impl ProgressiveTrainer {
                     }
                     None => {
                         // Dataset exhausted, reset for next epoch
-                        tracing::info!("Dataset exhausted at step {}, resetting for next epoch", step);
+                        tracing::info!(
+                            "Dataset exhausted at step {}, resetting for next epoch",
+                            step
+                        );
                         loader.reset()?;
                         match loader.next() {
                             Some(Ok(b)) => b,
-                            Some(Err(e)) => return Err(anyhow::anyhow!("Failed to get batch after reset: {}", e)),
+                            Some(Err(e)) => {
+                                return Err(anyhow::anyhow!(
+                                    "Failed to get batch after reset: {}",
+                                    e
+                                ))
+                            }
                             None => return Err(anyhow::anyhow!("Empty dataset")),
                         }
                     }
@@ -472,11 +605,8 @@ impl ProgressiveTrainer {
                 let random_ids: Vec<u32> = (0..batch_size * seq_length)
                     .map(|_| rand::Rng::gen_range(&mut rng, 0..vocab_size as u32))
                     .collect();
-                let input_ids = Tensor::from_slice(
-                    &random_ids,
-                    (batch_size, seq_length),
-                    &self.device,
-                )?;
+                let input_ids =
+                    Tensor::from_slice(&random_ids, (batch_size, seq_length), &self.device)?;
                 TritterBatch::new(input_ids, None)
             };
 
@@ -502,11 +632,25 @@ impl ProgressiveTrainer {
                 last_phase = phase;
             }
 
+            // Adaptive LR control - handle plateaus, oscillations, and spikes
+            let prev_lr = current_lr;
+            current_lr = lr_controller.update(result.loss, result.gradient_norm);
+            if (current_lr - prev_lr).abs() > 1e-8 {
+                trainer.set_learning_rate::<TritterBatch>(current_lr);
+                let change = if current_lr > prev_lr { "increased" } else { "decreased" };
+                tracing::info!(
+                    "LR {} from {:.2e} to {:.2e} (plateau/oscillation handling)",
+                    change, prev_lr, current_lr
+                );
+            }
+
             // Calculate token metrics
             let tokens_this_step = (batch_size * seq_length) as u64;
             let total_tokens_trained = (step + 1) * tokens_this_step;
-            let tokens_remaining =
-                (self.config.steps_per_stage - step - 1) * tokens_this_step;
+            let tokens_remaining = (self.config.steps_per_stage - step - 1) * tokens_this_step;
+
+            // Update loss dynamics tracker and get velocity/acceleration
+            let (loss_velocity, loss_acceleration) = self.loss_dynamics_tracker.update(result.loss);
 
             // Create metrics
             let metrics = StepMetrics {
@@ -522,6 +666,16 @@ impl ProgressiveTrainer {
                 total_tokens_trained,
                 tokens_remaining,
                 confidence: result.confidence,
+                learning_rate: current_lr,
+                perplexity: result.loss.exp(),
+                // Generalization metrics
+                train_val_gap: None,
+                loss_velocity,
+                loss_acceleration,
+                gradient_entropy: None,
+                // Layer gradient metrics (not computed in progressive trainer)
+                layer_gradients: None,
+                layer_gradient_stats: None,
             };
 
             // Update run
@@ -585,7 +739,10 @@ impl ProgressiveTrainer {
 
                 // Warn if GPU is unhealthy
                 if !self.gpu_stats_monitor.is_healthy() {
-                    tracing::warn!("GPU health warning: {}", self.gpu_stats_monitor.health_status());
+                    tracing::warn!(
+                        "GPU health warning: {}",
+                        self.gpu_stats_monitor.health_status()
+                    );
                 }
             }
 
@@ -594,7 +751,8 @@ impl ProgressiveTrainer {
                 && (step % self.config.checkpoint_every == 0
                     || step == self.config.steps_per_stage - 1)
             {
-                let checkpoint_path = checkpoints_dir.join(format!("checkpoint_step_{}.safetensors", step));
+                let checkpoint_path =
+                    checkpoints_dir.join(format!("checkpoint_step_{}.safetensors", step));
 
                 // Start checkpoint event
                 let checkpoint_idx = run.start_checkpoint(checkpoint_path.clone());
@@ -725,7 +883,9 @@ impl ProgressiveTrainer {
 
                     // Check if this config fits with margin
                     if estimated_mem <= available {
-                        if batch_size != self.config.batch_size || seq_length != self.config.seq_length {
+                        if batch_size != self.config.batch_size
+                            || seq_length != self.config.seq_length
+                        {
                             tracing::info!(
                                 "Optimized config: batch {} (was {}), seq {} (was {}), est. {:.1}GB",
                                 batch_size,

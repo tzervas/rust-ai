@@ -19,11 +19,9 @@ burn = { version = "0.20", default-features = false }
 burn-core = { version = "0.20", default-features = false }
 burn-tensor = { version = "0.20", default-features = false }
 
-# GPU compute acceleration
-cubecl = { version = "0.9", default-features = false, optional = true }
-cubecl-cuda = { version = "0.9", optional = true }
-cubecl-core = { version = "0.9", optional = true }
-cubecl-runtime = { version = "0.9", optional = true }
+# GPU compute acceleration (burn provides CUDA via burn-cuda internally)
+# NOTE: Direct cubecl dependency removed to avoid uuid/js-sys conflict
+# Use burn/cuda feature instead which handles the cubecl integration
 
 # Candle for additional tensor ops and model compatibility
 candle-core = { version = "0.9", default-features = false, optional = true }
@@ -57,7 +55,8 @@ rand = { version = "0.9" }
 rand_distr = { version = "0.5" }
 
 [dev-dependencies]
-criterion = { version = "0.8", features = ["html_reports"] }
+# Use default-features = false to avoid plotters -> web-sys -> js-sys conflict with uuid
+criterion = { version = "0.8", default-features = false }
 tokio-test = "0.4"
 tempfile = "3.19"
 approx = "0.5"
@@ -66,12 +65,8 @@ approx = "0.5"
 default = ["std"]
 std = ["burn/std", "burn-core/std", "burn-tensor/std"]
 
-# GPU acceleration backends
+# GPU acceleration backends (use burn's CUDA support directly)
 cuda = [
-    "cubecl",
-    "cubecl-cuda",
-    "cubecl-core",
-    "cubecl-runtime",
     "burn/cuda",
 ]
 

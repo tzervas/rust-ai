@@ -112,9 +112,9 @@ impl MemoryBudget {
         let gb = 1024 * 1024 * 1024;
         Self {
             max_vram: 16 * gb,
-            reserved_vram: 2 * gb,    // 2GB reserved
-            training_vram: 14 * gb,   // 14GB for training
-            cache_ram: 16 * gb,       // 16GB RAM cache
+            reserved_vram: 2 * gb,  // 2GB reserved
+            training_vram: 14 * gb, // 14GB for training
+            cache_ram: 16 * gb,     // 16GB RAM cache
         }
     }
 }
@@ -215,7 +215,9 @@ pub fn find_optimal_params(
                     // Prefer configs closer to target while maximizing effective batch
                     let score = effective_batch * seq_length;
 
-                    if best.is_none() || score > best_effective_batch * (best.as_ref().unwrap().seq_length) {
+                    if best.is_none()
+                        || score > best_effective_batch * (best.as_ref().unwrap().seq_length)
+                    {
                         best = Some(OptimalTrainingParams {
                             batch_size,
                             seq_length: seq_length.min(target_seq),
@@ -342,7 +344,7 @@ mod tests {
             768,
             12,
             12,
-            32, // target batch
+            32,  // target batch
             512, // target seq
         );
 

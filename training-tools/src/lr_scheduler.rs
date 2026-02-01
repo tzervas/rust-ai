@@ -489,7 +489,11 @@ mod tests {
         // Step 999: end of decay, should be very close to min_lr
         // Note: At step 999 of 1000, cos(pi * 0.999) ≈ -0.99995, so LR ≈ 0.00025
         let lr_999 = scheduler.get_lr(999);
-        assert!(lr_999 < 0.001, "LR at step 999 should be < 0.001, got {}", lr_999);
+        assert!(
+            lr_999 < 0.001,
+            "LR at step 999 should be < 0.001, got {}",
+            lr_999
+        );
 
         // Phase check
         assert_eq!(scheduler.phase_name(0), "decay");

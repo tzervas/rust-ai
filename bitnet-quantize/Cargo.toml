@@ -25,8 +25,9 @@ peft-rs = { version = "1.0.0", optional = true }
 qlora-rs = { version = "1.0.0", optional = true }
 
 # GPU acceleration via CubeCL
-cubecl = { workspace = true, optional = true }
-cubecl-cuda = { workspace = true, optional = true }
+# NOTE: Disabled due to uuid/js-sys conflict with burn-core
+# cubecl = { version = "0.9", optional = true }
+# cubecl-cuda = { version = "0.9", optional = true }
 
 [dev-dependencies]
 criterion = { workspace = true }
@@ -34,11 +35,12 @@ proptest = "1.4"
 
 [features]
 default = []
+# CUDA feature temporarily reduced due to cubecl/uuid conflict
 cuda = [
     "candle-core/cuda",
-    "dep:cubecl",
-    "dep:cubecl-cuda",
-    "trit-vsa/cuda",
+    # "dep:cubecl",  # Disabled: uuid/js-sys conflict with burn-core
+    # "dep:cubecl-cuda",  # Disabled: uuid/js-sys conflict with burn-core
+    # "trit-vsa/cuda",  # Disabled: requires cubecl
 ]
 peft = ["dep:peft-rs"]
 gguf-export = ["dep:qlora-rs"]

@@ -34,9 +34,7 @@ use ratatui::{
 };
 
 use crate::gpu_stats::{GpuStats, GpuStatsMonitor};
-use crate::training_state::{
-    RunManager, StepMetrics, TrainingPhase, TrainingRun, TrainingStatus,
-};
+use crate::training_state::{RunManager, StepMetrics, TrainingPhase, TrainingRun, TrainingStatus};
 
 /// View mode for the monitor.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -404,7 +402,10 @@ impl TrainingMonitor {
 
                 let content = format!("{} {} ({:.1}%)", status_icon, run.run_name, run.progress());
 
-                ListItem::new(Line::from(vec![Span::styled(content, style.fg(status_color))]))
+                ListItem::new(Line::from(vec![Span::styled(
+                    content,
+                    style.fg(status_color),
+                )]))
             })
             .collect();
 
@@ -469,8 +470,11 @@ impl TrainingMonitor {
 
         // Detailed loss stats
         let loss_stats = self.format_loss_stats(run);
-        let stats_widget =
-            Paragraph::new(loss_stats).block(Block::default().borders(Borders::ALL).title(" Loss Statistics "));
+        let stats_widget = Paragraph::new(loss_stats).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Loss Statistics "),
+        );
         f.render_widget(stats_widget, chunks[1]);
 
         self.draw_loss_chart(f, chunks[2]);
@@ -483,7 +487,11 @@ impl TrainingMonitor {
                 .map(|(_, l)| (l * 100.0) as u64)
                 .collect();
             let sparkline = Sparkline::default()
-                .block(Block::default().borders(Borders::ALL).title(" Recent Loss Trend "))
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(" Recent Loss Trend "),
+                )
                 .data(&spark_data)
                 .style(Style::default().fg(Color::Cyan));
             f.render_widget(sparkline, chunks[3]);
@@ -506,8 +514,11 @@ impl TrainingMonitor {
         // GPU info table
         if let Some(stats) = self.gpu_monitor.current() {
             let gpu_info = self.format_gpu_info(stats);
-            let info_widget = Paragraph::new(gpu_info)
-                .block(Block::default().borders(Borders::ALL).title(format!(" {} ", stats.name)));
+            let info_widget = Paragraph::new(gpu_info).block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(format!(" {} ", stats.name)),
+            );
             f.render_widget(info_widget, chunks[1]);
 
             // Memory usage gauge
@@ -535,8 +546,11 @@ impl TrainingMonitor {
 
             // Thermals and power
             let thermal_info = self.format_thermal_power(stats);
-            let thermal_widget =
-                Paragraph::new(thermal_info).block(Block::default().borders(Borders::ALL).title(" Thermals & Power "));
+            let thermal_widget = Paragraph::new(thermal_info).block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(" Thermals & Power "),
+            );
             f.render_widget(thermal_widget, chunks[3]);
         } else {
             let no_gpu = Paragraph::new("GPU stats unavailable - nvidia-smi not responding")
@@ -560,8 +574,8 @@ impl TrainingMonitor {
 
         // Timing stats
         let timing_info = self.format_timing_stats(run);
-        let timing_widget =
-            Paragraph::new(timing_info).block(Block::default().borders(Borders::ALL).title(" Timing "));
+        let timing_widget = Paragraph::new(timing_info)
+            .block(Block::default().borders(Borders::ALL).title(" Timing "));
         f.render_widget(timing_widget, chunks[1]);
 
         // Checkpoints table
@@ -569,8 +583,11 @@ impl TrainingMonitor {
 
         // Run timestamps
         let timestamps = self.format_run_timestamps(run);
-        let ts_widget =
-            Paragraph::new(timestamps).block(Block::default().borders(Borders::ALL).title(" Run Timestamps "));
+        let ts_widget = Paragraph::new(timestamps).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Run Timestamps "),
+        );
         f.render_widget(ts_widget, chunks[3]);
     }
 
@@ -578,10 +595,10 @@ impl TrainingMonitor {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(3),  // Progress
-                Constraint::Length(8),  // Current phase
-                Constraint::Min(8),     // Phase history
-                Constraint::Length(6),  // Phase stats
+                Constraint::Length(3), // Progress
+                Constraint::Length(8), // Current phase
+                Constraint::Min(8),    // Phase history
+                Constraint::Length(6), // Phase stats
             ])
             .split(area);
 
@@ -589,8 +606,11 @@ impl TrainingMonitor {
 
         // Current phase detail
         let phase_detail = self.format_phase_detail(run);
-        let phase_widget =
-            Paragraph::new(phase_detail).block(Block::default().borders(Borders::ALL).title(" Current Phase "));
+        let phase_widget = Paragraph::new(phase_detail).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Current Phase "),
+        );
         f.render_widget(phase_widget, chunks[1]);
 
         // Phase transitions table
@@ -598,8 +618,11 @@ impl TrainingMonitor {
 
         // Phase statistics
         let phase_stats = self.format_phase_stats(run);
-        let stats_widget =
-            Paragraph::new(phase_stats).block(Block::default().borders(Borders::ALL).title(" Phase Statistics "));
+        let stats_widget = Paragraph::new(phase_stats).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Phase Statistics "),
+        );
         f.render_widget(stats_widget, chunks[3]);
     }
 
@@ -637,22 +660,34 @@ impl TrainingMonitor {
             Line::from(vec![
                 Span::raw(" Model: "),
                 Span::styled(
-                    format!("{} ({:.1}M params)", run.config.model_size, run.config.num_parameters as f64 / 1e6),
+                    format!(
+                        "{} ({:.1}M params)",
+                        run.config.model_size,
+                        run.config.num_parameters as f64 / 1e6
+                    ),
                     Style::default().add_modifier(Modifier::BOLD),
                 ),
             ]),
             Line::from(vec![
                 Span::raw(" Loss: "),
-                Span::styled(format!("{:.4}", run.current_loss), Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    format!("{:.4}", run.current_loss),
+                    Style::default().fg(Color::Cyan),
+                ),
                 Span::raw(" (best: "),
-                Span::styled(format!("{:.4}", run.best_loss), Style::default().fg(Color::Green)),
+                Span::styled(
+                    format!("{:.4}", run.best_loss),
+                    Style::default().fg(Color::Green),
+                ),
                 Span::raw(format!(" @ step {})", run.best_step)),
             ]),
             Line::from(vec![
                 Span::raw(" Phase: "),
                 Span::styled(
                     run.current_phase.to_string(),
-                    Style::default().fg(phase_color).add_modifier(Modifier::BOLD),
+                    Style::default()
+                        .fg(phase_color)
+                        .add_modifier(Modifier::BOLD),
                 ),
                 Span::raw(" | Bwd reduction: "),
                 Span::styled(
@@ -765,7 +800,9 @@ impl TrainingMonitor {
                     Span::raw(" Status: "),
                     Span::styled(
                         self.gpu_monitor.health_status(),
-                        Style::default().fg(health_color).add_modifier(Modifier::BOLD),
+                        Style::default()
+                            .fg(health_color)
+                            .add_modifier(Modifier::BOLD),
                     ),
                     Span::raw(format!(
                         " | Peak Mem: {:.1} GB | PState: {}",
@@ -778,8 +815,11 @@ impl TrainingMonitor {
             vec![Line::from(Span::raw(" GPU stats unavailable"))]
         };
 
-        let widget =
-            Paragraph::new(content).block(Block::default().borders(Borders::ALL).title(" GPU Quick Stats "));
+        let widget = Paragraph::new(content).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" GPU Quick Stats "),
+        );
         f.render_widget(widget, area);
     }
 
@@ -870,7 +910,11 @@ impl TrainingMonitor {
             Row::new(vec!["Step", "Started", "Duration", "Size", "Status"])
                 .style(Style::default().add_modifier(Modifier::BOLD)),
         )
-        .block(Block::default().borders(Borders::ALL).title(" Recent Checkpoints "));
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Recent Checkpoints "),
+        );
 
         f.render_widget(table, area);
     }
@@ -920,15 +964,32 @@ impl TrainingMonitor {
             Row::new(vec!["Step", "Time", "From", "", "To"])
                 .style(Style::default().add_modifier(Modifier::BOLD)),
         )
-        .block(Block::default().borders(Borders::ALL).title(" Phase Transitions "));
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Phase Transitions "),
+        );
 
         f.render_widget(table, area);
     }
 
     fn format_loss_stats(&self, run: &TrainingRun) -> Vec<Line<'static>> {
         let loss_trend = if self.loss_history.len() >= 10 {
-            let recent: Vec<f64> = self.loss_history.iter().rev().take(10).map(|(_, l)| *l).collect();
-            let older: Vec<f64> = self.loss_history.iter().rev().skip(10).take(10).map(|(_, l)| *l).collect();
+            let recent: Vec<f64> = self
+                .loss_history
+                .iter()
+                .rev()
+                .take(10)
+                .map(|(_, l)| *l)
+                .collect();
+            let older: Vec<f64> = self
+                .loss_history
+                .iter()
+                .rev()
+                .skip(10)
+                .take(10)
+                .map(|(_, l)| *l)
+                .collect();
             if !older.is_empty() {
                 let recent_avg: f64 = recent.iter().sum::<f64>() / recent.len() as f64;
                 let older_avg: f64 = older.iter().sum::<f64>() / older.len() as f64;
@@ -947,11 +1008,19 @@ impl TrainingMonitor {
         vec![
             Line::from(vec![
                 Span::raw(" Current Loss: "),
-                Span::styled(format!("{:.6}", run.current_loss), Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    format!("{:.6}", run.current_loss),
+                    Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD),
+                ),
             ]),
             Line::from(vec![
                 Span::raw(" Best Loss: "),
-                Span::styled(format!("{:.6}", run.best_loss), Style::default().fg(Color::Green)),
+                Span::styled(
+                    format!("{:.6}", run.best_loss),
+                    Style::default().fg(Color::Green),
+                ),
                 Span::raw(format!(" (step {})", run.best_step)),
             ]),
             Line::from(vec![
@@ -980,17 +1049,29 @@ impl TrainingMonitor {
             ]),
             Line::from(vec![
                 Span::raw(" GPU Util: "),
-                Span::styled(format!("{}%", stats.gpu_util), Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    format!("{}%", stats.gpu_util),
+                    Style::default().fg(Color::Cyan),
+                ),
                 Span::raw(" | Memory Util: "),
-                Span::styled(format!("{}%", stats.memory_util), Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    format!("{}%", stats.memory_util),
+                    Style::default().fg(Color::Cyan),
+                ),
             ]),
             Line::from(vec![
                 Span::raw(" Clocks - Graphics: "),
-                Span::raw(format!("{}/{} MHz", stats.clock_graphics, stats.clock_graphics_max)),
+                Span::raw(format!(
+                    "{}/{} MHz",
+                    stats.clock_graphics, stats.clock_graphics_max
+                )),
             ]),
             Line::from(vec![
                 Span::raw("        - Memory: "),
-                Span::raw(format!("{}/{} MHz", stats.clock_memory, stats.clock_memory_max)),
+                Span::raw(format!(
+                    "{}/{} MHz",
+                    stats.clock_memory, stats.clock_memory_max
+                )),
             ]),
             Line::from(vec![
                 Span::raw(" PCIe: "),
@@ -1023,8 +1104,14 @@ impl TrainingMonitor {
         vec![
             Line::from(vec![
                 Span::raw(" Temperature: "),
-                Span::styled(format!("{}°C", stats.temperature), Style::default().fg(temp_color)),
-                Span::raw(format!(" (throttle: {}°C, shutdown: {}°C)", stats.temp_throttle, stats.temp_shutdown)),
+                Span::styled(
+                    format!("{}°C", stats.temperature),
+                    Style::default().fg(temp_color),
+                ),
+                Span::raw(format!(
+                    " (throttle: {}°C, shutdown: {}°C)",
+                    stats.temp_throttle, stats.temp_shutdown
+                )),
             ]),
             Line::from(vec![
                 Span::raw(" Fan Speed: "),
@@ -1032,8 +1119,14 @@ impl TrainingMonitor {
             ]),
             Line::from(vec![
                 Span::raw(" Power: "),
-                Span::styled(format!("{:.0}W", stats.power_draw), Style::default().fg(power_color)),
-                Span::raw(format!(" / {:.0}W limit ({:.0}W max)", stats.power_limit, stats.power_max)),
+                Span::styled(
+                    format!("{:.0}W", stats.power_draw),
+                    Style::default().fg(power_color),
+                ),
+                Span::raw(format!(
+                    " / {:.0}W limit ({:.0}W max)",
+                    stats.power_limit, stats.power_max
+                )),
             ]),
             Line::from(vec![
                 Span::raw(" Peak Power: "),
@@ -1081,11 +1174,19 @@ impl TrainingMonitor {
             ]),
             Line::from(vec![
                 Span::raw(" GPU Efficiency: "),
-                Span::styled(format!("{:.1}%", efficiency), Style::default().fg(Color::Green)),
+                Span::styled(
+                    format!("{:.1}%", efficiency),
+                    Style::default().fg(Color::Green),
+                ),
             ]),
             Line::from(vec![
                 Span::raw(" ETA: "),
-                Span::styled(run.eta_string(), Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    run.eta_string(),
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
             ]),
             Line::from(vec![
                 Span::raw(" Steps/sec: "),
@@ -1122,10 +1223,19 @@ impl TrainingMonitor {
 
     fn format_phase_detail(&self, run: &TrainingRun) -> Vec<Line<'static>> {
         let (phase_color, phase_desc) = match run.current_phase {
-            TrainingPhase::Warmup => (Color::Yellow, "Collecting baseline statistics for gradient prediction"),
+            TrainingPhase::Warmup => (
+                Color::Yellow,
+                "Collecting baseline statistics for gradient prediction",
+            ),
             TrainingPhase::Full => (Color::Blue, "Computing full forward and backward passes"),
-            TrainingPhase::Predict => (Color::Green, "Using VSA to predict gradients, skipping backward pass"),
-            TrainingPhase::Correct => (Color::Magenta, "Correcting prediction errors with full backward"),
+            TrainingPhase::Predict => (
+                Color::Green,
+                "Using VSA to predict gradients, skipping backward pass",
+            ),
+            TrainingPhase::Correct => (
+                Color::Magenta,
+                "Correcting prediction errors with full backward",
+            ),
         };
 
         vec![
@@ -1133,7 +1243,9 @@ impl TrainingMonitor {
                 Span::raw(" Current: "),
                 Span::styled(
                     run.current_phase.to_string(),
-                    Style::default().fg(phase_color).add_modifier(Modifier::BOLD),
+                    Style::default()
+                        .fg(phase_color)
+                        .add_modifier(Modifier::BOLD),
                 ),
             ]),
             Line::from(Span::raw("")),

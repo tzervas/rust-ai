@@ -118,6 +118,74 @@ pub struct PhaseTransition {
     pub timestamp: DateTime<Utc>,
 }
 
+/// Tracks loss history to compute velocity and acceleration metrics.
+///
+/// Maintains a sliding window of recent loss values and computes first/second
+/// derivatives (velocity/acceleration) on demand.
+#[derive(Debug, Clone)]
+pub struct LossDynamicsTracker {
+    /// Circular buffer of recent loss values
+    loss_history: Vec<f32>,
+    /// Maximum window size
+    window_size: usize,
+}
+
+impl LossDynamicsTracker {
+    /// Create a new loss dynamics tracker.
+    ///
+    /// # Arguments
+    /// * `window_size` - Number of recent losses to keep (recommended 30-50)
+    ///
+    /// # Example
+    /// ```
+    /// use training_tools::LossDynamicsTracker;
+    ///
+    /// let mut tracker = LossDynamicsTracker::new(30);
+    /// let (v, a) = tracker.update(2.5);
+    /// ```
+    pub fn new(window_size: usize) -> Self {
+        Self {
+            loss_history: Vec::with_capacity(window_size + 1),
+            window_size,
+        }
+    }
+
+    /// Update tracker with a new loss value and compute velocity/acceleration.
+    ///
+    /// Returns `(velocity, acceleration)` tuple.
+    /// - `velocity`: Negative = loss improving, positive = loss worsening
+    /// - `acceleration`: Negative = slowing improvement, positive = accelerating improvement
+    ///
+    /// # Example
+    /// ```
+    /// use training_tools::LossDynamicsTracker;
+    ///
+    /// let mut tracker = LossDynamicsTracker::new(10);
+    /// let losses = vec![2.5, 2.4, 2.3, 2.2, 2.1];
+    /// for loss in losses {
+    ///     let (velocity, acceleration) = tracker.update(loss);
+    ///     println!("v={}, a={}", velocity, acceleration);
+    /// }
+    /// ```
+    pub fn update(&mut self, loss: f32) -> (f32, f32) {
+        self.loss_history.push(loss);
+        if self.loss_history.len() > self.window_size {
+            self.loss_history.remove(0);
+        }
+        calculate_loss_dynamics(&self.loss_history, self.window_size)
+    }
+
+    /// Get current loss history.
+    pub fn history(&self) -> &[f32] {
+        &self.loss_history
+    }
+
+    /// Clear the history.
+    pub fn reset(&mut self) {
+        self.loss_history.clear();
+    }
+}
+
 /// Metrics for a single training step.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StepMetrics {
@@ -149,6 +217,290 @@ pub struct StepMetrics {
     /// Predictor confidence (0.0 - 1.0)
     #[serde(default)]
     pub confidence: f32,
+    /// Current learning rate
+    #[serde(default)]
+    pub learning_rate: f32,
+    /// Perplexity (exp(loss))
+    #[serde(default)]
+    pub perplexity: f32,
+
+    // Generalization health metrics
+    /// Training-validation gap (train_loss - val_loss, if validation available)
+    #[serde(default)]
+    pub train_val_gap: Option<f32>,
+    /// Rate of loss change (rolling average derivative)
+    #[serde(default)]
+    pub loss_velocity: f32,
+    /// Rate of velocity change (second derivative)
+    #[serde(default)]
+    pub loss_acceleration: f32,
+    /// Diversity of gradient magnitudes (entropy measure, optional)
+    #[serde(default)]
+    pub gradient_entropy: Option<f32>,
+
+    /// Per-layer gradient norms (layer_name -> norm).
+    /// Enables tracking gradient flow through specific layers.
+    #[serde(default)]
+    pub layer_gradients: Option<HashMap<String, f32>>,
+
+    /// Per-layer gradient statistics (computed from layer_gradients).
+    /// Summarizes gradient health across all layers.
+    #[serde(default)]
+    pub layer_gradient_stats: Option<LayerGradientStats>,
+}
+
+impl StepMetrics {
+    /// Update velocity and acceleration fields from recent loss history.
+    ///
+    /// This is a helper method to populate `loss_velocity` and `loss_acceleration`
+    /// based on recent loss values. Call this after creating a StepMetrics instance
+    /// if you have access to recent loss history.
+    ///
+    /// # Arguments
+    /// - `recent_losses`: Recent loss values (ordered chronologically, current loss should be last)
+    /// - `window_size`: Number of recent losses to use for calculation (default: 30)
+    ///
+    /// # Example
+    /// ```
+    /// use training_tools::{StepMetrics, TrainingPhase};
+    /// use chrono::Utc;
+    ///
+    /// let mut metrics = StepMetrics {
+    ///     step: 100,
+    ///     loss: 2.3,
+    ///     gradient_norm: 0.5,
+    ///     phase: TrainingPhase::Full,
+    ///     was_predicted: false,
+    ///     prediction_error: None,
+    ///     step_time_ms: 150.0,
+    ///     timestamp: Utc::now(),
+    ///     tokens_this_step: 4096,
+    ///     total_tokens_trained: 409600,
+    ///     tokens_remaining: 1000000,
+    ///     confidence: 0.9,
+    ///     learning_rate: 1e-4,
+    ///     perplexity: 10.0,
+    ///     train_val_gap: None,
+    ///     loss_velocity: 0.0,
+    ///     loss_acceleration: 0.0,
+    ///     gradient_entropy: None,
+    /// };
+    ///
+    /// let recent_losses = vec![2.5, 2.4, 2.35, 2.3];
+    /// metrics.update_dynamics(&recent_losses, 10);
+    /// assert!(metrics.loss_velocity < 0.0); // Loss is decreasing
+    /// ```
+    pub fn update_dynamics(&mut self, recent_losses: &[f32], window_size: usize) {
+        let (velocity, acceleration) = calculate_loss_dynamics(recent_losses, window_size);
+        self.loss_velocity = velocity;
+        self.loss_acceleration = acceleration;
+    }
+}
+
+/// Calculate loss velocity and acceleration from loss history.
+///
+/// Uses linear regression for velocity (smoothed rate of change) and
+/// windowed velocity differences for acceleration.
+///
+/// # Arguments
+/// - `losses`: Slice of recent loss values (ordered chronologically)
+/// - `window_size`: Number of recent losses to analyze (recommended 20-50)
+///
+/// # Returns
+/// - `(velocity, acceleration)` tuple where:
+///   - `velocity`: Negative = improving loss, positive = worsening loss
+///   - `acceleration`: Negative = slowing improvement, positive = accelerating improvement
+///
+/// # Example
+/// ```
+/// use training_tools::calculate_loss_dynamics;
+///
+/// let losses = vec![2.5, 2.4, 2.3, 2.25, 2.2, 2.18, 2.15];
+/// let (velocity, acceleration) = calculate_loss_dynamics(&losses, 5);
+/// assert!(velocity < 0.0); // Loss decreasing (improving)
+/// ```
+pub fn calculate_loss_dynamics(losses: &[f32], window_size: usize) -> (f32, f32) {
+    if losses.is_empty() {
+        return (0.0, 0.0);
+    }
+
+    // Take the last `window_size` losses
+    let window_start = losses.len().saturating_sub(window_size);
+    let windowed_losses = &losses[window_start..];
+
+    if windowed_losses.len() < 2 {
+        return (0.0, 0.0);
+    }
+
+    // Calculate velocity using linear regression slope
+    let n = windowed_losses.len() as f32;
+    let x_values: Vec<f32> = (0..windowed_losses.len()).map(|i| i as f32).collect();
+
+    // Linear regression: y = mx + b, we want m (slope)
+    let x_mean = x_values.iter().sum::<f32>() / n;
+    let y_mean = windowed_losses.iter().sum::<f32>() / n;
+
+    let mut numerator = 0.0;
+    let mut denominator = 0.0;
+    for i in 0..windowed_losses.len() {
+        let x_diff = x_values[i] - x_mean;
+        let y_diff = windowed_losses[i] - y_mean;
+        numerator += x_diff * y_diff;
+        denominator += x_diff * x_diff;
+    }
+
+    let velocity = if denominator.abs() > 1e-10 {
+        numerator / denominator
+    } else {
+        0.0
+    };
+
+    // Calculate acceleration from velocity changes
+    // Split window in half and compute velocity for each half
+    let acceleration = if windowed_losses.len() >= 6 {
+        let mid = windowed_losses.len() / 2;
+        let first_half = &windowed_losses[..mid];
+        let second_half = &windowed_losses[mid..];
+
+        // Velocity for first half
+        let n1 = first_half.len() as f32;
+        let x1: Vec<f32> = (0..first_half.len()).map(|i| i as f32).collect();
+        let x1_mean = x1.iter().sum::<f32>() / n1;
+        let y1_mean = first_half.iter().sum::<f32>() / n1;
+        let mut num1 = 0.0;
+        let mut den1 = 0.0;
+        for i in 0..first_half.len() {
+            let x_diff = x1[i] - x1_mean;
+            let y_diff = first_half[i] - y1_mean;
+            num1 += x_diff * y_diff;
+            den1 += x_diff * x_diff;
+        }
+        let v1 = if den1.abs() > 1e-10 { num1 / den1 } else { 0.0 };
+
+        // Velocity for second half
+        let n2 = second_half.len() as f32;
+        let x2: Vec<f32> = (0..second_half.len()).map(|i| i as f32).collect();
+        let x2_mean = x2.iter().sum::<f32>() / n2;
+        let y2_mean = second_half.iter().sum::<f32>() / n2;
+        let mut num2 = 0.0;
+        let mut den2 = 0.0;
+        for i in 0..second_half.len() {
+            let x_diff = x2[i] - x2_mean;
+            let y_diff = second_half[i] - y2_mean;
+            num2 += x_diff * y_diff;
+            den2 += x_diff * x_diff;
+        }
+        let v2 = if den2.abs() > 1e-10 { num2 / den2 } else { 0.0 };
+
+        // Acceleration = change in velocity
+        v2 - v1
+    } else {
+        0.0
+    };
+
+    (velocity, acceleration)
+}
+
+/// Per-layer gradient statistics for diagnosing training issues.
+///
+/// Tracks aggregate statistics across all layers to identify:
+/// - Vanishing gradients (norm < 1e-6)
+/// - Exploding gradients (norm > 100.0)
+/// - Overall gradient distribution health
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+pub struct LayerGradientStats {
+    /// Maximum gradient norm across all layers
+    pub max_norm: f32,
+    /// Minimum gradient norm across all layers
+    pub min_norm: f32,
+    /// Mean gradient norm across all layers
+    pub mean_norm: f32,
+    /// Layers with gradient norm < 1e-6 (vanishing gradients)
+    pub vanishing_layers: Vec<String>,
+    /// Layers with gradient norm > 100.0 (exploding gradients)
+    pub exploding_layers: Vec<String>,
+}
+
+impl LayerGradientStats {
+    /// Threshold below which gradients are considered vanishing.
+    pub const VANISHING_THRESHOLD: f32 = 1e-6;
+    /// Threshold above which gradients are considered exploding.
+    pub const EXPLODING_THRESHOLD: f32 = 100.0;
+
+    /// Compute layer gradient statistics from a map of layer names to gradient norms.
+    ///
+    /// # Example
+    /// ```
+    /// use std::collections::HashMap;
+    /// use training_tools::LayerGradientStats;
+    ///
+    /// let mut gradients = HashMap::new();
+    /// gradients.insert("layer_0".to_string(), 0.5);
+    /// gradients.insert("layer_1".to_string(), 0.3);
+    /// gradients.insert("layer_2".to_string(), 1e-8); // vanishing
+    ///
+    /// let stats = LayerGradientStats::from_layer_gradients(&gradients);
+    /// assert_eq!(stats.vanishing_layers, vec!["layer_2".to_string()]);
+    /// assert!(stats.max_norm > 0.4);
+    /// ```
+    pub fn from_layer_gradients(layer_gradients: &HashMap<String, f32>) -> Self {
+        if layer_gradients.is_empty() {
+            return Self::default();
+        }
+
+        let norms: Vec<f32> = layer_gradients.values().copied().collect();
+        let max_norm = norms.iter().copied().fold(f32::NEG_INFINITY, f32::max);
+        let min_norm = norms.iter().copied().fold(f32::INFINITY, f32::min);
+        let mean_norm = norms.iter().sum::<f32>() / norms.len() as f32;
+
+        let vanishing_layers: Vec<String> = layer_gradients
+            .iter()
+            .filter(|(_, &norm)| norm < Self::VANISHING_THRESHOLD)
+            .map(|(name, _)| name.clone())
+            .collect();
+
+        let exploding_layers: Vec<String> = layer_gradients
+            .iter()
+            .filter(|(_, &norm)| norm > Self::EXPLODING_THRESHOLD)
+            .map(|(name, _)| name.clone())
+            .collect();
+
+        Self {
+            max_norm,
+            min_norm,
+            mean_norm,
+            vanishing_layers,
+            exploding_layers,
+        }
+    }
+
+    /// Check if there are any problematic layers (vanishing or exploding).
+    pub fn has_problems(&self) -> bool {
+        !self.vanishing_layers.is_empty() || !self.exploding_layers.is_empty()
+    }
+
+    /// Get the ratio of max to min gradient norm (spread indicator).
+    /// Returns None if min_norm is zero or negative.
+    pub fn gradient_spread(&self) -> Option<f32> {
+        if self.min_norm > 0.0 {
+            Some(self.max_norm / self.min_norm)
+        } else {
+            None
+        }
+    }
+}
+
+/// Generalization health status for detecting overfitting/underfitting.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum GeneralizationHealth {
+    /// Model is learning well, no signs of overfitting/underfitting
+    Healthy,
+    /// Model may be underfitting (high loss, slow learning)
+    Underfitting,
+    /// Model may be overfitting (train-val gap, decreasing gradient diversity)
+    Overfitting,
+    /// Insufficient data to determine health
+    Unknown,
 }
 
 /// Configuration for a training run.
@@ -554,6 +906,26 @@ impl TrainingRun {
         end - self.started_at
     }
 
+    /// Calculate current loss velocity and acceleration from recent metrics.
+    ///
+    /// Analyzes the last 30 steps (or fewer if not available) to compute:
+    /// - Velocity: Rate of loss change (negative = improving)
+    /// - Acceleration: Rate of velocity change (negative = slowing improvement)
+    ///
+    /// Returns `(0.0, 0.0)` if insufficient data is available.
+    pub fn loss_dynamics(&self) -> (f32, f32) {
+        // Use last 30 steps for dynamics calculation
+        let window_size = 30;
+
+        match self.read_recent_metrics(window_size) {
+            Ok(metrics) if metrics.len() >= 2 => {
+                let losses: Vec<f32> = metrics.iter().map(|m| m.loss).collect();
+                calculate_loss_dynamics(&losses, window_size)
+            }
+            _ => (0.0, 0.0),
+        }
+    }
+
     /// Get tokens per second.
     pub fn tokens_per_second(&self) -> f64 {
         let elapsed_secs = self.elapsed().num_seconds() as f64;
@@ -604,6 +976,171 @@ impl TrainingRun {
         }
 
         Ok(all_metrics)
+    }
+
+    /// Assess generalization health based on recent metrics.
+    ///
+    /// Analyzes recent training metrics to detect signs of overfitting or underfitting:
+    /// - Overfitting: Large train-val gap, decreasing gradient entropy, slowing loss velocity
+    /// - Underfitting: Consistently high loss, positive loss acceleration (loss increasing)
+    /// - Healthy: Good progress, stable metrics, no concerning trends
+    pub fn generalization_health(&self) -> GeneralizationHealth {
+        // Need at least 10 steps for meaningful analysis
+        let recent_metrics = match self.read_recent_metrics(10) {
+            Ok(m) if m.len() >= 5 => m,
+            _ => return GeneralizationHealth::Unknown,
+        };
+
+        // Check for train-validation gap (strong overfitting signal)
+        let has_large_gap = recent_metrics
+            .iter()
+            .filter_map(|m| m.train_val_gap)
+            .any(|gap| gap > 0.5); // Gap > 0.5 is concerning
+
+        // Check loss velocity trend (should be negative in healthy training)
+        let avg_velocity: f32 = recent_metrics.iter().map(|m| m.loss_velocity).sum::<f32>()
+            / recent_metrics.len() as f32;
+
+        // Check loss acceleration (positive = loss increasing = bad)
+        let avg_acceleration: f32 = recent_metrics
+            .iter()
+            .map(|m| m.loss_acceleration)
+            .sum::<f32>()
+            / recent_metrics.len() as f32;
+
+        // Check gradient entropy trend (decreasing = memorization)
+        let entropy_trend = if recent_metrics.len() >= 6 {
+            let first_half: Vec<_> = recent_metrics
+                .iter()
+                .take(recent_metrics.len() / 2)
+                .filter_map(|m| m.gradient_entropy)
+                .collect();
+            let second_half: Vec<_> = recent_metrics
+                .iter()
+                .skip(recent_metrics.len() / 2)
+                .filter_map(|m| m.gradient_entropy)
+                .collect();
+
+            if !first_half.is_empty() && !second_half.is_empty() {
+                let first_avg: f32 = first_half.iter().sum::<f32>() / first_half.len() as f32;
+                let second_avg: f32 = second_half.iter().sum::<f32>() / second_half.len() as f32;
+                Some(second_avg - first_avg)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        // Decision logic
+        if has_large_gap {
+            // Clear overfitting signal from train-val gap
+            GeneralizationHealth::Overfitting
+        } else if let Some(trend) = entropy_trend {
+            // Entropy decreasing significantly = overfitting
+            if trend < -0.1 && avg_velocity > -0.01 {
+                GeneralizationHealth::Overfitting
+            } else if avg_acceleration > 0.001 {
+                // Loss increasing = underfitting
+                GeneralizationHealth::Underfitting
+            } else {
+                GeneralizationHealth::Healthy
+            }
+        } else if avg_acceleration > 0.001 {
+            // Loss increasing without other signals
+            GeneralizationHealth::Underfitting
+        } else if avg_velocity.abs() < 0.0001 && self.current_loss > 3.0 {
+            // Stuck at high loss = underfitting
+            GeneralizationHealth::Underfitting
+        } else {
+            GeneralizationHealth::Healthy
+        }
+    }
+
+    /// Get the gradient norm history for a specific layer.
+    ///
+    /// Reads all metrics from the metrics file and extracts the gradient norm
+    /// for the specified layer at each step where it was recorded.
+    ///
+    /// # Arguments
+    /// * `layer` - The layer name to get gradient history for
+    ///
+    /// # Returns
+    /// A vector of gradient norms in chronological order (oldest first).
+    /// Returns an empty vector if no metrics exist or the layer wasn't tracked.
+    ///
+    /// # Example
+    /// ```ignore
+    /// let history = run.layer_gradient_history("transformer.layer_0.attention");
+    /// if history.len() > 10 {
+    ///     let recent_mean = history.iter().rev().take(10).sum::<f32>() / 10.0;
+    ///     println!("Recent average gradient norm: {}", recent_mean);
+    /// }
+    /// ```
+    pub fn layer_gradient_history(&self, layer: &str) -> Vec<f32> {
+        // Read all available metrics
+        let all_metrics = match self.read_recent_metrics(usize::MAX) {
+            Ok(m) => m,
+            Err(_) => return Vec::new(),
+        };
+
+        all_metrics
+            .iter()
+            .filter_map(|m| {
+                m.layer_gradients
+                    .as_ref()
+                    .and_then(|lg| lg.get(layer).copied())
+            })
+            .collect()
+    }
+
+    /// Identify layers with problematic gradients across training history.
+    ///
+    /// Analyzes all recorded metrics to find layers that have experienced
+    /// vanishing or exploding gradients at any point during training.
+    ///
+    /// # Returns
+    /// A tuple of `(vanishing_layers, exploding_layers)` where:
+    /// - `vanishing_layers`: Layer names that had gradient norm < 1e-6
+    /// - `exploding_layers`: Layer names that had gradient norm > 100.0
+    ///
+    /// Layers are returned sorted alphabetically for consistent output.
+    ///
+    /// # Example
+    /// ```ignore
+    /// let (vanishing, exploding) = run.problematic_layers();
+    /// if !vanishing.is_empty() {
+    ///     println!("Warning: {} layers have vanishing gradients", vanishing.len());
+    ///     for layer in &vanishing {
+    ///         println!("  - {}", layer);
+    ///     }
+    /// }
+    /// ```
+    pub fn problematic_layers(&self) -> (Vec<String>, Vec<String>) {
+        use std::collections::HashSet;
+
+        let all_metrics = match self.read_recent_metrics(usize::MAX) {
+            Ok(m) => m,
+            Err(_) => return (Vec::new(), Vec::new()),
+        };
+
+        let mut vanishing_set: HashSet<String> = HashSet::new();
+        let mut exploding_set: HashSet<String> = HashSet::new();
+
+        for metric in &all_metrics {
+            if let Some(ref stats) = metric.layer_gradient_stats {
+                vanishing_set.extend(stats.vanishing_layers.iter().cloned());
+                exploding_set.extend(stats.exploding_layers.iter().cloned());
+            }
+        }
+
+        let mut vanishing: Vec<String> = vanishing_set.into_iter().collect();
+        let mut exploding: Vec<String> = exploding_set.into_iter().collect();
+
+        vanishing.sort();
+        exploding.sort();
+
+        (vanishing, exploding)
     }
 }
 
@@ -689,5 +1226,329 @@ impl RunManager {
     /// Remove a run from tracking (does not delete files).
     pub fn unregister_run(&mut self, run_id: &str) -> Option<TrainingRun> {
         self.runs.remove(run_id)
+    }
+
+    /// Detect and mark stale runs as cancelled.
+    ///
+    /// A run is considered stale if:
+    /// - Status is "running" or "initializing"
+    /// - The metrics file hasn't been modified in `stale_threshold` duration
+    /// - OR the run has 0 steps and was started more than `stale_threshold` ago
+    ///
+    /// Returns the number of runs marked as stale.
+    pub fn mark_stale_runs(&mut self, stale_threshold: chrono::Duration) -> usize {
+        let now = Utc::now();
+        let mut stale_count = 0;
+
+        for run in self.runs.values_mut() {
+            if !run.status.is_active() {
+                continue;
+            }
+
+            let is_stale = if run.current_step == 0 {
+                // Run never started - check if it's been too long since creation
+                now - run.started_at > stale_threshold
+            } else {
+                // Check metrics file modification time
+                if let Ok(metadata) = std::fs::metadata(&run.metrics_file) {
+                    if let Ok(modified) = metadata.modified() {
+                        let modified_dt: DateTime<Utc> = modified.into();
+                        now - modified_dt > stale_threshold
+                    } else {
+                        // Can't get mtime, check updated_at
+                        now - run.updated_at > stale_threshold
+                    }
+                } else {
+                    // No metrics file, check updated_at
+                    now - run.updated_at > stale_threshold
+                }
+            };
+
+            if is_stale {
+                run.status = TrainingStatus::Cancelled;
+                run.error_message =
+                    Some("Automatically marked as stale - no updates detected".to_string());
+                run.ended_at = Some(now);
+                stale_count += 1;
+
+                // Try to save the updated state
+                let _ = run.save();
+            }
+        }
+
+        stale_count
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_calculate_loss_dynamics_decreasing() {
+        // Steadily decreasing loss (good training)
+        let losses = vec![2.5, 2.4, 2.3, 2.2, 2.1, 2.0];
+        let (velocity, _acceleration) = calculate_loss_dynamics(&losses, 10);
+
+        // Velocity should be negative (loss decreasing)
+        assert!(
+            velocity < 0.0,
+            "Velocity should be negative for decreasing loss"
+        );
+        assert!(
+            velocity.abs() > 0.05,
+            "Velocity magnitude should be significant"
+        );
+    }
+
+    #[test]
+    fn test_calculate_loss_dynamics_increasing() {
+        // Increasing loss (bad training)
+        let losses = vec![2.0, 2.1, 2.2, 2.3, 2.4, 2.5];
+        let (velocity, _acceleration) = calculate_loss_dynamics(&losses, 10);
+
+        // Velocity should be positive (loss increasing)
+        assert!(
+            velocity > 0.0,
+            "Velocity should be positive for increasing loss"
+        );
+    }
+
+    #[test]
+    fn test_calculate_loss_dynamics_plateau() {
+        // Flat loss (plateau)
+        let losses = vec![2.0, 2.0, 2.0, 2.0, 2.0, 2.0];
+        let (velocity, acceleration) = calculate_loss_dynamics(&losses, 10);
+
+        // Velocity should be near zero
+        assert!(
+            velocity.abs() < 0.01,
+            "Velocity should be near zero for plateau"
+        );
+        assert!(
+            acceleration.abs() < 0.01,
+            "Acceleration should be near zero for plateau"
+        );
+    }
+
+    #[test]
+    fn test_calculate_loss_dynamics_acceleration() {
+        // Loss decreasing, then slowing (negative acceleration)
+        let losses = vec![3.0, 2.8, 2.6, 2.45, 2.35, 2.3, 2.28, 2.27];
+        let (_velocity, acceleration) = calculate_loss_dynamics(&losses, 10);
+
+        // Acceleration should be positive (velocity becoming less negative = slowing improvement)
+        assert!(
+            acceleration > 0.0,
+            "Acceleration should be positive when improvement slows"
+        );
+    }
+
+    #[test]
+    fn test_calculate_loss_dynamics_empty() {
+        let losses = vec![];
+        let (velocity, acceleration) = calculate_loss_dynamics(&losses, 10);
+        assert_eq!(velocity, 0.0);
+        assert_eq!(acceleration, 0.0);
+    }
+
+    #[test]
+    fn test_calculate_loss_dynamics_single() {
+        let losses = vec![2.5];
+        let (velocity, acceleration) = calculate_loss_dynamics(&losses, 10);
+        assert_eq!(velocity, 0.0);
+        assert_eq!(acceleration, 0.0);
+    }
+
+    #[test]
+    fn test_calculate_loss_dynamics_window_size() {
+        // Window size larger than data
+        let losses = vec![2.5, 2.4, 2.3];
+        let (velocity1, _) = calculate_loss_dynamics(&losses, 10);
+        let (velocity2, _) = calculate_loss_dynamics(&losses, 3);
+
+        // Should produce same result (uses available data)
+        assert!((velocity1 - velocity2).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_training_run_loss_dynamics() {
+        use std::path::PathBuf;
+
+        // Create a test run
+        let config = TrainingConfig {
+            config_version: 1,
+            config_hash: String::new(),
+            model_size: "test".to_string(),
+            num_parameters: 1000,
+            hidden_size: 64,
+            num_layers: 2,
+            num_heads: 2,
+            max_seq_length: 128,
+            batch_size: 4,
+            learning_rate: 1e-4,
+            max_steps: 100,
+            gradient_checkpointing: false,
+            checkpoint_interval: 10,
+            device: "cpu".to_string(),
+        };
+
+        let run = TrainingRun::new("test_run", config, PathBuf::from("/tmp/test"));
+
+        // Should return (0.0, 0.0) when no metrics available
+        let (velocity, acceleration) = run.loss_dynamics();
+        assert_eq!(velocity, 0.0);
+        assert_eq!(acceleration, 0.0);
+    }
+
+    #[test]
+    fn test_layer_gradient_stats_default() {
+        let stats = LayerGradientStats::default();
+        assert_eq!(stats.max_norm, 0.0);
+        assert_eq!(stats.min_norm, 0.0);
+        assert_eq!(stats.mean_norm, 0.0);
+        assert!(stats.vanishing_layers.is_empty());
+        assert!(stats.exploding_layers.is_empty());
+        assert!(!stats.has_problems());
+    }
+
+    #[test]
+    fn test_layer_gradient_stats_from_layer_gradients() {
+        let mut gradients = HashMap::new();
+        gradients.insert("layer_0".to_string(), 0.5);
+        gradients.insert("layer_1".to_string(), 0.3);
+        gradients.insert("layer_2".to_string(), 0.4);
+
+        let stats = LayerGradientStats::from_layer_gradients(&gradients);
+
+        assert!((stats.max_norm - 0.5).abs() < 1e-6);
+        assert!((stats.min_norm - 0.3).abs() < 1e-6);
+        assert!((stats.mean_norm - 0.4).abs() < 1e-6);
+        assert!(stats.vanishing_layers.is_empty());
+        assert!(stats.exploding_layers.is_empty());
+        assert!(!stats.has_problems());
+    }
+
+    #[test]
+    fn test_layer_gradient_stats_vanishing() {
+        let mut gradients = HashMap::new();
+        gradients.insert("layer_0".to_string(), 0.5);
+        gradients.insert("layer_1".to_string(), 1e-8);
+
+        let stats = LayerGradientStats::from_layer_gradients(&gradients);
+
+        assert_eq!(stats.vanishing_layers.len(), 1);
+        assert!(stats.vanishing_layers.contains(&"layer_1".to_string()));
+        assert!(stats.has_problems());
+    }
+
+    #[test]
+    fn test_layer_gradient_stats_exploding() {
+        let mut gradients = HashMap::new();
+        gradients.insert("layer_0".to_string(), 0.5);
+        gradients.insert("layer_1".to_string(), 150.0);
+
+        let stats = LayerGradientStats::from_layer_gradients(&gradients);
+
+        assert_eq!(stats.exploding_layers.len(), 1);
+        assert!(stats.exploding_layers.contains(&"layer_1".to_string()));
+        assert!(stats.has_problems());
+    }
+
+    #[test]
+    fn test_layer_gradient_stats_gradient_spread() {
+        let mut gradients = HashMap::new();
+        gradients.insert("layer_0".to_string(), 0.1);
+        gradients.insert("layer_1".to_string(), 1.0);
+
+        let stats = LayerGradientStats::from_layer_gradients(&gradients);
+
+        let spread = stats.gradient_spread().unwrap();
+        assert!((spread - 10.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_layer_gradient_stats_gradient_spread_zero() {
+        let mut gradients = HashMap::new();
+        gradients.insert("layer_0".to_string(), 0.0);
+        gradients.insert("layer_1".to_string(), 1.0);
+
+        let stats = LayerGradientStats::from_layer_gradients(&gradients);
+
+        assert!(stats.gradient_spread().is_none());
+    }
+
+    #[test]
+    fn test_loss_dynamics_tracker_creation() {
+        let tracker = LossDynamicsTracker::new(30);
+        assert!(tracker.history().is_empty());
+    }
+
+    #[test]
+    fn test_loss_dynamics_tracker_decreasing_loss() {
+        let mut tracker = LossDynamicsTracker::new(10);
+        let losses = vec![2.5, 2.4, 2.3, 2.2, 2.1, 2.0];
+
+        for loss in losses {
+            let (velocity, _) = tracker.update(loss);
+            // Once we have enough data, velocity should be negative
+            if tracker.history().len() >= 3 {
+                assert!(
+                    velocity <= 0.0,
+                    "Velocity should be non-positive for decreasing loss sequence"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_loss_dynamics_tracker_window_size() {
+        let mut tracker = LossDynamicsTracker::new(5);
+
+        // Add more than window size elements
+        for i in 0..10 {
+            tracker.update(10.0 - i as f32);
+        }
+
+        // History should not exceed window size
+        assert!(
+            tracker.history().len() <= 5,
+            "History length should not exceed window size"
+        );
+    }
+
+    #[test]
+    fn test_loss_dynamics_tracker_reset() {
+        let mut tracker = LossDynamicsTracker::new(10);
+        tracker.update(2.5);
+        tracker.update(2.4);
+        assert!(!tracker.history().is_empty());
+
+        tracker.reset();
+        assert!(tracker.history().is_empty());
+    }
+
+    #[test]
+    fn test_loss_dynamics_tracker_acceleration() {
+        let mut tracker = LossDynamicsTracker::new(20);
+
+        // Simulate improving loss that is slowing down
+        let losses = vec![
+            3.0, 2.8, 2.6, 2.45, 2.35, 2.3, 2.28, 2.27, 2.26, 2.26,
+        ];
+
+        let mut last_acceleration = 0.0;
+        for loss in losses {
+            let (_, accel) = tracker.update(loss);
+            last_acceleration = accel;
+        }
+
+        // When improvement slows, acceleration should become positive
+        if tracker.history().len() >= 6 {
+            assert!(
+                last_acceleration >= 0.0,
+                "Acceleration should be non-negative when improvement is slowing"
+            );
+        }
     }
 }

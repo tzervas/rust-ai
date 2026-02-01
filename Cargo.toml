@@ -1,38 +1,44 @@
 [workspace]
 resolver = "2"
 members = [
-    "axolotl-rs",
+    # "axolotl-rs",  # Temporarily excluded: reqwest brings js-sys conflict with uuid
     "bitnet-quantize",
     "hybrid-predict-trainer-rs",
     "peft-rs",
     "qlora-rs",
-    "rust-ai-core",
+    # "rust-ai-core",  # Temporarily excluded: cubecl uuid/js-sys conflict
     "training-tools",
     "trit-vsa",
     "tritter-accel",
     "tritter-model-rs",
-    "unsloth-rs",
+    # "unsloth-rs",  # Temporarily excluded: cubecl uuid/js-sys conflict
     "vsa-optim-rs",
 ]
-exclude = ["moltbook-proposal/src/web/wasm"]
+exclude = [
+    "moltbook-proposal/src/web/wasm",
+    "axolotl-rs",     # reqwest brings js-sys conflict with uuid/burn-core
+    "rust-ai-core",   # cubecl brings uuid/js-sys conflict with burn-core
+    "unsloth-rs",     # cubecl brings uuid/js-sys conflict with burn-core
+]
 
 # Ensure all crates use the local versions for development
 [patch.crates-io]
 peft-rs = { path = "peft-rs" }
 qlora-rs = { path = "qlora-rs" }
-unsloth-rs = { path = "unsloth-rs" }
+# unsloth-rs = { path = "unsloth-rs" }  # Excluded: cubecl conflict
 trit-vsa = { path = "trit-vsa" }
 bitnet-quantize = { path = "bitnet-quantize" }
-axolotl-rs = { path = "axolotl-rs" }
+# axolotl-rs = { path = "axolotl-rs" }  # Excluded: reqwest js-sys conflict
 vsa-optim-rs = { path = "vsa-optim-rs" }
 tritter-accel = { path = "tritter-accel" }
-rust-ai-core = { path = "rust-ai-core" }
+# rust-ai-core = { path = "rust-ai-core" }  # Excluded: cubecl conflict
 hybrid-predict-trainer-rs = { path = "hybrid-predict-trainer-rs" }
 
 # Use maintained candle fork with qlora-gemm
 candle-core = { git = "https://github.com/tzervas/qlora-candle.git", branch = "use-qlora-gemm" }
 candle-nn = { git = "https://github.com/tzervas/qlora-candle.git", branch = "use-qlora-gemm" }
 candle-transformers = { git = "https://github.com/tzervas/qlora-candle.git", branch = "use-qlora-gemm" }
+
 
 # Patch git dependencies to use local paths for development
 [patch."https://github.com/tzervas/peft-rs"]
@@ -41,8 +47,8 @@ peft-rs = { path = "peft-rs" }
 [patch."https://github.com/tzervas/qlora-rs"]
 qlora-rs = { path = "qlora-rs" }
 
-[patch."https://github.com/tzervas/unsloth-rs"]
-unsloth-rs = { path = "unsloth-rs" }
+# [patch."https://github.com/tzervas/unsloth-rs"]  # Excluded: cubecl conflict
+# unsloth-rs = { path = "unsloth-rs" }
 
 [patch."https://github.com/tzervas/trit-vsa"]
 trit-vsa = { path = "trit-vsa" }
@@ -50,8 +56,8 @@ trit-vsa = { path = "trit-vsa" }
 [patch."https://github.com/tzervas/bitnet-quantize"]
 bitnet-quantize = { path = "bitnet-quantize" }
 
-[patch."https://github.com/tzervas/axolotl-rs"]
-axolotl-rs = { path = "axolotl-rs" }
+# [patch."https://github.com/tzervas/axolotl-rs"]  # Excluded: reqwest js-sys conflict
+# axolotl-rs = { path = "axolotl-rs" }
 
 [patch."https://github.com/tzervas/vsa-optim-rs"]
 vsa-optim-rs = { path = "vsa-optim-rs" }
@@ -83,14 +89,18 @@ thiserror = "2.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 anyhow = "1.0"
-criterion = "0.8"
+# Use default-features = false to avoid plotters -> web-sys -> js-sys conflict with uuid
+criterion = { version = "0.8", default-features = false }
 half = "2.7"
 
-# CubeCL GPU compute
-cubecl = "0.9"
-cubecl-cuda = "0.9"
-cubecl-core = "0.9"
-cubecl-runtime = "0.9"
+# CubeCL GPU compute - COMMENTED OUT due to uuid/js-sys conflict
+# cubecl brings wasm-bindgen-futures which pins js-sys v0.3.72, but
+# uuid v1.19+ (from burn-core) requires js-sys with "std" feature (0.3.74+)
+# Uncomment once upstream cubecl is updated
+# cubecl = "0.9"
+# cubecl-cuda = "0.9"
+# cubecl-core = "0.9"
+# cubecl-runtime = "0.9"
 
 [workspace.lints.rust]
 unsafe_code = "deny"

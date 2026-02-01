@@ -52,10 +52,7 @@ fn build_arrays(
     let steps: UInt64Array = metrics.iter().map(|m| Some(m.step)).collect();
     let losses: Float32Array = metrics.iter().map(|m| Some(m.loss)).collect();
     let gradient_norms: Float32Array = metrics.iter().map(|m| Some(m.gradient_norm)).collect();
-    let phases: StringArray = metrics
-        .iter()
-        .map(|m| Some(m.phase.to_string()))
-        .collect();
+    let phases: StringArray = metrics.iter().map(|m| Some(m.phase.to_string())).collect();
     let was_predicted: BooleanArray = metrics.iter().map(|m| Some(m.was_predicted)).collect();
     // prediction_error is already Option<f32>
     let prediction_errors: Float32Array = metrics.iter().map(|m| m.prediction_error).collect();
@@ -123,8 +120,16 @@ pub fn export_metrics_to_parquet<P: AsRef<Path>>(
     }
 
     let schema = create_schema();
-    let (steps, losses, gradient_norms, phases, was_predicted, prediction_errors, step_times, timestamps) =
-        build_arrays(metrics);
+    let (
+        steps,
+        losses,
+        gradient_norms,
+        phases,
+        was_predicted,
+        prediction_errors,
+        step_times,
+        timestamps,
+    ) = build_arrays(metrics);
 
     // Create record batch
     let batch = RecordBatch::try_new(
@@ -167,8 +172,16 @@ pub fn export_metrics_to_parquet_with_props<P: AsRef<Path>>(
     }
 
     let schema = create_schema();
-    let (steps, losses, gradient_norms, phases, was_predicted, prediction_errors, step_times, timestamps) =
-        build_arrays(metrics);
+    let (
+        steps,
+        losses,
+        gradient_norms,
+        phases,
+        was_predicted,
+        prediction_errors,
+        step_times,
+        timestamps,
+    ) = build_arrays(metrics);
 
     let batch = RecordBatch::try_new(
         schema.clone(),
@@ -215,6 +228,12 @@ mod tests {
                 total_tokens_trained: 2048,
                 tokens_remaining: 1_000_000,
                 confidence: 0.0,
+                learning_rate: 0.0,
+                perplexity: 10.5_f32.exp(),
+                train_val_gap: None,
+                loss_velocity: 0.0,
+                loss_acceleration: 0.0,
+                gradient_entropy: None,
             },
             StepMetrics {
                 step: 1,
@@ -229,6 +248,12 @@ mod tests {
                 total_tokens_trained: 4096,
                 tokens_remaining: 998_000,
                 confidence: 0.0,
+                learning_rate: 3e-4,
+                perplexity: 9.8_f32.exp(),
+                train_val_gap: None,
+                loss_velocity: -0.05,
+                loss_acceleration: 0.0,
+                gradient_entropy: None,
             },
             StepMetrics {
                 step: 2,
@@ -243,6 +268,12 @@ mod tests {
                 total_tokens_trained: 6144,
                 tokens_remaining: 996_000,
                 confidence: 0.85,
+                learning_rate: 3e-4,
+                perplexity: 9.2_f32.exp(),
+                train_val_gap: None,
+                loss_velocity: -0.08,
+                loss_acceleration: -0.003,
+                gradient_entropy: Some(2.1),
             },
         ]
     }

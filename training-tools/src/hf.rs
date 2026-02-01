@@ -181,10 +181,7 @@ impl ModelCardData {
             "| Hidden Size | {} |\n",
             self.architecture.hidden_size
         ));
-        md.push_str(&format!(
-            "| Layers | {} |\n",
-            self.architecture.num_layers
-        ));
+        md.push_str(&format!("| Layers | {} |\n", self.architecture.num_layers));
         md.push_str(&format!(
             "| Attention Heads | {} |\n",
             self.architecture.num_heads
@@ -338,14 +335,13 @@ impl HuggingFaceUploader {
     /// Check if huggingface-cli is available and authenticated.
     /// Returns Ok(false) if CLI is not installed or not authenticated.
     pub fn check_auth(&self) -> anyhow::Result<bool> {
-        match Command::new("huggingface-cli")
-            .args(["whoami"])
-            .output()
-        {
+        match Command::new("huggingface-cli").args(["whoami"]).output() {
             Ok(output) => Ok(output.status.success()),
             Err(e) => {
                 if e.kind() == std::io::ErrorKind::NotFound {
-                    tracing::warn!("huggingface-cli not found - install with: pip install huggingface_hub");
+                    tracing::warn!(
+                        "huggingface-cli not found - install with: pip install huggingface_hub"
+                    );
                     Ok(false)
                 } else {
                     Err(e.into())

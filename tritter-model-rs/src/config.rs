@@ -107,6 +107,42 @@ impl TritterConfig {
         }
     }
 
+    /// 1B parameter configuration for aNa model
+    ///
+    /// Optimized for the aNa (Autonomous Networked Assistant) model:
+    /// - 2048 hidden dimensions
+    /// - 24 transformer layers
+    /// - 16 attention heads
+    /// - 32K vocabulary (for efficiency with tool usage tokens)
+    /// - 4096 max sequence length (balances context with memory)
+    /// - 8192 intermediate size (4x hidden for MLP)
+    ///
+    /// # Example
+    /// ```
+    /// use tritter_model_rs::TritterConfig;
+    /// let config = TritterConfig::preset_1b();
+    /// assert_eq!(config.hidden_size, 2048);
+    /// assert_eq!(config.num_layers, 24);
+    /// ```
+    pub fn preset_1b() -> Self {
+        Self {
+            hidden_size: 2048,
+            num_layers: 24,
+            num_heads: 16,
+            num_kv_heads: Some(8), // GQA 2:1
+            intermediate_size: 8192, // 4x hidden for better MLP capacity
+            vocab_size: 32000,
+            max_seq_length: 4096,
+            dropout: 0.1,
+            layer_norm_eps: 1e-5,
+            use_bitnet: true,
+            use_qk_norm: true,
+            rope_theta: 10000.0,
+            gradient_checkpointing: true,
+            checkpoint_every_n_layers: 4,
+        }
+    }
+
     /// 3B parameter configuration
     pub fn xlarge_3b() -> Self {
         Self {
@@ -386,6 +422,29 @@ mod tests {
         assert!(p500m < p1b);
         assert!(p100m > 50_000_000); // At least 50M
         assert!(p1b > 500_000_000); // At least 500M
+    }
+
+    #[test]
+    fn test_preset_1b() {
+        let config = TritterConfig::preset_1b();
+
+        // Verify aNa model specifications
+        assert_eq!(config.hidden_size, 2048);
+        assert_eq!(config.num_layers, 24);
+        assert_eq!(config.num_heads, 16);
+        assert_eq!(config.vocab_size, 32000);
+        assert_eq!(config.max_seq_length, 4096);
+        assert_eq!(config.intermediate_size, 8192);
+
+        // Verify BitNet and other features
+        assert!(config.use_bitnet);
+        assert!(config.use_qk_norm);
+        assert!(config.gradient_checkpointing);
+
+        // Parameter count should be in ~1B range (many "1B" models are 1-2B)
+        let params = config.parameter_count();
+        assert!(params > 800_000_000, "Expected > 800M params, got {}", params);
+        assert!(params < 2_000_000_000, "Expected < 2B params, got {}", params);
     }
 
     #[test]

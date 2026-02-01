@@ -19,7 +19,9 @@ use candle_core::Device;
 use clap::Parser;
 use tracing_subscriber::EnvFilter;
 
-use training_tools::progressive::{ProgressiveConfig, ProgressiveTrainer, TrainingStage};
+use training_tools::progressive::{
+    DatasetBlendStrategy, ProgressiveConfig, ProgressiveTrainer, TrainingStage,
+};
 
 #[derive(Parser)]
 #[command(name = "train")]
@@ -90,10 +92,20 @@ struct Args {
     #[arg(long, default_value = "0")]
     cuda_device: usize,
 
-    /// Path to dataset (JSONL or Parquet files/directory)
+    /// Paths to datasets (JSONL or Parquet files/directories)
+    /// Can be specified multiple times for multi-dataset training
     /// If not provided, uses random tokens (testing mode only)
-    #[arg(short = 'd', long)]
-    dataset: Option<PathBuf>,
+    ///
+    /// Example: --dataset /data/code --dataset /data/instruction --dataset /data/alignment
+    #[arg(short = 'd', long, action = clap::ArgAction::Append)]
+    dataset: Vec<PathBuf>,
+
+    /// Dataset blending strategy when using multiple datasets
+    /// - sequential: Process each dataset fully before moving to next
+    /// - roundrobin: Cycle through datasets alternating examples
+    /// - weighted: Sample proportionally (default weights are equal)
+    #[arg(long, default_value = "roundrobin")]
+    blend_strategy: String,
 
     /// Text column name in dataset (auto-detected if not provided)
     #[arg(long)]
@@ -158,8 +170,12 @@ fn main() -> anyhow::Result<()> {
         #[cfg(not(feature = "cuda"))]
         {
             tracing::error!("CUDA requested but not compiled with cuda feature!");
-            tracing::error!("Rebuild with: cargo build -p training-tools --release --features cuda");
-            anyhow::bail!("CUDA feature not enabled. Use --no-cuda to run on CPU (not recommended).");
+            tracing::error!(
+                "Rebuild with: cargo build -p training-tools --release --features cuda"
+            );
+            anyhow::bail!(
+                "CUDA feature not enabled. Use --no-cuda to run on CPU (not recommended)."
+            );
         }
     } else {
         tracing::warn!("Running on CPU - this will be very slow!");
@@ -178,12 +194,22 @@ fn main() -> anyhow::Result<()> {
     tracing::info!("Batch size: {}", args.batch_size);
     tracing::info!("Sequence length: {}", args.seq_length);
     tracing::info!("Learning rate: {:.2e}", args.learning_rate);
-    tracing::info!("Gradient checkpointing: every {} layers", args.grad_checkpoint_interval);
+    tracing::info!(
+        "Gradient checkpointing: every {} layers",
+        args.grad_checkpoint_interval
+    );
     if args.upload {
-        tracing::info!("HuggingFace upload: enabled (user: {})", args.hf_user.as_ref().unwrap());
+        tracing::info!(
+            "HuggingFace upload: enabled (user: {})",
+            args.hf_user.as_ref().unwrap()
+        );
     }
-    if let Some(ref dataset) = args.dataset {
-        tracing::info!("Dataset: {:?}", dataset);
+    if !args.dataset.is_empty() {
+        tracing::info!("Datasets ({}):", args.dataset.len());
+        for (i, ds) in args.dataset.iter().enumerate() {
+            tracing::info!("  [{}] {:?}", i + 1, ds);
+        }
+        tracing::info!("Blend strategy: {}", args.blend_strategy);
     } else {
         tracing::warn!("No dataset provided - using random tokens (testing mode)");
     }
@@ -191,6 +217,20 @@ fn main() -> anyhow::Result<()> {
 
     // Create runs directory
     std::fs::create_dir_all(&args.runs_dir)?;
+
+    // Parse blend strategy
+    let blend_strategy = match args.blend_strategy.to_lowercase().as_str() {
+        "sequential" | "seq" => DatasetBlendStrategy::Sequential,
+        "roundrobin" | "rr" | "round-robin" => DatasetBlendStrategy::RoundRobin,
+        "weighted" | "w" => DatasetBlendStrategy::Weighted,
+        _ => {
+            tracing::warn!(
+                "Unknown blend strategy '{}', defaulting to RoundRobin",
+                args.blend_strategy
+            );
+            DatasetBlendStrategy::RoundRobin
+        }
+    };
 
     // Create progressive config
     let config = ProgressiveConfig {
@@ -206,7 +246,9 @@ fn main() -> anyhow::Result<()> {
         upload_to_hf: args.upload,
         hf_username: args.hf_user,
         delete_after_upload: args.delete_after_upload,
-        dataset_path: args.dataset,
+        dataset_path: None, // Deprecated, use dataset_paths
+        dataset_paths: args.dataset,
+        dataset_blend_strategy: blend_strategy,
         text_column: args.text_column,
     };
 

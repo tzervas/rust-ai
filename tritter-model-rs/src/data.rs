@@ -1048,6 +1048,193 @@ pub fn collate_batch_with_max_len(
     Ok(TritterBatch::new(input_ids, Some(attention_mask)))
 }
 
+/// Strategy for blending multiple datasets.
+#[derive(Debug, Clone, Copy, Default)]
+pub enum DatasetBlendingStrategy {
+    /// Process each dataset sequentially until exhausted, then move to next.
+    #[default]
+    Sequential,
+    /// Cycle through datasets in round-robin fashion.
+    RoundRobin,
+    /// Interleave datasets with weighted sampling probabilities.
+    /// Weights should sum to 1.0 for proper distribution.
+    Weighted,
+}
+
+/// Composite dataset that combines multiple streaming datasets.
+///
+/// Supports different blending strategies for training on heterogeneous data sources:
+/// - Code repositories (largest portion)
+/// - Instruction-following data
+/// - Alignment data
+/// - Domain-specific data (e.g., IaC)
+///
+/// # Example
+/// ```no_run
+/// use tritter_model_rs::data::{CompositeDataset, JsonlDataset, DatasetBlendingStrategy};
+///
+/// let code_ds = JsonlDataset::new("/data/code", 2048).unwrap();
+/// let inst_ds = JsonlDataset::new("/data/instruction", 2048).unwrap();
+///
+/// let composite = CompositeDataset::new(vec![
+///     Box::new(code_ds),
+///     Box::new(inst_ds),
+/// ]).with_strategy(DatasetBlendingStrategy::RoundRobin);
+/// ```
+pub struct CompositeDataset {
+    /// Child datasets
+    datasets: Vec<Box<dyn StreamingDataset>>,
+    /// Current dataset index
+    current_idx: usize,
+    /// Blending strategy
+    strategy: DatasetBlendingStrategy,
+    /// Weights for weighted sampling (must sum to ~1.0)
+    weights: Vec<f32>,
+    /// RNG for weighted sampling
+    rng_state: u64,
+    /// Number of exhausted datasets (for sequential mode)
+    exhausted_count: usize,
+}
+
+impl CompositeDataset {
+    /// Create a new composite dataset from multiple child datasets.
+    pub fn new(datasets: Vec<Box<dyn StreamingDataset>>) -> Self {
+        let n = datasets.len();
+        let weights = vec![1.0 / n as f32; n]; // Equal weights by default
+        Self {
+            datasets,
+            current_idx: 0,
+            strategy: DatasetBlendingStrategy::default(),
+            weights,
+            rng_state: 42,
+            exhausted_count: 0,
+        }
+    }
+
+    /// Set the blending strategy.
+    pub fn with_strategy(mut self, strategy: DatasetBlendingStrategy) -> Self {
+        self.strategy = strategy;
+        self
+    }
+
+    /// Set weights for weighted sampling.
+    /// Weights should roughly sum to 1.0 but will be normalized if not.
+    pub fn with_weights(mut self, weights: Vec<f32>) -> Self {
+        // Normalize weights
+        let sum: f32 = weights.iter().sum();
+        if sum > 0.0 {
+            self.weights = weights.iter().map(|w| w / sum).collect();
+        }
+        self
+    }
+
+    /// Get the number of child datasets.
+    pub fn num_datasets(&self) -> usize {
+        self.datasets.len()
+    }
+
+    /// Simple xorshift RNG for weighted sampling.
+    fn next_random(&mut self) -> f32 {
+        self.rng_state ^= self.rng_state << 13;
+        self.rng_state ^= self.rng_state >> 7;
+        self.rng_state ^= self.rng_state << 17;
+        (self.rng_state as f32) / (u64::MAX as f32)
+    }
+
+    /// Select next dataset index based on strategy.
+    fn select_next_dataset(&mut self) -> Option<usize> {
+        if self.datasets.is_empty() {
+            return None;
+        }
+
+        match self.strategy {
+            DatasetBlendingStrategy::Sequential => {
+                // Already handled in next_example
+                Some(self.current_idx)
+            }
+            DatasetBlendingStrategy::RoundRobin => {
+                let idx = self.current_idx;
+                self.current_idx = (self.current_idx + 1) % self.datasets.len();
+                Some(idx)
+            }
+            DatasetBlendingStrategy::Weighted => {
+                let r = self.next_random();
+                let mut cumulative = 0.0;
+                for (i, &w) in self.weights.iter().enumerate() {
+                    cumulative += w;
+                    if r < cumulative {
+                        return Some(i);
+                    }
+                }
+                // Fallback to last dataset
+                Some(self.datasets.len() - 1)
+            }
+        }
+    }
+}
+
+impl StreamingDataset for CompositeDataset {
+    fn next_example(&mut self) -> Option<TritterResult<TokenizedExample>> {
+        if self.datasets.is_empty() || self.exhausted_count >= self.datasets.len() {
+            return None;
+        }
+
+        match self.strategy {
+            DatasetBlendingStrategy::Sequential => {
+                // Try current dataset
+                loop {
+                    if self.current_idx >= self.datasets.len() {
+                        return None;
+                    }
+
+                    if let Some(result) = self.datasets[self.current_idx].next_example() {
+                        return Some(result);
+                    }
+
+                    // Current dataset exhausted, move to next
+                    self.current_idx += 1;
+                    self.exhausted_count += 1;
+                }
+            }
+            DatasetBlendingStrategy::RoundRobin | DatasetBlendingStrategy::Weighted => {
+                // Try up to N datasets before giving up
+                let max_attempts = self.datasets.len() * 2;
+                for _ in 0..max_attempts {
+                    if let Some(idx) = self.select_next_dataset() {
+                        if let Some(result) = self.datasets[idx].next_example() {
+                            return Some(result);
+                        }
+                        // This dataset exhausted, try another
+                    }
+                }
+                None
+            }
+        }
+    }
+
+    fn reset(&mut self) -> TritterResult<()> {
+        self.current_idx = 0;
+        self.exhausted_count = 0;
+        for ds in &mut self.datasets {
+            ds.reset()?;
+        }
+        Ok(())
+    }
+
+    fn len_hint(&self) -> Option<usize> {
+        // Sum of all child hints
+        let mut total = 0usize;
+        for ds in &self.datasets {
+            if let Some(len) = ds.len_hint() {
+                total += len;
+            } else {
+                return None; // Can't determine if any child is unknown
+            }
+        }
+        Some(total)
+    }
+}
+
 /// Create a data loader from a path, auto-detecting file format.
 ///
 /// Supports:
@@ -1312,5 +1499,96 @@ mod tests {
 
         // Should be padded to at least 2 tokens
         assert!(batch.input_ids.dims()[1] >= 2);
+    }
+
+    fn create_test_jsonl_2() -> NamedTempFile {
+        let mut file = NamedTempFile::with_suffix(".jsonl").unwrap();
+        writeln!(file, r#"{{"text": "Dataset two line one"}}"#).unwrap();
+        writeln!(file, r#"{{"text": "Dataset two line two"}}"#).unwrap();
+        file.flush().unwrap();
+        file
+    }
+
+    #[test]
+    fn test_composite_dataset_sequential() {
+        let file1 = create_test_jsonl();
+        let file2 = create_test_jsonl_2();
+
+        let ds1 = JsonlDataset::new(file1.path(), 256).unwrap();
+        let ds2 = JsonlDataset::new(file2.path(), 256).unwrap();
+
+        let mut composite = CompositeDataset::new(vec![Box::new(ds1), Box::new(ds2)])
+            .with_strategy(DatasetBlendingStrategy::Sequential);
+
+        let mut count = 0;
+        while let Some(result) = composite.next_example() {
+            assert!(result.is_ok());
+            count += 1;
+        }
+
+        // 4 from file1 + 2 from file2 = 6 total
+        assert_eq!(count, 6);
+    }
+
+    #[test]
+    fn test_composite_dataset_roundrobin() {
+        let file1 = create_test_jsonl();
+        let file2 = create_test_jsonl_2();
+
+        let ds1 = JsonlDataset::new(file1.path(), 256).unwrap();
+        let ds2 = JsonlDataset::new(file2.path(), 256).unwrap();
+
+        let mut composite = CompositeDataset::new(vec![Box::new(ds1), Box::new(ds2)])
+            .with_strategy(DatasetBlendingStrategy::RoundRobin);
+
+        // Should interleave examples from both datasets
+        let mut count = 0;
+        while let Some(result) = composite.next_example() {
+            assert!(result.is_ok());
+            count += 1;
+            if count > 10 {
+                break; // Prevent infinite loop in case of bugs
+            }
+        }
+
+        // Should get examples from both datasets
+        assert!(count >= 4); // At least 4 examples
+    }
+
+    #[test]
+    fn test_composite_dataset_reset() {
+        let file1 = create_test_jsonl();
+        let file2 = create_test_jsonl_2();
+
+        let ds1 = JsonlDataset::new(file1.path(), 256).unwrap();
+        let ds2 = JsonlDataset::new(file2.path(), 256).unwrap();
+
+        let mut composite = CompositeDataset::new(vec![Box::new(ds1), Box::new(ds2)])
+            .with_strategy(DatasetBlendingStrategy::Sequential);
+
+        // Exhaust dataset
+        while composite.next_example().is_some() {}
+
+        // Reset and count again
+        composite.reset().unwrap();
+
+        let mut count = 0;
+        while composite.next_example().is_some() {
+            count += 1;
+        }
+
+        assert_eq!(count, 6);
+    }
+
+    #[test]
+    fn test_composite_dataset_num_datasets() {
+        let file1 = create_test_jsonl();
+        let file2 = create_test_jsonl_2();
+
+        let ds1 = JsonlDataset::new(file1.path(), 256).unwrap();
+        let ds2 = JsonlDataset::new(file2.path(), 256).unwrap();
+
+        let composite = CompositeDataset::new(vec![Box::new(ds1), Box::new(ds2)]);
+        assert_eq!(composite.num_datasets(), 2);
     }
 }

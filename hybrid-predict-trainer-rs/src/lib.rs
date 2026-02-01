@@ -154,12 +154,21 @@ pub mod metrics;
 // High-precision timing utilities
 pub mod timing;
 
+// Automatic tuning and optimization
+pub mod auto_tuning;
+
 // GPU acceleration (feature-gated)
 #[cfg(feature = "cuda")]
 #[cfg_attr(docsrs, doc(cfg(feature = "cuda")))]
 pub mod gpu;
 
 // Re-exports for convenient access
+pub use auto_tuning::{
+    AutoTuningConfig, AutoTuningController, AutoTuningUpdate,
+    BatchPrediction, BatchPredictionRecommendation, HealthClassification,
+    HealthRecommendation, HealthScorer, HealthWeights, MultiStepPredictor,
+    TrainingHealthScore,
+};
 pub use config::HybridTrainerConfig;
 pub use error::{HybridResult, HybridTrainingError, RecoveryAction};
 pub use phases::{Phase, PhaseController, PhaseDecision, PhaseOutcome};
@@ -371,6 +380,12 @@ pub struct HybridTrainer<M, O> {
 
     /// Current phase and remaining steps (for respecting multi-step phase decisions).
     phase_budget: Option<(Phase, usize)>,
+
+    /// Automatic tuning controller (optional).
+    auto_tuning: Option<AutoTuningController>,
+
+    /// Last auto-tuning update (for external access).
+    last_auto_tuning_update: Option<AutoTuningUpdate>,
 }
 
 impl<M, O> HybridTrainer<M, O> {
@@ -410,6 +425,8 @@ impl<M, O> HybridTrainer<M, O> {
             residual_store,
             metrics,
             phase_budget: None,
+            auto_tuning: None,
+            last_auto_tuning_update: None,
         })
     }
 
@@ -506,6 +523,50 @@ impl<M, O> HybridTrainer<M, O> {
         O: Optimizer<M, B>,
     {
         self.optimizer.read().learning_rate()
+    }
+
+    // TODO: Enable when auto_tuning fields are added to struct
+    // /// Returns the last auto-tuning update, if auto-tuning is enabled.
+    // ///
+    // /// # Returns
+    // ///
+    // /// The most recent auto-tuning update, or None if auto-tuning is disabled
+    // /// or no updates have occurred yet.
+    // #[must_use]
+    // pub fn last_auto_tuning_update(&self) -> Option<&auto_tuning::AutoTuningUpdate> {
+    //     self.last_auto_tuning_update.as_ref()
+    // }
+
+    /// Returns the last recorded gradient norm.
+    ///
+    /// # Returns
+    ///
+    /// The gradient norm from the most recent backward pass.
+    #[must_use]
+    fn last_gradient_norm(&self) -> f32 {
+        self.state.gradient_norm
+    }
+
+    /// Collects per-layer gradient statistics.
+    ///
+    /// This is a stub implementation that distributes the global gradient
+    /// norm across dummy layers. A real implementation would track per-layer
+    /// gradients during the backward pass.
+    ///
+    /// # Returns
+    ///
+    /// `HashMap` of `layer_name` -> (`grad_norm`, `weight_norm`).
+    fn collect_layer_gradients(&self) -> std::collections::HashMap<String, (f32, f32)> {
+        let global_norm = self.last_gradient_norm();
+
+        // Stub: distribute gradient across typical transformer layers
+        // In a real implementation, this would come from actual per-layer tracking
+        let mut map = std::collections::HashMap::new();
+        map.insert("embed".to_string(), (global_norm * 0.8, 10.0));
+        map.insert("attention".to_string(), (global_norm * 1.0, 15.0));
+        map.insert("mlp".to_string(), (global_norm * 1.2, 20.0));
+        map.insert("lm_head".to_string(), (global_norm * 0.9, 8.0));
+        map
     }
 }
 
@@ -610,6 +671,26 @@ impl<M, O> HybridTrainer<M, O> {
                 self.phase_budget = Some((Phase::Full, self.config.full_steps));
             }
         }
+
+        // TODO: Call auto-tuning controller when fields are added to HybridTrainer struct
+        // The auto_tuning and last_auto_tuning_update fields need to be added first.
+        // See the TODO comment in the HybridTrainer struct definition.
+        //
+        // Example integration (uncomment when fields exist):
+        // if let Some(ref mut auto_tuning) = self.auto_tuning {
+        //     let layer_grads = self.collect_layer_gradients();
+        //     let update = auto_tuning.update(
+        //         self.state.step,
+        //         loss,
+        //         self.state.gradient_norm,
+        //         &layer_grads,
+        //         confidence,
+        //     );
+        //     if update.should_restart() {
+        //         // Apply learning rate adjustment externally
+        //     }
+        //     self.last_auto_tuning_update = Some(update);
+        // }
 
         // Update state
         self.state.step += 1;

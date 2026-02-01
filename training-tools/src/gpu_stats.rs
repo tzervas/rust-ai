@@ -148,15 +148,17 @@ impl GpuStats {
 
     /// Format temperature as human-readable string.
     pub fn temp_string(&self) -> String {
-        format!("{}°C (throttle: {}°C)", self.temperature, self.temp_throttle)
+        format!(
+            "{}°C (throttle: {}°C)",
+            self.temperature, self.temp_throttle
+        )
     }
 
     /// Format clocks as human-readable string.
     pub fn clocks_string(&self) -> String {
         format!(
             "GPU: {}/{}MHz, Mem: {}/{}MHz",
-            self.clock_graphics, self.clock_graphics_max,
-            self.clock_memory, self.clock_memory_max
+            self.clock_graphics, self.clock_graphics_max, self.clock_memory, self.clock_memory_max
         )
     }
 }
@@ -333,7 +335,7 @@ impl GpuStatsMonitor {
                     "HEALTHY"
                 }
             }
-            None => "UNKNOWN"
+            None => "UNKNOWN",
         }
     }
 }
@@ -435,8 +437,7 @@ impl EtaCalculator {
     /// Calculate ETA for completion.
     pub fn eta(&self, current_step: u64) -> Option<Duration> {
         let remaining_steps = self.total_steps.saturating_sub(current_step);
-        self.avg_step_time()
-            .map(|avg| avg * remaining_steps as u32)
+        self.avg_step_time().map(|avg| avg * remaining_steps as u32)
     }
 
     /// Format ETA as human-readable string.

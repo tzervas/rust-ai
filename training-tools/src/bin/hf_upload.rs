@@ -90,7 +90,11 @@ fn main() -> anyhow::Result<()> {
 
     tracing::info!("=== HuggingFace Model Upload ===");
     tracing::info!("Model: {}", args.model.display());
-    tracing::info!("Size: {} ({:.1}M params)", args.size, config.parameter_count() as f64 / 1e6);
+    tracing::info!(
+        "Size: {} ({:.1}M params)",
+        args.size,
+        config.parameter_count() as f64 / 1e6
+    );
     tracing::info!("User: {}", args.user);
 
     // Create uploader
@@ -100,9 +104,7 @@ fn main() -> anyhow::Result<()> {
     // Check authentication
     tracing::info!("Checking HuggingFace authentication...");
     if !uploader.check_auth()? {
-        anyhow::bail!(
-            "HuggingFace not authenticated. Run: huggingface-cli login"
-        );
+        anyhow::bail!("HuggingFace not authenticated. Run: huggingface-cli login");
     }
     tracing::info!("Authentication OK");
 
@@ -140,14 +142,14 @@ fn main() -> anyhow::Result<()> {
             backward_reduction: args.backward_reduction.unwrap_or(50.0),
             training_time_hours: 0.0,
         },
-        metrics: args.final_loss.map(|final_loss| {
-            training_tools::hf::PerformanceMetrics {
+        metrics: args
+            .final_loss
+            .map(|final_loss| training_tools::hf::PerformanceMetrics {
                 final_loss,
                 best_loss: args.best_loss.unwrap_or(final_loss),
                 tokens_per_second: 0.0,
                 memory_usage_gb: 0.0,
-            }
-        }),
+            }),
         license: "mit".to_string(),
         repo_url: "https://github.com/tzervas/rust-ai".to_string(),
     };
@@ -160,8 +162,8 @@ fn main() -> anyhow::Result<()> {
 
     tracing::info!("Creating repository: {}", repo_id);
 
-    let hf_config = training_tools::hf::HfRepoConfig::model(&args.user, &repo_name)
-        .with_private(args.private);
+    let hf_config =
+        training_tools::hf::HfRepoConfig::model(&args.user, &repo_name).with_private(args.private);
 
     uploader.create_repo(&hf_config)?;
     tracing::info!("Repository created/verified");

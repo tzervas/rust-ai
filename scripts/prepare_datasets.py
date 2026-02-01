@@ -31,15 +31,15 @@ except ImportError:
 # Data mix ratios (should sum to 1.0)
 # Organized by category with subdirectories
 DEFAULT_MIX = {
-    # Natural language (40%)
-    "fineweb-edu-10B": 0.25,      # Educational web content
-    "wikipedia": 0.15,             # Wikipedia knowledge base
+    # Natural language (35%)
+    "fineweb-edu-10B": 0.22,      # Educational web content
+    "wikipedia": 0.13,             # Wikipedia knowledge base
 
-    # Code (25%)
-    "stack-v2-python": 0.10,      # Python code
-    "stack-v2-rust": 0.05,        # Rust code
-    "stack-v2-typescript": 0.03,  # TypeScript code
-    "smollm-python": 0.04,        # SmolLM curated Python
+    # Code (20%)
+    "stack-v2-python": 0.08,      # Python code
+    "stack-v2-rust": 0.04,        # Rust code
+    "stack-v2-typescript": 0.02,  # TypeScript code
+    "smollm-python": 0.03,        # SmolLM curated Python
     "triton": 0.03,               # Triton GPU kernels
 
     # Math & Reasoning (15%)
@@ -51,8 +51,16 @@ DEFAULT_MIX = {
     "cosmopedia-v2": 0.05,        # Synthetic educational
     "automathtext": 0.05,         # Synthetic math problems
 
-    # Instruction/Alignment (10%)
+    # Instruction following (10%)
     "instruction": 0.10,          # Combined instruction datasets
+
+    # Ethics & Alignment (10%) - Right vs Wrong
+    "anthropic-hh": 0.03,         # Helpful vs harmful
+    "ethics": 0.02,               # Moral reasoning
+    "saferlhf": 0.02,             # Safety alignment
+    "prosocial": 0.01,            # Constructive communication
+    "truthfulqa": 0.01,           # Truthfulness
+    "moral-stories": 0.01,        # Narrative ethics
 }
 
 # Text column names to try (in order of preference)

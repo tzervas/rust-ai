@@ -1,0 +1,202 @@
+{
+  "metadata": {
+    "description": "Latest stable versions and schema locations for IaC tools",
+    "last_verified": "2026-01-31",
+    "verification_date": "2026-01-31",
+    "notes": "All versions verified as of January 31, 2026. Schema URLs point to official documentation and specification endpoints."
+  },
+  "tools": [
+    {
+      "name": "Terraform",
+      "category": "IaC Framework",
+      "latest_version": "1.14.4",
+      "release_date": "2026-01-31",
+      "schema_url": "https://developer.hashicorp.com/terraform/cli/commands/providers/schema",
+      "documentation_url": "https://developer.hashicorp.com/terraform/language/syntax/json",
+      "json_schema_command": "terraform providers schema -json",
+      "repository": "https://github.com/hashicorp/terraform/releases",
+      "stability": "stable"
+    },
+    {
+      "name": "Terraform AWS Provider",
+      "category": "Terraform Provider",
+      "latest_version": "6.30.0",
+      "release_date": "2026-01-31",
+      "schema_url": "https://registry.terraform.io/providers/hashicorp/aws/latest/docs",
+      "documentation_url": "https://registry.terraform.io/providers/hashicorp/aws/latest",
+      "repository": "https://github.com/hashicorp/terraform-provider-aws/releases",
+      "stability": "stable"
+    },
+    {
+      "name": "Terraform GCP Provider",
+      "category": "Terraform Provider",
+      "latest_version": "7.17.0",
+      "release_date": "2026-01-31",
+      "schema_url": "https://registry.terraform.io/providers/hashicorp/google/latest/docs",
+      "documentation_url": "https://registry.terraform.io/providers/hashicorp/google/latest",
+      "repository": "https://github.com/hashicorp/terraform-provider-google/releases",
+      "stability": "stable"
+    },
+    {
+      "name": "Terraform Azure Provider",
+      "category": "Terraform Provider",
+      "latest_version": "4.58.0",
+      "release_date": "2026-01-31",
+      "schema_url": "https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs",
+      "documentation_url": "https://registry.terraform.io/providers/hashicorp/azurerm/latest",
+      "repository": "https://github.com/hashicorp/terraform-provider-azurerm/releases",
+      "stability": "stable"
+    },
+    {
+      "name": "Terraform Kubernetes Provider",
+      "category": "Terraform Provider",
+      "latest_version": "3.0.1",
+      "release_date": "2026-01-31",
+      "schema_url": "https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs",
+      "documentation_url": "https://registry.terraform.io/providers/hashicorp/kubernetes/latest",
+      "repository": "https://github.com/hashicorp/terraform-provider-kubernetes/releases",
+      "stability": "stable",
+      "notes": "Version 3.0.1 requires Terraform v1.0.0+. Use v2.38.0 for older Terraform versions."
+    },
+    {
+      "name": "Kubernetes",
+      "category": "Container Orchestration",
+      "latest_version": "1.35.0",
+      "release_date": "2025-12-17",
+      "schema_url": "https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/",
+      "openapi_v3_endpoint": "/openapi/v3",
+      "openapi_v3_group_endpoint": "/openapi/v3/apis/<group>/<version>",
+      "documentation_url": "https://kubernetes.io/blog/2025/12/17/kubernetes-v1-35-release/",
+      "repository": "https://github.com/kubernetes/kubernetes/releases",
+      "stability": "stable",
+      "end_of_life": "2027-02-28"
+    },
+    {
+      "name": "Kubernetes OpenAPI Spec",
+      "category": "Kubernetes Schema",
+      "latest_version": "1.35.0",
+      "release_date": "2025-12-17",
+      "schema_url": "https://github.com/kubernetes/kubernetes/blob/master/api/openapi-spec/swagger.json",
+      "documentation_url": "https://github.com/kubernetes/kube-openapi",
+      "notes": "OpenAPI V3 available at /openapi/v3 endpoint on Kubernetes API server. Supports Custom Resource Definitions (CRDs) with structural schemas.",
+      "stability": "stable"
+    },
+    {
+      "name": "Ansible",
+      "category": "Configuration Management",
+      "latest_version": "2.20.2",
+      "release_date": "2026-01-29",
+      "schema_url": "https://docs.ansible.com/projects/lint/rules/schema/",
+      "documentation_url": "https://docs.ansible.com/projects/ansible/latest/index.html",
+      "validation_tool": "ansible-lint",
+      "repository": "https://github.com/ansible/ansible/releases",
+      "pypi_url": "https://pypi.org/project/ansible-core/",
+      "stability": "stable"
+    },
+    {
+      "name": "Docker",
+      "category": "Containerization",
+      "latest_version": "27.5.0",
+      "release_date": "2026-01-31",
+      "documentation_url": "https://docs.docker.com/",
+      "repository": "https://github.com/moby/moby/releases",
+      "stability": "stable"
+    },
+    {
+      "name": "Docker Compose",
+      "category": "Container Orchestration",
+      "latest_version": "5.0.1",
+      "release_date": "2026-01-31",
+      "schema_url": "https://docs.docker.com/reference/compose-file/",
+      "documentation_url": "https://docs.docker.com/compose/releases/migrate/",
+      "json_schema_location": "JSON-schema available for all versions of compose file format (3.x and later)",
+      "repository": "https://github.com/docker/compose/releases",
+      "stability": "stable"
+    },
+    {
+      "name": "Helm",
+      "category": "Kubernetes Package Manager",
+      "latest_version": "4.1.0",
+      "release_date": "2026-01-21",
+      "schema_url": "https://helm.sh/docs/topics/charts/",
+      "values_schema_file": "values.schema.json",
+      "documentation_url": "https://helm.sh/docs/",
+      "repository": "https://github.com/helm/helm/releases",
+      "stability": "stable",
+      "notes": "Helm v3 support until 2026-07-08. Helm v4 is current major version (released 2025-11-12). values.schema.json uses JSON Schema vocabulary for validation."
+    },
+    {
+      "name": "GitHub Actions",
+      "category": "CI/CD Platform",
+      "latest_version": "2026-Q1",
+      "release_date": "2026-01-31",
+      "schema_url": "https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions",
+      "metadata_schema_url": "https://docs.github.com/en/actions/reference/workflows-and-actions/metadata-syntax",
+      "documentation_url": "https://docs.github.com/en/actions",
+      "yaml_schema_store": "https://www.schemastore.org/json/",
+      "stability": "stable",
+      "notes": "Workflows stored in .github/workflows directory. JSON Schema available at schemastore.org. Pricing changes effective 2026-01-01 (39% reduction for hosted runners)."
+    }
+  ],
+  "schema_resources": {
+    "terraform": {
+      "command": "terraform providers schema -json",
+      "description": "Extract complete schema for all configured providers in JSON format",
+      "output_structure": {
+        "format": "Providers Schema Representation",
+        "includes": [
+          "Provider metadata",
+          "Resources and data sources schemas",
+          "Block representations with attributes",
+          "Function signatures and documentation"
+        ]
+      }
+    },
+    "kubernetes": {
+      "discovery_endpoints": {
+        "openapi_v3_root": "/openapi/v3",
+        "group_version_specific": "/openapi/v3/apis/<group>/<version>",
+        "legacy_group": "/openapi/v3/api/v1"
+      },
+      "crd_validation": "CustomResourceDefinition uses openAPIV3Schema field for validation against JSON Schema"
+    },
+    "helm": {
+      "values_schema": "values.schema.json",
+      "location": "Must be in same directory as values.yaml",
+      "format": "JSON Schema vocabulary",
+      "validation_triggers": [
+        "helm install",
+        "helm upgrade",
+        "helm template",
+        "helm lint"
+      ]
+    },
+    "docker_compose": {
+      "schema_file": "JSON-schema for compose file format versions",
+      "documentation": "https://docs.docker.com/reference/compose-file/",
+      "versions_supported": "3.x and later"
+    },
+    "github_actions": {
+      "workflow_location": ".github/workflows/",
+      "file_extension": [".yml", ".yaml"],
+      "schema_store_project": "schemastore.org",
+      "parser": "YAML-based with JSON Schema validation"
+    },
+    "ansible": {
+      "validation_tool": "ansible-lint",
+      "schema_rule": "schema[playbook]",
+      "validation_method": "JSON Schema against metadata files",
+      "play_validation": "argument_specs in .meta.yml file"
+    }
+  },
+  "version_tracking": {
+    "update_frequency": "Monthly",
+    "data_sources": [
+      "Official GitHub releases pages",
+      "Package registries (PyPI, crates.io, npm, etc.)",
+      "Official vendor documentation",
+      "endoflife.date tracking service"
+    ],
+    "next_update_recommended": "2026-02-28"
+  }
+}

@@ -1,0 +1,101 @@
+[package]
+name = "axolotl-rs"
+version = "1.1.1"
+edition = "2021"
+rust-version = "1.92"
+license = "MIT"
+description = "YAML-driven configurable fine-tuning toolkit for LLMs in Rust with VSA acceleration"
+authors = ["Tyler Zervas <tz-dev@vectorweight.com>"]
+repository = "https://github.com/tzervas/axolotl-rs"
+homepage = "https://github.com/tzervas/axolotl-rs"
+documentation = "https://docs.rs/axolotl-rs"
+readme = "README.md"
+keywords = ["llm", "fine-tuning", "training", "configuration", "yaml"]
+categories = ["science", "command-line-utilities"]
+
+[dependencies]
+candle-core = { workspace = true }
+candle-nn = { workspace = true }
+candle-transformers = { workspace = true }
+tokenizers = { workspace = true }
+safetensors = { workspace = true }
+serde = { workspace = true }
+serde_yaml = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+anyhow = { workspace = true }
+
+# Adapter and quantization dependencies
+# 
+# For production use (importing from crates.io):
+# These packages are published to crates.io for production builds
+peft-rs = { version = "1.0", optional = true }
+qlora-rs = { version = "1.0", optional = true }
+unsloth-rs = { version = "1.0", optional = true }
+# vsa-optim-rs = { version = "0.1", optional = true }
+#
+# For active development (importing from GitHub):
+# Uncomment these lines to use development branches from GitHub repos
+# peft-rs = { git = "https://github.com/tzervas/peft-rs", branch = "main", optional = true }
+# qlora-rs = { git = "https://github.com/tzervas/qlora-rs", branch = "main", optional = true }
+# unsloth-rs = { git = "https://github.com/tzervas/unsloth-rs", branch = "main", optional = true }
+#
+# For local development (importing from local paths):
+# Uncomment these lines to use local sister project directories
+# peft-rs = { path = "../peft-rs", optional = true }
+# qlora-rs = { path = "../qlora-rs", optional = true }
+# unsloth-rs = { path = "../unsloth-rs", optional = true }
+vsa-optim-rs = { version = "0.1", path = "../vsa-optim-rs", optional = true }
+
+# CLI
+clap = { version = "4.5", features = ["derive"] }
+
+# Progress bars
+indicatif = "0.17"
+
+# HTTP for model downloads
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"], optional = true }
+
+[dev-dependencies]
+criterion = { workspace = true }
+tempfile = "3.10"
+assert_cmd = "2.0"
+predicates = "3.0"
+
+[features]
+default = ["download"]
+download = ["reqwest"]
+
+# Real adapter/quantization libraries
+peft = ["peft-rs"]
+qlora = ["qlora-rs", "peft"]
+unsloth = ["unsloth-rs"]
+vsa-optim = ["vsa-optim-rs"]
+
+# Mock features for testing without real dependencies
+mock-peft = []
+mock-qlora = []
+mock-unsloth = []
+
+# Hardware acceleration
+cuda = ["candle-core/cuda"]
+
+# Performance optimizations
+optimized = []
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+pedantic = "warn"
+
+[[bin]]
+name = "axolotl"
+path = "src/main.rs"
+
+[[bench]]
+name = "config_parsing"
+harness = false

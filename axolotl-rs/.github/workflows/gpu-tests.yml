@@ -1,0 +1,139 @@
+name: GPU Tests
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  schedule:
+    # Run GPU tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  gpu-cuda:
+    name: GPU Tests (CUDA)
+    runs-on: self-hosted
+    # Temporarily disabled until GPU runners are available
+    if: false # github.repository == 'tzervas/axolotl-rs' # Adjust to your repo
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Fetch dependencies (including sister projects)
+        run: cargo fetch
+        continue-on-error: true
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: true
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
+      - name: Check CUDA availability
+        run: |
+          nvcc --version || echo "CUDA not available"
+          nvidia-smi || echo "nvidia-smi not available"
+
+      - name: Build with CUDA feature
+        run: cargo build --features cuda --verbose
+
+      - name: Run CUDA tests
+        run: cargo test --features cuda --verbose -- --test-threads=1
+        env:
+          CUDA_VISIBLE_DEVICES: "0"
+
+      - name: Run CUDA integration tests
+        run: cargo test --features cuda --test '*' --verbose -- --test-threads=1
+        env:
+          CUDA_VISIBLE_DEVICES: "0"
+
+  gpu-benchmarks:
+    name: GPU Benchmarks
+    runs-on: self-hosted
+    # Temporarily disabled until GPU runners are available
+    if: false # github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.2
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Fetch dependencies (including sister projects)
+        run: cargo fetch
+        continue-on-error: true
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: true
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2.7.8
+        with:
+          cache-on-failure: true
+
+      - name: Check CUDA availability
+        run: |
+          nvcc --version
+          nvidia-smi
+
+      - name: Run GPU benchmarks
+        run: cargo bench --features cuda --bench '*'
+        env:
+          CUDA_VISIBLE_DEVICES: "0"
+
+      - name: Archive benchmark results
+        uses: actions/upload-artifact@v4.5.0
+        with:
+          name: gpu-benchmark-results
+          path: target/criterion/
+          retention-days: 30
+
+  small-model-test:
+    name: Small Model Tests
+    runs-on: self-hosted
+    # Temporarily disabled until GPU runners are available
+    if: false # github.event_name == 'pull_request' || github.event_name == 'push'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.2
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Fetch dependencies (including sister projects)
+        run: cargo fetch
+        continue-on-error: true
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: true
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2.7.8
+        with:
+          cache-on-failure: true
+
+      - name: Check CUDA availability
+        run: nvidia-smi
+
+      - name: Build with CUDA
+        run: cargo build --features cuda --release
+
+      - name: Run small model tests
+        run: |
+          # These tests would use small models like GPT-2 or TinyLlama
+          # for quick validation of GPU functionality
+          echo "Small model tests would run here"
+          # cargo test --features cuda --release small_model_tests
+        env:
+          CUDA_VISIBLE_DEVICES: "0"
+          TEST_MODEL_SIZE: "small"

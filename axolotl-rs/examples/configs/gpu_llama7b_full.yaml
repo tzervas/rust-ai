@@ -1,0 +1,52 @@
+# LLaMA-7B QLoRA Configuration for Full GPU Validation
+# Production-ready configuration for complete fine-tuning validation
+#
+# Requirements:
+#   - GPU with ~12 GB VRAM (RTX 4070, RTX 4080, RTX 5080, or A100 40GB)
+#   - Model: huggingface-cli download meta-llama/Llama-2-7b-hf
+#   - ~45 GB disk space for model weights
+#
+# Usage:
+#   cargo test --features 'qlora cuda' -- --ignored test_gpu_llama7b_full
+#
+# Performance:
+#   - ~1000 steps in ~2 hours
+#   - Full validation with complete Alpaca-style fine-tuning
+#   - Production-ready configuration
+
+base_model: "meta-llama/Llama-2-7b-hf"
+adapter: qlora
+output_dir: "./outputs/llama7b-gpu-full"
+
+lora:
+  r: 8
+  alpha: 16
+  dropout: 0.0
+  target_modules:
+    - q_proj
+    - v_proj
+    - k_proj
+    - o_proj
+
+quantization:
+  bits: 4
+  quant_type: nf4
+  double_quant: true
+  block_size: 64
+
+dataset:
+  path: "./data/alpaca_100.jsonl"
+  type: alpaca
+  max_length: 512
+  train_split: 1.0
+
+training:
+  epochs: 1
+  batch_size: 1
+  learning_rate: 0.0002
+  weight_decay: 0.01
+  logging_steps: 50
+  save_steps: 100
+  warmup_ratio: 0.1
+
+seed: 42

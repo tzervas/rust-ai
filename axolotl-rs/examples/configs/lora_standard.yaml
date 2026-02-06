@@ -1,0 +1,38 @@
+# SmolLM2-135M LoRA Configuration - Standard Target Modules
+# Standard LoRA with q_proj and v_proj layers
+#
+# Purpose: Baseline LoRA configuration with attention layers
+# Memory: ~512 MB, two attention adapter layers
+# Test: test_gpu_lora_target_standard
+#
+# This is the standard LoRA configuration: targeting query and value projections
+# in the attention mechanism. Good balance of adaptation capability and efficiency.
+
+base_model: "HuggingFaceTB/SmolLM2-135M"
+adapter: lora
+output_dir: "./outputs/lora-standard"
+
+lora:
+  r: 8
+  alpha: 16
+  dropout: 0.0
+  target_modules:
+    - q_proj
+    - v_proj
+
+dataset:
+  path: "./data/alpaca_100.jsonl"
+  type: alpaca
+  max_length: 128
+  train_split: 1.0
+
+training:
+  epochs: 1
+  batch_size: 1
+  learning_rate: 0.0002
+  weight_decay: 0.0
+  logging_steps: 1
+  save_steps: 100
+  warmup_ratio: 0.1
+
+seed: 42

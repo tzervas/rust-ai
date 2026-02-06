@@ -1,0 +1,41 @@
+# SmolLM2-135M LoRA Configuration - Full Attention Target Modules
+# Comprehensive LoRA covering all attention projections
+#
+# Purpose: Full attention adaptation with all projection layers
+# Memory: ~1.0 GB, four attention adapter layers
+# Test: test_gpu_lora_target_full_attention
+#
+# This configuration targets all projection layers in the attention mechanism:
+# query (q_proj), key (k_proj), value (v_proj), and output (o_proj).
+# Maximum adaptation for attention while maintaining reasonable memory footprint.
+
+base_model: "HuggingFaceTB/SmolLM2-135M"
+adapter: lora
+output_dir: "./outputs/lora-full-attention"
+
+lora:
+  r: 8
+  alpha: 16
+  dropout: 0.0
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+
+dataset:
+  path: "./data/alpaca_100.jsonl"
+  type: alpaca
+  max_length: 128
+  train_split: 1.0
+
+training:
+  epochs: 1
+  batch_size: 1
+  learning_rate: 0.0002
+  weight_decay: 0.0
+  logging_steps: 1
+  save_steps: 100
+  warmup_ratio: 0.1
+
+seed: 42

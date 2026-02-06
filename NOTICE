@@ -1,0 +1,87 @@
+NOTICE - Third Party Dependencies
+
+This project is licensed under the MIT License.
+
+================================================================================
+TRANSITIVE DEPENDENCIES WITH COPYLEFT OR RESTRICTIVE LICENSES
+================================================================================
+
+The following dependencies have licenses that may impose additional obligations:
+
+1. option-ext v0.2.0
+   License: MPL-2.0 (Mozilla Public License 2.0)
+   Dependency Chain: cubecl → cubecl-common/cubecl-runtime → dirs → dirs-sys → option-ext
+   Usage: Transitive dependency through CubeCL for GPU compute kernels
+   Note: MPL-2.0 is file-level copyleft; modifications to option-ext itself would need
+         to be distributed under MPL-2.0, but does not affect our MIT-licensed code.
+   Repository: https://github.com/rossmacarthur/option-ext
+
+================================================================================
+KEY MIT/APACHE-2.0 DUAL-LICENSED DEPENDENCIES
+================================================================================
+
+This project uses MIT-only licensing. Many Rust ecosystem crates are dual-licensed
+under "MIT OR Apache-2.0" which allows us to use them under MIT terms:
+
+Core Dependencies:
+- candle-core, candle-nn, candle-transformers (Hugging Face Candle)
+- cubecl, cubecl-cuda, cubecl-* (Tracel AI CubeCL GPU framework)
+- tokenizers (Hugging Face Tokenizers)
+- serde, serde_json, serde_yaml
+- thiserror, anyhow
+- tracing, tracing-subscriber
+
+All such dependencies are used under MIT license terms.
+
+================================================================================
+ATTRIBUTIONS
+================================================================================
+
+Hugging Face Candle
+  Repository: https://github.com/huggingface/candle
+  License: MIT OR Apache-2.0 (used under MIT)
+  Copyright: Hugging Face, Inc.
+
+Tracel AI CubeCL
+  Repository: https://github.com/tracel-ai/cubecl
+  License: MIT OR Apache-2.0 (used under MIT)
+  Copyright: Tracel AI
+
+peft-rs (fork/adaptation)
+  Repository: https://github.com/tzervas/peft-rs
+  License: MIT
+  Copyright: Tyler Zervas
+
+qlora-rs (fork/adaptation)
+  Repository: https://github.com/tzervas/qlora-rs
+  License: MIT
+  Copyright: Tyler Zervas
+
+paste (forked as qlora-paste)
+  Original: https://github.com/dtolnay/paste
+  License: MIT OR Apache-2.0 (used under MIT)
+  Copyright: David Tolnay
+
+================================================================================
+COMPLIANCE NOTES
+================================================================================
+
+MPL-2.0 (Mozilla Public License):
+- File-level copyleft: Only modifications to MPL-licensed files need MPL distribution
+- Does NOT require releasing our MIT code under MPL
+- option-ext is used as-is without modifications
+- This notice satisfies MPL attribution requirements
+
+MIT License:
+- All direct dependencies and our code use MIT (permissive, no copyleft)
+- Allows commercial use, modification, distribution with attribution
+
+CUDA Toolkit Components:
+- NVIDIA CUDA Toolkit used for GPU acceleration
+- CUDA license allows development of applications
+- Runtime requires NVIDIA drivers (proprietary)
+- Our code interfaces via standard APIs (cubecl, candle)
+
+================================================================================
+For full dependency licensing, run: cargo tree --workspace --format "{p} {l}"
+Generated: January 2026

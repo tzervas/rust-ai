@@ -1,0 +1,37 @@
+# SmolLM2-135M LoRA Configuration - Minimal Target Modules
+# Minimal LoRA with only q_proj layer
+#
+# Purpose: Validate LoRA training with minimal adapter footprint
+# Memory: ~256 MB, one adapter layer only
+# Test: test_gpu_lora_target_minimal
+#
+# This configuration demonstrates LoRA with the absolute minimum number
+# of target modules (q_proj only), validating that even minimal adaptation works.
+
+base_model: "HuggingFaceTB/SmolLM2-135M"
+adapter: lora
+output_dir: "./outputs/lora-minimal"
+
+lora:
+  r: 4
+  alpha: 8
+  dropout: 0.0
+  target_modules:
+    - q_proj
+
+dataset:
+  path: "./data/alpaca_100.jsonl"
+  type: alpaca
+  max_length: 128
+  train_split: 1.0
+
+training:
+  epochs: 1
+  batch_size: 1
+  learning_rate: 0.0002
+  weight_decay: 0.0
+  logging_steps: 1
+  save_steps: 100
+  warmup_ratio: 0.1
+
+seed: 42

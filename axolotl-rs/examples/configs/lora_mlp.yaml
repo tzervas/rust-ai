@@ -1,0 +1,39 @@
+# SmolLM2-135M LoRA Configuration - MLP Target Modules
+# LoRA targeting feedforward network (MLP) layers
+#
+# Purpose: Validate LoRA adaptation in feedforward networks
+# Memory: ~512 MB, two MLP adapter layers
+# Test: test_gpu_lora_target_mlp
+#
+# This configuration targets the feedforward (MLP) projections:
+# gate_proj (or up_proj) and down_proj. Useful for understanding which
+# layers benefit most from adaptation in various tasks.
+
+base_model: "HuggingFaceTB/SmolLM2-135M"
+adapter: lora
+output_dir: "./outputs/lora-mlp"
+
+lora:
+  r: 8
+  alpha: 16
+  dropout: 0.0
+  target_modules:
+    - up_proj
+    - down_proj
+
+dataset:
+  path: "./data/alpaca_100.jsonl"
+  type: alpaca
+  max_length: 128
+  train_split: 1.0
+
+training:
+  epochs: 1
+  batch_size: 1
+  learning_rate: 0.0002
+  weight_decay: 0.0
+  logging_steps: 1
+  save_steps: 100
+  warmup_ratio: 0.1
+
+seed: 42

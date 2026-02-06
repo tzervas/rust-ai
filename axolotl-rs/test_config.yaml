@@ -1,0 +1,11 @@
+base_model: "meta-llama/Llama-2-7b-hf"
+model_type: "llama"
+output_dir: "./outputs"
+
+dataset:
+  path: "data/train.jsonl"
+  type: "alpaca"
+
+training:
+  num_epochs: 3
+  batch_size: 4

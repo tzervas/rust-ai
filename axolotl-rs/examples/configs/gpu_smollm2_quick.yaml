@@ -1,0 +1,48 @@
+# SmolLM2-135M QLoRA Configuration for GPU Quick Iteration
+# Lightweight model for rapid testing and debugging
+#
+# Requirements:
+#   - GPU with ~256 MB VRAM (any modern GPU)
+#   - Model: huggingface-cli download HuggingFaceTB/SmolLM2-135M
+#
+# Usage:
+#   cargo test --features 'qlora cuda' -- --ignored test_gpu_quick_iteration
+#
+# Performance:
+#   - ~10 steps in < 1 minute
+#   - Great for debugging training pipeline
+
+base_model: "HuggingFaceTB/SmolLM2-135M"
+adapter: qlora
+output_dir: "./outputs/smollm2-gpu-quick"
+
+lora:
+  r: 8
+  alpha: 16
+  dropout: 0.0
+  target_modules:
+    - q_proj
+    - v_proj
+
+quantization:
+  bits: 4
+  quant_type: nf4
+  double_quant: true
+  block_size: 64
+
+dataset:
+  path: "./data/alpaca_100.jsonl"
+  type: alpaca
+  max_length: 128
+  train_split: 1.0
+
+training:
+  epochs: 1
+  batch_size: 1
+  learning_rate: 0.0002
+  weight_decay: 0.0
+  logging_steps: 1
+  save_steps: 100
+  warmup_ratio: 0.1
+
+seed: 42

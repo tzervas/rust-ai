@@ -116,6 +116,18 @@ pub struct HybridTrainerConfig {
     /// Checkpoint configuration.
     #[serde(default)]
     pub checkpoint_config: CheckpointConfig,
+
+    /// Auto-tuning configuration (optional).
+    ///
+    /// If provided, enables automatic health monitoring and adaptive parameter tuning.
+    #[serde(default)]
+    pub auto_tuning_config: Option<crate::auto_tuning::AutoTuningConfig>,
+
+    /// Maximum training steps (for auto-tuning progress calculation).
+    ///
+    /// Required if auto_tuning_config is Some. Used to calculate training progress percentage.
+    #[serde(default)]
+    pub max_steps: Option<u64>,
 }
 
 // Default value functions for serde
@@ -154,6 +166,8 @@ impl Default for HybridTrainerConfig {
             collect_metrics: default_collect_metrics(),
             divergence_config: DivergenceConfig::default(),
             checkpoint_config: CheckpointConfig::default(),
+            auto_tuning_config: None,
+            max_steps: None,
         }
     }
 }
@@ -289,6 +303,8 @@ pub struct HybridTrainerConfigBuilder {
     predictor_config: Option<PredictorConfig>,
     predictor_memory_budget: Option<usize>,
     collect_metrics: Option<bool>,
+    auto_tuning_config: Option<crate::auto_tuning::AutoTuningConfig>,
+    max_steps: Option<u64>,
 }
 
 impl HybridTrainerConfigBuilder {
@@ -348,6 +364,20 @@ impl HybridTrainerConfigBuilder {
         self
     }
 
+    /// Sets the auto-tuning configuration.
+    #[must_use]
+    pub fn auto_tuning(mut self, config: crate::auto_tuning::AutoTuningConfig) -> Self {
+        self.auto_tuning_config = Some(config);
+        self
+    }
+
+    /// Sets the maximum training steps for auto-tuning progress calculation.
+    #[must_use]
+    pub fn max_steps(mut self, steps: u64) -> Self {
+        self.max_steps = Some(steps);
+        self
+    }
+
     /// Builds the configuration with defaults for unset values.
     pub fn build(self) -> HybridTrainerConfig {
         HybridTrainerConfig {
@@ -369,6 +399,8 @@ impl HybridTrainerConfigBuilder {
             collect_metrics: self.collect_metrics.unwrap_or_else(default_collect_metrics),
             divergence_config: DivergenceConfig::default(),
             checkpoint_config: CheckpointConfig::default(),
+            auto_tuning_config: self.auto_tuning_config,
+            max_steps: self.max_steps,
         }
     }
 }

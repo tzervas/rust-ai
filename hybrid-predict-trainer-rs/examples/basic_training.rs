@@ -173,13 +173,18 @@ fn main() -> HybridResult<()> {
     println!("║         Hybrid Predictive Training - Full Example            ║");
     println!("╚═══════════════════════════════════════════════════════════════╝\n");
 
-    // Build configuration
+    // Build configuration with auto-tuning enabled
+    let num_steps = 200;
+    let auto_tuning_config = hybrid_predict_trainer_rs::auto_tuning::AutoTuningConfig::default();
+
     let config = HybridTrainerConfig::builder()
         .warmup_steps(50) // Shorter warmup for demo
         .full_steps(10) // Full training steps per cycle
         .max_predict_steps(30) // Max prediction steps
         .confidence_threshold(0.80) // Lower threshold for demo
         .collect_metrics(true) // Enable metrics
+        .auto_tuning(auto_tuning_config) // Enable auto-tuning
+        .max_steps(num_steps) // Total training steps for progress calculation
         .build();
 
     println!("📋 Configuration:");
@@ -189,6 +194,14 @@ fn main() -> HybridResult<()> {
     println!(
         "   Confidence threshold: {:.2}",
         config.confidence_threshold
+    );
+    println!(
+        "   Auto-tuning:          {}",
+        if config.auto_tuning_config.is_some() {
+            "Enabled"
+        } else {
+            "Disabled"
+        }
     );
     println!();
 
@@ -211,8 +224,6 @@ fn main() -> HybridResult<()> {
     println!("┌──────┬──────────┬─────────┬───────────┬────────┬───────────┐");
     println!("│ Step │  Phase   │  Loss   │ Predicted │  Conf  │  Time(ms) │");
     println!("├──────┼──────────┼─────────┼───────────┼────────┼───────────┤");
-
-    let num_steps = 200;
     let mut phase_transitions = Vec::new();
     let mut last_phase = Phase::Warmup;
 
@@ -240,6 +251,20 @@ fn main() -> HybridResult<()> {
                         result.confidence,
                         result.step_time_ms
                     );
+
+                    // Show auto-tuning recommendations every 50 steps
+                    if step % 50 == 0 {
+                        if let Some(update) = trainer.last_auto_tuning_update() {
+                            println!("│ 🔧 Auto-tuning: Health={:?}, Score={:.2}, Plateau={:?}",
+                                update.health, update.health_score, update.plateau_status);
+                            if update.should_restart() {
+                                println!("│    Warmup restart recommended (LR x{:.2})", update.warmup_restart.unwrap());
+                            }
+                            if !update.recommendations.is_empty() {
+                                println!("│    Recommendations: {:?}", update.recommendations);
+                            }
+                        }
+                    }
                 }
             }
             Err((error, recovery_action)) => {

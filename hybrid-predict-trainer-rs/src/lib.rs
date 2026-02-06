@@ -413,6 +413,14 @@ impl<M, O> HybridTrainer<M, O> {
         let residual_store = residuals::ResidualStore::new(1000);
         let metrics = metrics::MetricsCollector::new(config.collect_metrics);
 
+        // Initialize auto-tuning controller if config provided
+        let auto_tuning = if let Some(auto_config) = config.auto_tuning_config.clone() {
+            let max_steps = config.max_steps.unwrap_or(10000); // Default if not provided
+            Some(auto_tuning::AutoTuningController::new(auto_config, max_steps))
+        } else {
+            None
+        };
+
         Ok(Self {
             model: Arc::new(RwLock::new(model)),
             optimizer: Arc::new(RwLock::new(optimizer)),
@@ -425,7 +433,7 @@ impl<M, O> HybridTrainer<M, O> {
             residual_store,
             metrics,
             phase_budget: None,
-            auto_tuning: None,
+            auto_tuning,
             last_auto_tuning_update: None,
         })
     }
@@ -469,6 +477,17 @@ impl<M, O> HybridTrainer<M, O> {
     #[must_use]
     pub fn statistics(&self) -> metrics::TrainingStatistics {
         self.metrics.statistics()
+    }
+
+    /// Returns the last auto-tuning update, if available.
+    ///
+    /// # Returns
+    ///
+    /// The most recent [`auto_tuning::AutoTuningUpdate`] if auto-tuning is enabled,
+    /// or `None` if auto-tuning is disabled or no updates have occurred yet.
+    #[must_use]
+    pub fn last_auto_tuning_update(&self) -> Option<&auto_tuning::AutoTuningUpdate> {
+        self.last_auto_tuning_update.as_ref()
     }
 
     /// Returns a read lock on the model.
@@ -672,25 +691,30 @@ impl<M, O> HybridTrainer<M, O> {
             }
         }
 
-        // TODO: Call auto-tuning controller when fields are added to HybridTrainer struct
-        // The auto_tuning and last_auto_tuning_update fields need to be added first.
-        // See the TODO comment in the HybridTrainer struct definition.
-        //
-        // Example integration (uncomment when fields exist):
-        // if let Some(ref mut auto_tuning) = self.auto_tuning {
-        //     let layer_grads = self.collect_layer_gradients();
-        //     let update = auto_tuning.update(
-        //         self.state.step,
-        //         loss,
-        //         self.state.gradient_norm,
-        //         &layer_grads,
-        //         confidence,
-        //     );
-        //     if update.should_restart() {
-        //         // Apply learning rate adjustment externally
-        //     }
-        //     self.last_auto_tuning_update = Some(update);
-        // }
+        // Auto-tuning integration: Update controller and apply recommendations
+        if self.auto_tuning.is_some() {
+            // Collect per-layer gradient statistics
+            let layer_grads_map = self.collect_layer_gradients();
+
+            // Convert HashMap to Vec for controller.update() signature
+            let layer_grads: Vec<(String, f32, f32)> = layer_grads_map
+                .into_iter()
+                .map(|(name, (grad_norm, weight_norm))| (name, grad_norm, weight_norm))
+                .collect();
+
+            // Get update from auto-tuning controller (borrow after collecting gradients)
+            let update = self.auto_tuning.as_mut().unwrap().update(
+                self.state.step,
+                loss,
+                self.state.gradient_norm,
+                &layer_grads,
+                confidence,
+            );
+
+            // Apply recommendations (TODO: wire to optimizer when available)
+            // For now, store update for external access
+            self.last_auto_tuning_update = Some(update);
+        }
 
         // Update state
         self.state.step += 1;

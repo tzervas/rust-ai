@@ -41,6 +41,25 @@ regex = '''[a-f0-9]{40}'''
 path = '''wandb'''
 tags = ["api", "wandb"]
 
+[[rules]]
+id = "cohere-key"
+description = "Cohere API Key"
+regex = '''[a-zA-Z0-9]{40}'''
+path = '''cohere'''
+tags = ["api", "cohere"]
+
+[[rules]]
+id = "replicate-key"
+description = "Replicate API Token"
+regex = '''r8_[a-zA-Z0-9]{37}'''
+tags = ["api", "replicate"]
+
+[[rules]]
+id = "generic-api-key"
+description = "Generic API key assignment"
+regex = '''(?i)(api[_-]?key|api[_-]?secret|access[_-]?token)\s*[=:]\s*["']?[a-zA-Z0-9_\-]{20,}["']?'''
+tags = ["api", "generic"]
+
 # Entropy-based detection for high-entropy strings that might be secrets
 [[rules]]
 id = "high-entropy-base64"
@@ -54,4 +73,5 @@ paths = [
     '''Cargo\.toml$''',
     '''README''',
     '''\.md$''',
+    '''\.toml$''',
 ]

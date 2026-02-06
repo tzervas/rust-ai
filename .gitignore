@@ -1,8 +1,12 @@
 # Rust
 /target/
+**/target/
 Cargo.lock
 **/*.rs.bk
 *.pdb
+*.rlib
+*.rmeta
+*.d
 
 # macOS
 .DS_Store
@@ -19,15 +23,19 @@ Cargo.lock
 .env
 .env.*
 
-# Model weights (large files)
+# Model weights and large binary files
 *.bin
 *.safetensors
 *.gguf
 *.ggml
+*.ot
+*.npz
+*.npy
 
-# Checkpoints
+# Checkpoints and model outputs
 checkpoints/
 outputs/
+resources/checkpoints/
 
 # CUDA artifacts
 *.ptx
@@ -62,12 +70,28 @@ venv/
 *.tflite
 *.parquet
 *.arrow
+*.jsonl
+*.csv
 datasets/
 data/
 *.tar
 *.tar.gz
+*.tar.bz2
+*.tar.xz
 *.tar.zst
 *.zip
+*.7z
+
+# Tokenizer files (download via HF CLI, not via git)
+**/tokenizer.json
+**/tokenizer_config.json
+**/special_tokens_map.json
+**/vocab.txt
+**/merges.txt
+**/spiece.model
+
+# Resources directory (model checkpoints, downloaded assets)
+resources/
 
 # Training runs and logs
 runs/
@@ -89,5 +113,20 @@ huggingface/
 secrets/
 credentials/
 
-# Gitleaks reports (config is tracked)
+# Separately-managed git repos (have their own remotes, not nested here)
+peft-rs/
+qlora-candle/
+qlora-gemm/
+qlora-paste/
+qlora-rs/
+rust-ai-core/
+
+# Local cargo config
+.cargo/
+
+# Test artifacts
+test_multi_step
+
+# Gitleaks reports (config is tracked, reports are not)
 .gitleaks-report.json
+gitleaks-report.*

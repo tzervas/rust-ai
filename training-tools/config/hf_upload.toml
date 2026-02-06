@@ -1,0 +1,88 @@
+# HuggingFace Hub Upload Configuration
+#
+# Configuration for uploading aNa models to HuggingFace Hub
+
+[repository]
+# Repository settings
+user = "tzervas"
+repo = "ana-1b"
+private = true
+create_if_missing = true
+
+[authentication]
+# Authentication method
+# Uses huggingface-cli token from ~/.cache/huggingface/token
+method = "cli"
+# Alternative: set HF_TOKEN environment variable
+# method = "env"
+
+[upload]
+# Files to upload
+files = [
+    "model.safetensors",
+    "config.json",
+    "tokenizer.json",
+    "tokenizer_config.json",
+    "special_tokens_map.json",
+    "README.md",
+    "ana_persona.toml",
+]
+
+# Optional: upload checkpoints
+upload_checkpoints = false
+checkpoint_pattern = "checkpoint-*.safetensors"
+
+# Compression settings
+compress_before_upload = false
+compression_format = "zstd"
+
+[model_card]
+# Model card configuration
+language = ["en"]
+license = "mit"
+library_name = "candle"
+pipeline_tag = "text-generation"
+
+tags = [
+    "tritter",
+    "bitnet",
+    "tool-use",
+    "assistant",
+    "aNa",
+    "1b",
+    "quantized",
+]
+
+# Model index for pipeline
+[[model_card.model_index]]
+name = "aNa-1B"
+
+[[model_card.model_index.results]]
+task_type = "text-generation"
+task_name = "Text Generation"
+
+[model_card.metadata]
+# Additional metadata
+base_model = "scratch"
+quantization = "bitnet_b1.58"
+parameters = "1B"
+context_length = 4096
+
+[model_card.content]
+# Model card sections (auto-generated from template)
+title = "aNa - Autonomous Networked Assistant (1B)"
+summary = """
+A 1B parameter language model designed for authentic collaboration and tool usage.
+Built on the Tritter architecture with BitNet b1.58 ternary quantization.
+"""
+
+[versions]
+# Version tracking for different training runs
+
+[versions.v1_0_0]
+date = "2025-01-31"
+description = "Initial release - progressive training 100M -> 1B"
+commit = ""  # Filled in by upload script
+
+[versions.latest]
+alias = "v1_0_0"

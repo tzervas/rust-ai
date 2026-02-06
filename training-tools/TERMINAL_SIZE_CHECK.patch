@@ -1,0 +1,45 @@
+--- a/training-tools/src/live_monitor.rs
++++ b/training-tools/src/live_monitor.rs
+@@ -1173,6 +1173,40 @@ impl LiveMonitor {
+     fn draw(&self, f: &mut Frame) {
++        // Check terminal size - require minimum 80x24
++        let area = f.area();
++        if area.width < 80 || area.height < 24 {
++            let msg = Paragraph::new(vec![
++                Line::from(""),
++                Line::from(Span::styled(
++                    "Terminal Too Small",
++                    Style::default().fg(colors::FAILED_RUN).add_modifier(Modifier::BOLD),
++                )),
++                Line::from(""),
++                Line::from(Span::styled(
++                    format!("Current: {}x{}", area.width, area.height),
++                    Style::default().fg(Color::Gray),
++                )),
++                Line::from(Span::styled(
++                    "Required: 80x24 minimum",
++                    Style::default().fg(colors::MEMORY_WARN),
++                )),
++                Line::from(""),
++                Line::from(Span::raw("Please resize your terminal")),
++            ])
++            .alignment(Alignment::Center)
++            .block(
++                Block::default()
++                    .borders(Borders::ALL)
++                    .border_style(Style::default().fg(colors::FAILED_RUN))
++                    .title(" Warning "),
++            );
++
++            let centered_area = Rect {
++                x: (area.width.saturating_sub(40)) / 2,
++                y: (area.height.saturating_sub(10)) / 2,
++                width: 40.min(area.width),
++                height: 10.min(area.height),
++            };
++
++            f.render_widget(msg, centered_area);
++            return;
++        }
++
+         let chunks = Layout::default()

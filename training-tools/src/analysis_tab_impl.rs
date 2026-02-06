@@ -1,0 +1,501 @@
+// Enhanced Analysis Tab Implementation
+// This module contains the implementation for the comprehensive Analysis tab
+// with 3-column layout showing: Loss/Gradient, Prediction/Phase, and Performance metrics
+//
+// To integrate into live_monitor.rs, add these methods to the LiveMonitor impl block:
+//
+// Location: Insert before draw_network_tab() function
+//
+// The main entry point is draw_analysis_tab() which splits the area into 3 columns
+// and calls the three specialized analysis functions.
+
+use crate::training_state::{TrainingRun, LiveMetricsReader};
+use ratatui::{
+    Frame,
+    layout::{Rect, Layout, Direction, Constraint},
+    widgets::{Block, Borders, Paragraph, Wrap},
+    text::{Line, Span},
+    style::{Color, Style, Modifier},
+};
+use super::colors;
+
+impl LiveMonitor {
+    /// Enhanced Analysis Tab - Comprehensive diagnostic view with 3 columns
+    pub fn draw_analysis_tab(&self, f: &mut Frame, area: Rect) {
+        let selected_run = self.selected_run_id.as_ref().and_then(|id| self.run_manager.get_run(id));
+        let reader = self.selected_run_id.as_ref().and_then(|id| self.metrics_readers.get(id));
+
+        match (selected_run, reader) {
+            (Some(run), Some(reader)) => {
+                let columns = Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints([
+                        Constraint::Percentage(33),
+                        Constraint::Percentage(34),
+                        Constraint::Percentage(33),
+                    ])
+                    .split(area);
+
+                // Column 1: Loss Trend & Gradient Health Analysis
+                self.draw_loss_gradient_analysis(f, columns[0], run, reader);
+                // Column 2: Prediction Accuracy & Phase Efficiency
+                self.draw_prediction_phase_analysis(f, columns[1], run, reader);
+                // Column 3: Memory, Throughput & Performance
+                self.draw_performance_analysis(f, columns[2], run, reader);
+            }
+            _ => {
+                let msg = Paragraph::new("Select a run to view comprehensive training analysis")
+                    .style(Style::default().fg(Color::Gray))
+                    .block(Block::default().borders(Borders::ALL).title(" Comprehensive Analysis "));
+                f.render_widget(msg, area);
+            }
+        }
+    }
+
+    /// Column 1: Loss Trend Analysis with Linear Regression Slope & Gradient Health Score (0-100)
+    fn draw_loss_gradient_analysis(&self, f: &mut Frame, area: Rect, run: &TrainingRun, reader: &LiveMetricsReader) {
+        let metrics = reader.all_metrics();
+        if metrics.len() < 10 {
+            let msg = Paragraph::new("Collecting data...\n(need 10+ steps)")
+                .style(Style::default().fg(Color::Gray))
+                .block(Block::default().borders(Borders::ALL).title(" Loss & Gradient Analysis "));
+            f.render_widget(msg, area);
+            return;
+        }
+
+        let losses: Vec<f64> = metrics.iter().map(|m| m.loss as f64).collect();
+        let grads: Vec<f64> = metrics.iter().map(|m| m.gradient_norm as f64).collect();
+
+        // Calculate loss trend with linear regression slope
+        let n = losses.len() as f64;
+        let x_mean = (n - 1.0) / 2.0;
+        let y_mean = losses.iter().sum::<f64>() / n;
+
+        let mut numerator = 0.0;
+        let mut denominator = 0.0;
+        for (i, &loss) in losses.iter().enumerate() {
+            let x_diff = i as f64 - x_mean;
+            numerator += x_diff * (loss - y_mean);
+            denominator += x_diff * x_diff;
+        }
+        let slope = if denominator != 0.0 { numerator / denominator } else { 0.0 };
+        let slope_indicator = if slope < -0.001 { "↓↓" } else if slope < -0.0001 { "↓" } else if slope > 0.001 { "↑↑" } else if slope > 0.0001 { "↑" } else { "→" };
+        let slope_color = if slope < -0.001 { colors::PREDICT } else if slope > 0.001 { colors::FAILED_RUN } else { colors::WARMUP };
+
+        // Gradient health score (0-100)
+        let avg_grad = grads.iter().sum::<f64>() / grads.len() as f64;
+        let grad_variance = grads.iter().map(|g| (g - avg_grad).powi(2)).sum::<f64>() / grads.len() as f64;
+        let grad_std = grad_variance.sqrt();
+        let grad_cv = if avg_grad > 0.0 { grad_std / avg_grad } else { 999.0 };
+
+        // Score: healthy magnitude (0.1-5.0) + low variance + stable trend
+        let magnitude_score = if avg_grad >= 0.1 && avg_grad <= 5.0 { 40.0 } else if avg_grad >= 0.01 && avg_grad <= 10.0 { 25.0 } else { 10.0 };
+        let stability_score = if grad_cv < 0.3 { 40.0 } else if grad_cv < 0.6 { 25.0 } else { 10.0 };
+        let trend_score = if grad_std < avg_grad * 0.5 { 20.0 } else { 10.0 };
+        let gradient_health_score = (magnitude_score + stability_score + trend_score) as u8;
+        let health_color = if gradient_health_score >= 75 { colors::PREDICT } else if gradient_health_score >= 50 { colors::WARMUP } else { colors::FAILED_RUN };
+
+        // Loss statistics
+        let recent_100 = losses.len().saturating_sub(100);
+        let recent_losses = &losses[recent_100..];
+        let avg_loss = recent_losses.iter().sum::<f64>() / recent_losses.len() as f64;
+        let loss_variance = recent_losses.iter().map(|l| (l - avg_loss).powi(2)).sum::<f64>() / recent_losses.len() as f64;
+        let loss_std = loss_variance.sqrt();
+        let volatility_ratio = loss_std / avg_loss;
+
+        let mut lines = vec![
+            Line::from(Span::styled(
+                " LOSS TREND ANALYSIS",
+                Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
+            )),
+            Line::from(Span::raw("")),
+        ];
+
+        // Loss trend with slope indicator
+        lines.push(Line::from(vec![
+            Span::styled(" Trend:         ", Style::default().fg(Color::Gray)),
+            Span::styled(format!("{} {:.2e}/step", slope_indicator, slope), Style::default().fg(slope_color)),
+        ]));
+        lines.push(Line::from(vec![
+            Span::styled(" Avg Loss (100):", Style::default().fg(Color::Gray)),
+            Span::styled(format!(" {:.4}", avg_loss), Style::default().fg(colors::LOSS_LINE)),
+        ]));
+        lines.push(Line::from(vec![
+            Span::styled(" Std Dev:       ", Style::default().fg(Color::Gray)),
+            Span::styled(format!(" {:.4}", loss_std), Style::default().fg(Color::White)),
+        ]));
+        lines.push(Line::from(vec![
+            Span::styled(" Volatility:    ", Style::default().fg(Color::Gray)),
+            Span::styled(
+                format!(" {:.1}%", volatility_ratio * 100.0),
+                Style::default().fg(if volatility_ratio > 0.5 { colors::FAILED_RUN } else if volatility_ratio > 0.3 { colors::WARMUP } else { colors::PREDICT })
+            ),
+        ]));
+        lines.push(Line::from(vec![
+            Span::styled(" Perplexity:    ", Style::default().fg(Color::Gray)),
+            Span::styled(format!(" {:.1}", avg_loss.exp()), Style::default().fg(colors::LOSS_SCATTER)),
+        ]));
+
+        // Gradient health
+        lines.push(Line::from(Span::raw("")));
+        lines.push(Line::from(Span::styled(
+            " GRADIENT HEALTH",
+            Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
+        )));
+        lines.push(Line::from(vec![
+            Span::styled(" Health Score:  ", Style::default().fg(Color::Gray)),
+            Span::styled(format!(" {}/100", gradient_health_score), Style::default().fg(health_color).add_modifier(Modifier::BOLD)),
+        ]));
+        lines.push(Line::from(vec![
+            Span::styled(" Avg Magnitude: ", Style::default().fg(Color::Gray)),
+            Span::styled(format!(" {:.4}", avg_grad), Style::default().fg(colors::GRAD_NORM)),
+        ]));
+        lines.push(Line::from(vec![
+            Span::styled(" Std Dev:       ", Style::default().fg(Color::Gray)),
+            Span::styled(format!(" {:.4}", grad_std), Style::default().fg(Color::White)),
+        ]));
+        lines.push(Line::from(vec![
+            Span::styled(" Coeff. Var:    ", Style::default().fg(Color::Gray)),
+            Span::styled(
+                format!(" {:.2}", grad_cv),
+                Style::default().fg(if grad_cv < 0.3 { colors::PREDICT } else if grad_cv < 0.6 { colors::WARMUP } else { colors::FAILED_RUN })
+            ),
+        ]));
+
+        // Diagnostic recommendations
+        lines.push(Line::from(Span::raw("")));
+        lines.push(Line::from(Span::styled(
+            " RECOMMENDATIONS",
+            Style::default().fg(colors::WARMUP).add_modifier(Modifier::BOLD),
+        )));
+
+        if gradient_health_score < 50 {
+            if avg_grad < 0.01 {
+                lines.push(Line::from(Span::styled(" → Vanishing gradients!", Style::default().fg(colors::FAILED_RUN))));
+                lines.push(Line::from(Span::styled("   Increase learning rate", Style::default().fg(Color::Gray))));
+            } else if avg_grad > 10.0 {
+                lines.push(Line::from(Span::styled(" → Exploding gradients!", Style::default().fg(colors::FAILED_RUN))));
+                lines.push(Line::from(Span::styled("   Reduce LR or clip grads", Style::default().fg(Color::Gray))));
+            }
+            if grad_cv > 0.6 {
+                lines.push(Line::from(Span::styled(" → High instability", Style::default().fg(colors::FAILED_RUN))));
+                lines.push(Line::from(Span::styled("   Reduce learning rate", Style::default().fg(Color::Gray))));
+            }
+        } else if volatility_ratio > 0.5 {
+            lines.push(Line::from(Span::styled(" → Loss too volatile", Style::default().fg(colors::WARMUP))));
+            lines.push(Line::from(Span::styled("   Increase batch size", Style::default().fg(Color::Gray))));
+        } else {
+            lines.push(Line::from(Span::styled(" ✓ Training healthy!", Style::default().fg(colors::PREDICT))));
+        }
+
+        let para = Paragraph::new(lines)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(colors::BORDER))
+                    .title(" Loss & Gradient Analysis "),
+            )
+            .wrap(Wrap { trim: false });
+
+        f.render_widget(para, area);
+    }
+
+    /// Column 2: Prediction Accuracy Statistics & Phase Efficiency Metrics
+    fn draw_prediction_phase_analysis(&self, f: &mut Frame, area: Rect, run: &TrainingRun, reader: &LiveMetricsReader) {
+        let metrics = reader.all_metrics();
+        if metrics.is_empty() {
+            let msg = Paragraph::new("No metrics available")
+                .style(Style::default().fg(Color::Gray))
+                .block(Block::default().borders(Borders::ALL).title(" Prediction & Phase Analysis "));
+            f.render_widget(msg, area);
+            return;
+        }
+
+        // Prediction accuracy statistics
+        let total_predictions = metrics.iter().filter(|m| m.was_predicted).count();
+        let predictions_with_error: Vec<f32> = metrics.iter()
+            .filter_map(|m| if m.was_predicted { m.prediction_error } else { None })
+            .collect();
+
+        let avg_prediction_error = if !predictions_with_error.is_empty() {
+            predictions_with_error.iter().sum::<f32>() / predictions_with_error.len() as f32
+        } else {
+            0.0
+        };
+
+        let prediction_accuracy_pct = if !predictions_with_error.is_empty() {
+            let good_predictions = predictions_with_error.iter().filter(|&&e| e < 0.1).count();
+            (good_predictions as f32 / predictions_with_error.len() as f32) * 100.0
+        } else {
+            0.0
+        };
+
+        // Phase efficiency metrics - time spent in each phase
+        let mut phase_durations: std::collections::HashMap<String, f64> = std::collections::HashMap::new();
+        let mut phase_counts: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+
+        for m in metrics.iter() {
+            let phase_name = format!("{}", m.phase);
+            *phase_durations.entry(phase_name.clone()).or_insert(0.0) += m.step_time_ms;
+            *phase_counts.entry(phase_name).or_insert(0) += 1;
+        }
+
+        let total_time: f64 = phase_durations.values().sum();
+
+        let mut lines = vec![
+            Line::from(Span::styled(
+                " PREDICTION ACCURACY",
+                Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
+            )),
+            Line::from(Span::raw("")),
+        ];
+
+        // Prediction stats
+        let prediction_rate = (total_predictions as f64 / metrics.len() as f64) * 100.0;
+        lines.push(Line::from(vec![
+            Span::styled(" Predictions:   ", Style::default().fg(Color::Gray)),
+            Span::styled(format!(" {}/{} ({:.1}%)", total_predictions, metrics.len(), prediction_rate), Style::default().fg(colors::PREDICTION)),
+        ]));
+
+        if total_predictions > 0 {
+            lines.push(Line::from(vec![
+                Span::styled(" Avg Error:     ", Style::default().fg(Color::Gray)),
+                Span::styled(
+                    format!(" {:.4}", avg_prediction_error),
+                    Style::default().fg(if avg_prediction_error < 0.05 { colors::PREDICT } else if avg_prediction_error < 0.15 { colors::WARMUP } else { colors::FAILED_RUN })
+                ),
+            ]));
+            lines.push(Line::from(vec![
+                Span::styled(" Accuracy:      ", Style::default().fg(Color::Gray)),
+                Span::styled(
+                    format!(" {:.1}% good", prediction_accuracy_pct),
+                    Style::default().fg(if prediction_accuracy_pct > 75.0 { colors::PREDICT } else if prediction_accuracy_pct > 50.0 { colors::WARMUP } else { colors::FAILED_RUN })
+                ),
+            ]));
+        } else {
+            lines.push(Line::from(Span::styled(" No predictions yet", Style::default().fg(Color::Gray))));
+        }
+
+        // Compute savings from predictions
+        let backward_saved = run.total_forward.saturating_sub(run.total_backward);
+        let savings_pct = if run.total_forward > 0 {
+            (backward_saved as f64 / run.total_forward as f64) * 100.0
+        } else {
+            0.0
+        };
+        lines.push(Line::from(vec![
+            Span::styled(" Compute Saved: ", Style::default().fg(Color::Gray)),
+            Span::styled(
+                format!(" {:.1}%", savings_pct),
+                Style::default().fg(if savings_pct > 15.0 { colors::PREDICT } else if savings_pct > 5.0 { colors::WARMUP } else { Color::Gray })
+            ),
+        ]));
+
+        // Phase efficiency
+        lines.push(Line::from(Span::raw("")));
+        lines.push(Line::from(Span::styled(
+            " PHASE EFFICIENCY",
+            Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
+        )));
+
+        let phases = ["WARMUP", "FULL", "PREDICT", "CORRECT"];
+        let phase_colors = [colors::WARMUP, colors::FULL, colors::PREDICT, colors::CORRECT];
+
+        for (phase, color) in phases.iter().zip(phase_colors.iter()) {
+            if let Some(&duration) = phase_durations.get(*phase) {
+                let pct = (duration / total_time) * 100.0;
+                let count = phase_counts.get(*phase).unwrap_or(&0);
+                let avg_time = if *count > 0 { duration / *count as f64 } else { 0.0 };
+
+                lines.push(Line::from(vec![
+                    Span::styled(format!(" {:<8}", phase), Style::default().fg(*color)),
+                    Span::styled(format!(" {:.1}%  ", pct), Style::default().fg(Color::White)),
+                    Span::styled(format!("({:.0}ms avg)", avg_time), Style::default().fg(Color::Gray)),
+                ]));
+            }
+        }
+
+        // Phase transition insights
+        lines.push(Line::from(Span::raw("")));
+        lines.push(Line::from(Span::styled(
+            " INSIGHTS",
+            Style::default().fg(colors::WARMUP).add_modifier(Modifier::BOLD),
+        )));
+
+        if prediction_accuracy_pct > 80.0 {
+            lines.push(Line::from(Span::styled(" ✓ Excellent predictions!", Style::default().fg(colors::PREDICT))));
+        } else if prediction_accuracy_pct > 60.0 {
+            lines.push(Line::from(Span::styled(" △ Predictions improving", Style::default().fg(colors::WARMUP))));
+        } else if total_predictions > 10 {
+            lines.push(Line::from(Span::styled(" ⚠ Low prediction quality", Style::default().fg(colors::FAILED_RUN))));
+            lines.push(Line::from(Span::styled("   Tune confidence thresh", Style::default().fg(Color::Gray))));
+        }
+
+        if savings_pct > 20.0 {
+            lines.push(Line::from(Span::styled(" ✓ Great compute savings!", Style::default().fg(colors::PREDICT))));
+        }
+
+        let para = Paragraph::new(lines)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(colors::BORDER))
+                    .title(" Prediction & Phase Analysis "),
+            )
+            .wrap(Wrap { trim: false });
+
+        f.render_widget(para, area);
+    }
+
+    /// Column 3: Memory Efficiency, Throughput vs Expected, and Performance Recommendations
+    fn draw_performance_analysis(&self, f: &mut Frame, area: Rect, run: &TrainingRun, reader: &LiveMetricsReader) {
+        let metrics = reader.all_metrics();
+        let gpu_stats = self.gpu_monitor.current();
+
+        let mut lines = vec![
+            Line::from(Span::styled(
+                " MEMORY EFFICIENCY",
+                Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
+            )),
+            Line::from(Span::raw("")),
+        ];
+
+        // Memory statistics
+        if let Some(stats) = gpu_stats {
+            let mem_pct = stats.memory_percent();
+            let mem_used_gb = stats.memory_used as f64 / 1e9;
+            let mem_total_gb = stats.memory_total as f64 / 1e9;
+            let mem_color = if mem_pct > 90.0 { colors::MEMORY_CRIT } else if mem_pct > 70.0 { colors::MEMORY_WARN } else { colors::MEMORY_OK };
+
+            // Memory efficiency indicator (0-100)
+            let memory_efficiency = if mem_pct > 85.0 && mem_pct < 95.0 {
+                95
+            } else if mem_pct > 70.0 && mem_pct < 85.0 {
+                85
+            } else if mem_pct > 95.0 {
+                60
+            } else {
+                ((mem_pct / 70.0) * 70.0) as u8
+            };
+
+            lines.push(Line::from(vec![
+                Span::styled(" GPU Memory:    ", Style::default().fg(Color::Gray)),
+                Span::styled(format!(" {:.1}%", mem_pct), Style::default().fg(mem_color)),
+            ]));
+            lines.push(Line::from(vec![
+                Span::styled(" Used/Total:    ", Style::default().fg(Color::Gray)),
+                Span::styled(format!(" {:.1}/{:.1} GB", mem_used_gb, mem_total_gb), Style::default().fg(Color::White)),
+            ]));
+            lines.push(Line::from(vec![
+                Span::styled(" Efficiency:    ", Style::default().fg(Color::Gray)),
+                Span::styled(
+                    format!(" {}/100", memory_efficiency),
+                    Style::default().fg(if memory_efficiency > 80 { colors::PREDICT } else if memory_efficiency > 60 { colors::WARMUP } else { colors::FAILED_RUN }).add_modifier(Modifier::BOLD)
+                ),
+            ]));
+            lines.push(Line::from(vec![
+                Span::styled(" GPU Util:      ", Style::default().fg(Color::Gray)),
+                Span::styled(format!(" {}%", stats.gpu_util), Style::default().fg(if stats.gpu_util > 80 { colors::PREDICT } else { colors::WARMUP })),
+            ]));
+            lines.push(Line::from(vec![
+                Span::styled(" Temperature:   ", Style::default().fg(Color::Gray)),
+                Span::styled(
+                    format!(" {}°C", stats.temperature),
+                    Style::default().fg(if stats.temperature > 80 { colors::TEMP_WARN } else { colors::TEMP_OK })
+                ),
+            ]));
+        } else {
+            lines.push(Line::from(Span::styled(" GPU stats unavailable", Style::default().fg(Color::Gray))));
+        }
+
+        // Throughput comparison
+        lines.push(Line::from(Span::raw("")));
+        lines.push(Line::from(Span::styled(
+            " THROUGHPUT ANALYSIS",
+            Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
+        )));
+
+        if !metrics.is_empty() {
+            let step_times: Vec<f64> = metrics.iter().map(|m| m.step_time_ms).collect();
+            let avg_time = step_times.iter().sum::<f64>() / step_times.len() as f64;
+            let steps_per_sec = 1000.0 / avg_time;
+            let tokens_per_step = run.config.batch_size * run.config.max_seq_length;
+            let tokens_per_sec = steps_per_sec * tokens_per_step as f64;
+
+            // Expected throughput (baseline: ~200 tokens/sec on CPU, ~2000 on GPU)
+            let expected_throughput = if gpu_stats.is_some() { 2000.0 } else { 200.0 };
+            let throughput_ratio = tokens_per_sec / expected_throughput;
+            let throughput_pct = (throughput_ratio * 100.0).min(999.9);
+
+            lines.push(Line::from(vec![
+                Span::styled(" Avg Step Time: ", Style::default().fg(Color::Gray)),
+                Span::styled(format!(" {:.0}ms", avg_time), Style::default().fg(colors::STEP_TIME)),
+            ]));
+            lines.push(Line::from(vec![
+                Span::styled(" Steps/sec:     ", Style::default().fg(Color::Gray)),
+                Span::styled(format!(" {:.2}", steps_per_sec), Style::default().fg(Color::White)),
+            ]));
+            lines.push(Line::from(vec![
+                Span::styled(" Tokens/sec:    ", Style::default().fg(Color::Gray)),
+                Span::styled(format!(" {:.0}", tokens_per_sec), Style::default().fg(colors::WARMUP)),
+            ]));
+            lines.push(Line::from(vec![
+                Span::styled(" vs Expected:   ", Style::default().fg(Color::Gray)),
+                Span::styled(
+                    format!(" {:.0}%", throughput_pct),
+                    Style::default().fg(if throughput_ratio > 0.8 { colors::PREDICT } else if throughput_ratio > 0.5 { colors::WARMUP } else { colors::FAILED_RUN })
+                ),
+            ]));
+
+            // Recent trend
+            if step_times.len() > 20 {
+                let recent_20: f64 = step_times.iter().rev().take(20).sum::<f64>() / 20.0;
+                let trend = ((recent_20 - avg_time) / avg_time) * 100.0;
+                let trend_indicator = if trend < -5.0 { "↓ Improving" } else if trend > 5.0 { "↑ Slowing" } else { "→ Stable" };
+                let trend_color = if trend < -5.0 { colors::PREDICT } else if trend > 5.0 { colors::FAILED_RUN } else { colors::WARMUP };
+
+                lines.push(Line::from(vec![
+                    Span::styled(" Recent Trend:  ", Style::default().fg(Color::Gray)),
+                    Span::styled(format!(" {}", trend_indicator), Style::default().fg(trend_color)),
+                ]));
+            }
+        }
+
+        // Overall performance score
+        lines.push(Line::from(Span::raw("")));
+        lines.push(Line::from(Span::styled(
+            " RECOMMENDATIONS",
+            Style::default().fg(colors::WARMUP).add_modifier(Modifier::BOLD),
+        )));
+
+        if let Some(stats) = gpu_stats {
+            let mem_pct = stats.memory_percent();
+            if mem_pct < 60.0 {
+                lines.push(Line::from(Span::styled(" → Increase batch size", Style::default().fg(colors::PREDICT))));
+                let suggested_batch = ((run.config.batch_size as f64 * (85.0 / mem_pct)).min(64.0)) as usize;
+                lines.push(Line::from(Span::styled(format!("   Try batch_size={}", suggested_batch), Style::default().fg(Color::Gray))));
+            } else if mem_pct > 95.0 {
+                lines.push(Line::from(Span::styled(" → Memory critical!", Style::default().fg(colors::FAILED_RUN))));
+                lines.push(Line::from(Span::styled("   Enable grad checkpoint", Style::default().fg(Color::Gray))));
+            } else if mem_pct > 85.0 && mem_pct < 95.0 {
+                lines.push(Line::from(Span::styled(" ✓ Optimal memory usage", Style::default().fg(colors::PREDICT))));
+            }
+
+            if stats.gpu_util < 70 {
+                lines.push(Line::from(Span::styled(" △ GPU underutilized", Style::default().fg(colors::WARMUP))));
+                lines.push(Line::from(Span::styled("   Check data loading", Style::default().fg(Color::Gray))));
+            }
+        }
+
+        let para = Paragraph::new(lines)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(colors::BORDER))
+                    .title(" Performance & Efficiency "),
+            )
+            .wrap(Wrap { trim: false });
+
+        f.render_widget(para, area);
+    }
+}

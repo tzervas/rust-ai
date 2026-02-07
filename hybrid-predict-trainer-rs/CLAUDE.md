@@ -2,6 +2,23 @@
 
 This document provides context for Claude Code and other AI assistants working on this crate.
 
+## Documentation Navigation
+
+For comprehensive documentation navigation, **start with [docs/INDEX.md](docs/INDEX.md)**.
+
+The INDEX provides:
+- Token-optimized summaries of all documentation (70% token reduction)
+- Navigation matrices by persona (AI Agent, Developer, Researcher, Contributor)
+- Navigation matrices by task (Understanding, Implementing, Running, Debugging)
+- Quick reference guides for common workflows
+- Codebase structure map with file counts
+
+**Quick links:**
+- New to project? Read [README.md](README.md) first
+- Implementing features? See [docs/ENGINEERING_SPEC.md](docs/ENGINEERING_SPEC.md)
+- Research analysis? Start with [docs/research/START_HERE.md](docs/research/START_HERE.md)
+- Burn integration? Check [BURN_INTEGRATION_FINAL.md](BURN_INTEGRATION_FINAL.md)
+
 ## Project Overview
 
 **hybrid-predict-trainer-rs** is a Rust crate implementing hybridized predictive training that achieves significant training speedups by intelligently predicting training steps instead of computing full forward/backward passes.

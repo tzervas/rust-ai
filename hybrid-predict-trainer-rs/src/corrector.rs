@@ -256,9 +256,21 @@ impl ResidualCorrector {
         // Blend historical and model-based correction
         let blended_correction = 0.7 * loss_correction + 0.3 * model_correction;
 
+        // Adaptive scaling based on recent prediction error magnitude
+        // Scale correction up when predictions are inaccurate, down when accurate
+        let avg_abs_residual: f32 = similar
+            .iter()
+            .map(|r| r.loss_residual.abs())
+            .sum::<f32>()
+            / similar.len().max(1) as f32;
+        // Scale from 0.5x (very accurate predictions) to 1.5x (large errors)
+        // Clamp error magnitude to [0, 1.0] for stability
+        let error_scaling = 0.5 + avg_abs_residual.min(1.0);
+        let scaled_correction = blended_correction * error_scaling;
+
         // Clamp to maximum correction
         let max_correction = predicted_loss.abs() * self.config.max_correction_factor;
-        let final_correction = blended_correction.clamp(-max_correction, max_correction);
+        let final_correction = scaled_correction.clamp(-max_correction, max_correction);
 
         // Build weight-level corrections from per-layer gradient residuals
         let weight_correction = self.compute_weight_correction(&similar, &weights);
@@ -949,8 +961,12 @@ mod tests {
         // Historical component: weighted avg of loss_residuals = 0.4
         // Model component: linear_model is all zeros, bias is 0 => 0.0
         // Blended = 0.7 * 0.4 + 0.3 * 0.0 = 0.28
+        // Adaptive scaling: avg_abs_residual = 0.4, error_scaling = 0.5 + 0.4 = 0.9
+        // Scaled = 0.28 * 0.9 = 0.252
         // max_correction = |2.0| * 1.0 = 2.0 (no clamping)
-        let expected = 0.7 * 0.4 + 0.3 * 0.0;
+        let blended = 0.7 * 0.4 + 0.3 * 0.0;
+        let error_scaling = 0.5 + 0.4; // avg_abs_residual = 0.4
+        let expected = blended * error_scaling;
         assert!(
             (correction.loss_correction - expected).abs() < 1e-4,
             "Blended correction should be ~{expected}, got {}",

@@ -693,16 +693,14 @@ impl<M, O> HybridTrainer<M, O> {
 
         // Auto-tuning integration: Update controller and apply recommendations
         if self.auto_tuning.is_some() {
-            // Collect per-layer gradient statistics
-            let layer_grads_map = self.collect_layer_gradients();
-
-            // Convert HashMap to Vec for controller.update() signature
-            let layer_grads: Vec<(String, f32, f32)> = layer_grads_map
+            // Collect gradients before taking mutable borrow of auto_tuning
+            let layer_grads: Vec<(String, f32, f32)> = self
+                .collect_layer_gradients()
                 .into_iter()
                 .map(|(name, (grad_norm, weight_norm))| (name, grad_norm, weight_norm))
                 .collect();
 
-            // Get update from auto-tuning controller (borrow after collecting gradients)
+            #[allow(clippy::unnecessary_unwrap)]
             let update = self.auto_tuning.as_mut().unwrap().update(
                 self.state.step,
                 loss,
@@ -711,8 +709,7 @@ impl<M, O> HybridTrainer<M, O> {
                 confidence,
             );
 
-            // Apply recommendations (TODO: wire to optimizer when available)
-            // For now, store update for external access
+            // Store update for external access (TODO: wire to optimizer when available)
             self.last_auto_tuning_update = Some(update);
         }
 

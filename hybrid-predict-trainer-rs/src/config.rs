@@ -125,7 +125,7 @@ pub struct HybridTrainerConfig {
 
     /// Maximum training steps (for auto-tuning progress calculation).
     ///
-    /// Required if auto_tuning_config is Some. Used to calculate training progress percentage.
+    /// Required if `auto_tuning_config` is `Some`. Used to calculate training progress percentage.
     #[serde(default)]
     pub max_steps: Option<u64>,
 }

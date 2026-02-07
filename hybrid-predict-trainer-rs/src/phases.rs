@@ -350,7 +350,17 @@ impl DefaultPhaseController {
     }
 
     /// Computes adaptive prediction length based on confidence and history.
-    fn compute_predict_steps(&self) -> usize {
+    ///
+    /// The prediction horizon scales quadratically with confidence (higher
+    /// confidence = more steps) and is penalized by consecutive prediction
+    /// phases to prevent runaway prediction without validation.
+    ///
+    /// # Returns
+    ///
+    /// The number of prediction steps to use, clamped between 10 and
+    /// `max_predict_steps`.
+    #[must_use]
+    pub fn compute_predict_steps(&self) -> usize {
         // Scale prediction length by confidence
         let base_steps = self.config.max_predict_steps;
         let confidence_factor = self.predictor_confidence.powf(2.0);

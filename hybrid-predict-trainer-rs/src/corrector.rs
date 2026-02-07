@@ -156,7 +156,7 @@ impl ResidualCorrector {
     /// Creates a new residual corrector.
     #[must_use]
     pub fn new(_config: &HybridTrainerConfig) -> Self {
-        let feature_dim = 32; // From TrainingState::compute_features
+        let feature_dim = 64; // From TrainingState::compute_features (64-dim)
         Self {
             config: CorrectorConfig::default(),
             statistics: CorrectionStatistics::default(),
@@ -171,7 +171,7 @@ impl ResidualCorrector {
     /// Creates a corrector with custom configuration.
     #[must_use]
     pub fn with_config(config: CorrectorConfig) -> Self {
-        let feature_dim = 32;
+        let feature_dim = 64; // From TrainingState::compute_features (64-dim)
         Self {
             config,
             statistics: CorrectionStatistics::default(),
@@ -260,13 +260,90 @@ impl ResidualCorrector {
         let max_correction = predicted_loss.abs() * self.config.max_correction_factor;
         let final_correction = blended_correction.clamp(-max_correction, max_correction);
 
+        // Build weight-level corrections from per-layer gradient residuals
+        let weight_correction = self.compute_weight_correction(&similar, &weights);
+
         Correction {
             loss_correction: final_correction,
-            weight_correction: None, // Would include weight delta corrections
+            weight_correction,
             confidence: if similar.len() >= 5 { 0.9 } else { 0.5 },
             num_residuals_used: similar.len(),
             residual_weights: weights,
         }
+    }
+
+    /// Computes weight-level corrections from residuals with per-layer information.
+    ///
+    /// Builds a weighted average of per-layer residual magnitudes across similar
+    /// past residuals, producing a `WeightDelta` that corrects the prediction's
+    /// per-layer scaling errors.
+    fn compute_weight_correction(
+        &self,
+        similar: &[&Residual],
+        weights: &[f32],
+    ) -> Option<WeightDelta> {
+        // Only produce weight corrections if residuals have gradient info
+        let has_layer_info = similar
+            .iter()
+            .any(|r| !r.gradient_residuals.is_empty());
+
+        if !has_layer_info {
+            return None;
+        }
+
+        // Accumulate weighted per-layer correction magnitudes
+        let mut layer_corrections: std::collections::HashMap<String, f32> =
+            std::collections::HashMap::new();
+        let mut layer_counts: std::collections::HashMap<String, f32> =
+            std::collections::HashMap::new();
+
+        for (residual, &w) in similar.iter().zip(weights.iter()) {
+            for layer_res in &residual.gradient_residuals {
+                // The correction direction is derived from cosine similarity:
+                // if cosine_similarity < 1, the prediction direction was off
+                let direction_error = 1.0 - layer_res.cosine_similarity;
+                let correction_mag = layer_res.magnitude * direction_error * w;
+
+                *layer_corrections
+                    .entry(layer_res.layer_name.clone())
+                    .or_insert(0.0) += correction_mag;
+                *layer_counts
+                    .entry(layer_res.layer_name.clone())
+                    .or_insert(0.0) += w;
+            }
+        }
+
+        if layer_corrections.is_empty() {
+            return None;
+        }
+
+        // Normalize by total weight per layer
+        let mut deltas = std::collections::HashMap::new();
+        let mut total_scale = 0.0_f32;
+
+        for (layer_name, correction_sum) in &layer_corrections {
+            let count = layer_counts.get(layer_name).copied().unwrap_or(1.0);
+            let avg_correction = correction_sum / count.max(1e-8);
+
+            // Clamp correction magnitude
+            let clamped = avg_correction.clamp(
+                -self.config.max_correction_factor,
+                self.config.max_correction_factor,
+            );
+            deltas.insert(layer_name.clone(), vec![clamped]);
+            total_scale += clamped.abs();
+        }
+
+        Some(WeightDelta {
+            deltas,
+            scale: total_scale / layer_corrections.len().max(1) as f32,
+            metadata: crate::state::WeightDeltaMetadata {
+                is_predicted: false,
+                confidence: Some(if similar.len() >= 5 { 0.8 } else { 0.4 }),
+                source_phase: Some(crate::Phase::Correct),
+                num_steps: 0,
+            },
+        })
     }
 
     /// Updates the corrector from a new residual observation.
@@ -345,9 +422,35 @@ impl ResidualCorrector {
             return None;
         }
 
-        // Create a small weight delta in the gradient direction
-        // This is a placeholder - real implementation would store gradient directions
-        Some(WeightDelta::scaled_identity(correction_magnitude * 0.01))
+        // Create a weight delta with per-layer corrections
+        // The linear model's prediction magnitude drives uniform layer-level correction
+        let layer_names = [
+            "embed",
+            "attention.q",
+            "attention.k",
+            "attention.v",
+            "attention.out",
+            "mlp.up",
+            "mlp.down",
+            "lm_head",
+        ];
+
+        let per_layer_correction = correction_magnitude * 0.01;
+        let mut deltas = std::collections::HashMap::new();
+        for layer_name in &layer_names {
+            deltas.insert((*layer_name).to_string(), vec![per_layer_correction]);
+        }
+
+        Some(WeightDelta {
+            deltas,
+            scale: per_layer_correction.abs(),
+            metadata: crate::state::WeightDeltaMetadata {
+                is_predicted: false,
+                confidence: Some(0.5),
+                source_phase: Some(crate::Phase::Correct),
+                num_steps: 0,
+            },
+        })
     }
 
     /// Returns the current residual magnitude EMA.
@@ -471,7 +574,7 @@ mod tests {
         let config = HybridTrainerConfig::default();
         let corrector = ResidualCorrector::new(&config);
 
-        assert_eq!(corrector.linear_model.len(), 32);
+        assert_eq!(corrector.linear_model.len(), 64);
         assert!((corrector.loss_bias).abs() < f32::EPSILON);
     }
 

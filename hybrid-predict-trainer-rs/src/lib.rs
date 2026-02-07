@@ -791,6 +791,12 @@ impl<M, O> HybridTrainer<M, O> {
 
     /// Executes a predictive step (forward only, apply predicted weight delta).
     ///
+    /// Uses the phase controller's `compute_predict_steps()` to determine the
+    /// optimal prediction horizon based on current confidence and history,
+    /// then calls `predict_y_steps()` with that horizon for multi-step
+    /// prediction. This enables the dynamics model to predict further ahead
+    /// when confidence is high, yielding greater training speedup.
+    ///
     /// Used during Predict phase - skips backward pass for speedup.
     fn execute_predict_step<B>(&mut self, batch: &B) -> HybridResult<(f32, bool, Option<f32>)>
     where
@@ -803,11 +809,14 @@ impl<M, O> HybridTrainer<M, O> {
         let state_features_before = self.state.compute_features();
         let confidence = self.dynamics_model.prediction_confidence(&self.state);
 
-        // Get prediction from dynamics model
-        let (prediction, _uncertainty) = self.dynamics_model.predict_y_steps(&self.state, 1);
+        // Compute adaptive prediction horizon based on confidence and history
+        let y_steps = self.phase_controller.compute_predict_steps();
+
+        // Get multi-step prediction from dynamics model
+        let (prediction, _uncertainty) = self.dynamics_model.predict_y_steps(&self.state, y_steps);
         let predicted_loss = prediction.predicted_final_loss;
 
-        // Apply predicted weight delta
+        // Apply predicted weight delta (already scaled for y_steps by the dynamics model)
         model.apply_weight_delta(&prediction.weight_delta)?;
 
         // Forward pass to get actual loss (for validation)
@@ -821,7 +830,7 @@ impl<M, O> HybridTrainer<M, O> {
         let residual = residuals::Residual {
             step: self.state.step,
             phase: Phase::Predict,
-            prediction_horizon: 1,
+            prediction_horizon: y_steps,
             loss_residual,
             gradient_residuals: Vec::new(), // No gradient info in predict phase
             state_features: state_features_before,

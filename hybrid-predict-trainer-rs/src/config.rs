@@ -303,6 +303,7 @@ pub struct HybridTrainerConfigBuilder {
     predictor_config: Option<PredictorConfig>,
     predictor_memory_budget: Option<usize>,
     collect_metrics: Option<bool>,
+    divergence_config: Option<DivergenceConfig>,
     auto_tuning_config: Option<crate::auto_tuning::AutoTuningConfig>,
     max_steps: Option<u64>,
 }
@@ -364,6 +365,13 @@ impl HybridTrainerConfigBuilder {
         self
     }
 
+    /// Sets the divergence detection configuration.
+    #[must_use]
+    pub fn divergence_config(mut self, config: DivergenceConfig) -> Self {
+        self.divergence_config = Some(config);
+        self
+    }
+
     /// Sets the auto-tuning configuration.
     #[must_use]
     pub fn auto_tuning(mut self, config: crate::auto_tuning::AutoTuningConfig) -> Self {
@@ -397,7 +405,7 @@ impl HybridTrainerConfigBuilder {
                 .predictor_memory_budget
                 .unwrap_or_else(default_predictor_memory_budget),
             collect_metrics: self.collect_metrics.unwrap_or_else(default_collect_metrics),
-            divergence_config: DivergenceConfig::default(),
+            divergence_config: self.divergence_config.unwrap_or_default(),
             checkpoint_config: CheckpointConfig::default(),
             auto_tuning_config: self.auto_tuning_config,
             max_steps: self.max_steps,

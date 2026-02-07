@@ -808,6 +808,52 @@ impl<M, O> HybridTrainer<M, O> {
 
         // Train the dynamics model during full steps (not warmup)
         if self.phase_controller.is_warmup_complete() {
+            // Capture state features before model update
+            let state_features_before = self.state.compute_features();
+            let confidence = self.dynamics_model.prediction_confidence(&self.state);
+
+            // Get 1-step prediction to compute gradient residuals
+            let (prediction, _) = self.dynamics_model.predict_y_steps(&self.state, 1);
+            let predicted_loss = prediction.predicted_final_loss;
+
+            // Compute loss residual (actual - predicted)
+            let loss_residual = loss - predicted_loss;
+
+            // Create gradient residuals from per-param norms if available
+            let gradient_residuals = if let Some(ref per_param) = grad_info.per_param_norms {
+                per_param
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, &actual_norm)| residuals::LayerResidual {
+                        layer_name: format!("layer_{}", idx),
+                        magnitude: actual_norm,
+                        compressed: None, // TODO: Add compression support
+                        cosine_similarity: 1.0, // Perfect match when no prediction available
+                    })
+                    .collect()
+            } else {
+                Vec::new()
+            };
+
+            // Create and store residual for weight-level corrections
+            let residual = residuals::Residual {
+                step: self.state.step,
+                phase: Phase::Full,
+                prediction_horizon: 1,
+                loss_residual,
+                gradient_residuals,
+                state_features: state_features_before,
+                prediction_confidence: confidence,
+            };
+
+            // Store the residual for future correction
+            self.residual_store.add(residual.clone());
+
+            // Update the corrector's online model with this residual
+            self.residual_corrector
+                .update_from_residual(&residual, &self.state);
+
+            // Train the dynamics model
             self.dynamics_model
                 .observe_gradient(&self.state, &grad_info);
         }

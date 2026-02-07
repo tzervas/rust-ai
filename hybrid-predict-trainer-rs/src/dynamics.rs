@@ -798,37 +798,99 @@ impl RSSMLite {
             let grads = Self::gru_backward(&self.gru_weights[ensemble_idx], &cache, &dh_from_loss);
             self.gru_weights[ensemble_idx].apply_gradients(&grads, lr, max_grad_norm);
 
-            // ── 6. Train weight delta head (magnitude prediction) ──
-            // Target: actual lr * grad_norm approximates the weight update magnitude
+            // ── 6. Train weight delta head (all 10 dimensions) ──
+            // Compute forward pass through weight delta head: combined -> weight_delta_features
+            let combined_dim = combined.len();
+            let mut predicted_features = vec![0.0_f32; self.weight_delta_dim];
+            for out_idx in 0..self.weight_delta_dim {
+                let mut sum = 0.0_f32;
+                for in_idx in 0..combined_dim {
+                    let weight_idx = out_idx * combined_dim + in_idx;
+                    if weight_idx < self.weight_delta_head_weights.len() {
+                        sum += combined[in_idx] * self.weight_delta_head_weights[weight_idx];
+                    }
+                }
+                predicted_features[out_idx] = sum;
+            }
+
+            // Compute targets for all 10 dimensions
+            let base_mag = state.optimizer_state_summary.effective_lr.max(1e-8)
+                * state.gradient_norm.max(1e-8);
             let actual_magnitude =
                 state.optimizer_state_summary.effective_lr * grad_info.gradient_norm;
 
-            // Forward pass through weight delta head for magnitude (first output)
-            let mut predicted_raw_magnitude = 0.0_f32;
-            for (j, &c) in combined.iter().enumerate() {
-                let idx = j; // First output row: indices 0..combined_dim
-                if idx < self.weight_delta_head_weights.len() {
-                    predicted_raw_magnitude += c * self.weight_delta_head_weights[idx];
-                }
-            }
-
-            // The actual decode uses: magnitude = base_mag * (1 + tanh(raw)) * ...
-            // For training, we use a simpler MSE loss on tanh(raw) vs scaled target
-            let base_mag = state.optimizer_state_summary.effective_lr.max(1e-8)
-                * state.gradient_norm.max(1e-8);
-            let target_tanh = if base_mag > 1e-12 {
+            // Dimension 0: Global magnitude (tanh-encoded)
+            let target_magnitude_tanh = if base_mag > 1e-12 {
                 ((actual_magnitude / base_mag) - 1.0).clamp(-0.99, 0.99)
             } else {
                 0.0
             };
-            let pred_tanh = predicted_raw_magnitude.tanh();
-            let delta_head_error = pred_tanh - target_tanh;
-            let delta_head_grad_scale = tanh_deriv(pred_tanh);
 
-            for (j, &c) in combined.iter().enumerate() {
-                if j < self.weight_delta_head_weights.len() {
-                    self.weight_delta_head_weights[j] -=
-                        lr * 0.1 * delta_head_error * delta_head_grad_scale * c;
+            // Dimension 1: Direction confidence (sigmoid-encoded)
+            // Target high confidence when gradients are large and loss is decreasing
+            let loss_delta = state.loss - state.loss_history.last().copied().unwrap_or(state.loss);
+            let is_improving = loss_delta < 0.0;
+            let grad_strength = (grad_info.gradient_norm / base_mag).min(10.0);
+            let target_confidence = if is_improving {
+                0.5 + 0.3 * grad_strength.tanh() // 0.5-0.8 range
+            } else {
+                0.3 + 0.2 * grad_strength.tanh() // 0.3-0.5 range
+            };
+
+            // Dimensions 2-9: Layer-specific scales (sigmoid-encoded)
+            // Without per-layer data, we use per-param norms if available
+            let mut layer_targets = vec![0.0_f32; 8];
+            if let Some(ref per_param) = grad_info.per_param_norms {
+                // Divide parameters into 8 buckets and compute relative scales
+                let bucket_size = per_param.len() / 8;
+                for i in 0..8 {
+                    let start = i * bucket_size;
+                    let end = if i == 7 { per_param.len() } else { (i + 1) * bucket_size };
+
+                    let bucket_norm: f32 = per_param[start..end].iter().sum();
+                    let bucket_count = (end - start) as f32;
+                    let avg_norm = bucket_norm / bucket_count.max(1.0);
+
+                    // Normalize by global average
+                    let global_avg = grad_info.gradient_norm / (per_param.len() as f32).sqrt();
+                    let scale = (avg_norm / global_avg.max(1e-8)).clamp(0.1, 2.0);
+                    layer_targets[i] = scale;
+                }
+            } else {
+                // No per-param data: assume uniform distribution
+                for i in 0..8 {
+                    layer_targets[i] = 1.0; // Uniform scale
+                }
+            }
+
+            // Compute loss and gradients for all dimensions
+            let mut feature_errors = vec![0.0_f32; self.weight_delta_dim];
+
+            // Dimension 0: magnitude
+            let pred_mag_tanh = predicted_features[0].tanh();
+            feature_errors[0] = (pred_mag_tanh - target_magnitude_tanh) * tanh_deriv(pred_mag_tanh);
+
+            // Dimension 1: direction confidence
+            let pred_conf_sigmoid = sigmoid(predicted_features[1]);
+            feature_errors[1] = (pred_conf_sigmoid - target_confidence) * sigmoid_deriv(pred_conf_sigmoid);
+
+            // Dimensions 2-9: layer scales
+            for i in 0..8 {
+                let pred_scale_sigmoid = sigmoid(predicted_features[2 + i]);
+                let target_scale_normalized = (layer_targets[i] - 0.5).clamp(-0.4, 0.4) + 0.5; // Map to [0.1, 0.9]
+                feature_errors[2 + i] = (pred_scale_sigmoid - target_scale_normalized)
+                    * sigmoid_deriv(pred_scale_sigmoid);
+            }
+
+            // Backprop through linear layer: error -> gradients
+            // Weight gradient: dL/dW = outer(error, combined)
+            for out_idx in 0..self.weight_delta_dim {
+                for in_idx in 0..combined_dim {
+                    let weight_idx = out_idx * combined_dim + in_idx;
+                    if weight_idx < self.weight_delta_head_weights.len() {
+                        let grad = feature_errors[out_idx] * combined[in_idx];
+                        self.weight_delta_head_weights[weight_idx] -= lr * 0.1 * grad;
+                    }
                 }
             }
         }

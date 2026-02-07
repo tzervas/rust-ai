@@ -511,7 +511,10 @@ where
     O: burn::optim::Optimizer<M, B>,
 {
     /// The wrapped Burn optimizer
-    optimizer: Arc<RwLock<O>>,
+    ///
+    /// Uses `Mutex` instead of `RwLock` because optimizer may be `!Sync`
+    /// in autodiff backends (contains state with !Sync components).
+    optimizer: Arc<parking_lot::Mutex<O>>,
     /// Current learning rate
     learning_rate: Arc<RwLock<f32>>,
     _phantom_model: PhantomData<M>,
@@ -537,7 +540,7 @@ where
     /// A wrapped optimizer ready for use with `HybridTrainer`.
     pub fn new(optimizer: O, learning_rate: f32) -> Self {
         Self {
-            optimizer: Arc::new(RwLock::new(optimizer)),
+            optimizer: Arc::new(parking_lot::Mutex::new(optimizer)),
             learning_rate: Arc::new(RwLock::new(learning_rate)),
             _phantom_model: PhantomData,
             _phantom_backend: PhantomData,
@@ -552,7 +555,7 @@ impl<B, M, O, T, F> Optimizer<BurnModelWrapper<B, M, T, F>, BurnBatch<B, T>>
 where
     B: AutodiffBackend,
     M: AutodiffModule<B> + Send,
-    O: burn::optim::Optimizer<M, B> + Send + Sync,
+    O: burn::optim::Optimizer<M, B> + Send,
     F: BurnForwardFn<B, M, T>,
     T: Send + Sync,
     <B as AutodiffBackend>::Gradients: Send,
@@ -592,7 +595,7 @@ where
         let grads_params = GradientsParams::from_grads(gradients, &model_inner);
 
         // 5. Call Burn optimizer.step (consumes model, returns updated model)
-        let updated_model = self.optimizer.write().step(lr, model_inner, grads_params);
+        let updated_model = self.optimizer.lock().step(lr, model_inner, grads_params);
 
         // 6. Put updated model back
         *model_lock = Some(updated_model);

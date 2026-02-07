@@ -79,6 +79,69 @@ By learning the training dynamics during full training phases, we can predict mu
 - **Multi-signal divergence detection**: Loss, gradient, oscillation
 - **GPU acceleration**: CubeCL + Burn for CUDA support
 - **Comprehensive metrics**: JSON export, console summaries
+- **Comprehensive benchmarking**: Criterion.rs performance analysis
+
+## Performance
+
+### Benchmark Results
+
+Comprehensive performance benchmarks using [Criterion.rs](https://github.com/bheisler/criterion.rs) on all critical paths:
+
+#### RSSM Prediction Performance
+
+| Horizon | Time (µs) | Throughput | Use Case |
+|---------|-----------|------------|----------|
+| 1 step  | ~50       | 20K pred/s | Single-step prediction |
+| 5 steps | ~150      | 6.7K pred/s | Micro-correction interval |
+| 10 steps | ~280     | 3.6K pred/s | Short horizon |
+| 15 steps | ~400     | 2.5K pred/s | Default max_predict_steps |
+| 25 steps | ~650     | 1.5K pred/s | Medium horizon |
+| 50 steps | ~1.2 ms  | 830 pred/s | Research configuration |
+| 75 steps | ~1.8 ms  | 560 pred/s | Maximum validated horizon |
+
+**Scaling**: Linear at ~24 µs per prediction step.
+
+#### Component Overhead
+
+| Component | Time | Throughput | Impact |
+|-----------|------|------------|--------|
+| State encoding (64-dim) | 15.2 µs | 65K enc/s | Negligible (<5% of RSSM) |
+| Weight delta clone | 987 ns | 1.0M ops/s | Sub-microsecond |
+| RSSM gradient observation | 1.36 ms | 737 obs/s | Main overhead during Full phase |
+| Confidence computation | 8.4 ns | 119M checks/s | Effectively zero |
+| State history update | 2.4 ns | 420M ops/s | Ring buffer efficiency |
+
+### Speedup Analysis
+
+**Overhead Comparison**:
+- Full training step: ~1.37 ms overhead (RSSM training + state)
+- Predict step: ~0.41 ms overhead (RSSM prediction + state)
+- **Overhead reduction**: 70% (predict vs full)
+
+**Expected Speedups** (for typical training configurations):
+
+| Model Size | Forward+Backward | Estimated Speedup | Time Reduction |
+|------------|------------------|-------------------|----------------|
+| Small (124M) | FW=10ms, BW=20ms | **2.4×** | 58% |
+| Medium (350M) | FW=30ms, BW=60ms | **2.5×** | 60% |
+| Large (1B+) | FW=50ms, BW=100ms | **2.5×** | 60% |
+
+*Note: Actual speedup depends on model architecture, batch size, and prediction horizon configuration.*
+
+### Running Benchmarks
+
+```bash
+# Run all benchmarks
+cargo bench
+
+# Run specific benchmark group
+cargo bench --bench hybrid_trainer_benchmarks -- rssm_prediction
+
+# Generate HTML reports (target/criterion/report/index.html)
+cargo bench --bench hybrid_trainer_benchmarks
+```
+
+For detailed performance analysis, see [PHASE_2_BENCHMARKING_REPORT.md](PHASE_2_BENCHMARKING_REPORT.md).
 
 ## Memory Management
 
@@ -217,20 +280,26 @@ let config = HybridTrainerConfig::builder()
     .build();
 ```
 
-## Benchmarks
+## Validation Results
 
-Preliminary results on standard benchmarks:
+End-to-end validation on real models:
 
-| Model | Dataset | Baseline Time | Hybrid Time | Speedup | Loss Gap |
-|-------|---------|--------------|-------------|---------|----------|
-| ResNet-18 | CIFAR-10 | 100% | TBD | TBD | TBD |
-| BERT-base | GLUE | 100% | TBD | TBD | TBD |
-| GPT-2 | OpenWebText | 100% | TBD | TBD | TBD |
+| Model | Parameters | VRAM Usage | Test Configuration | Status |
+|-------|------------|------------|-------------------|---------|
+| GPT-2 Small | 124M | 3.9 GB → 14.1 GB (50 steps) | Phase 2B validation | ✅ Complete |
+| GPT-2 Small | 124M | <10 GB (50 steps) | With VRAM management | ✅ Optimized |
 
-*Benchmarks are WIP - contributions welcome!*
+**Validation Infrastructure**:
+- 227 comprehensive tests (218 unit + 9 integration)
+- Automated VRAM monitoring ([validate_vram.sh](scripts/validate_vram.sh))
+- Criterion.rs benchmark suite (6 groups, 16 scenarios)
+- All tests passing on Rust 1.92+
+
+*Larger model benchmarks (1B+ parameters) planned for future releases.*
 
 ## Roadmap
 
+### v0.2.0 (Current Release)
 - [x] Core training loop implementation
 - [x] RSSM dynamics model (RSSM-lite) integration
 - [x] GRU cell with forward pass and training
@@ -238,13 +307,25 @@ Preliminary results on standard benchmarks:
 - [x] LinUCB bandit for phase selection
 - [x] Residual correction framework
 - [x] Comprehensive metrics collection
-- [x] 100+ unit and integration tests
-- [ ] CubeCL CUDA kernels (GPU feature scaffolded)
-- [ ] Burn tensor operations (integration ready)
-- [ ] Comprehensive benchmarks (scaffolded)
+- [x] 227 unit and integration tests
+- [x] VRAM management system (5-layer protection)
+- [x] Comprehensive Criterion.rs benchmarks
+- [x] GPT-2 Small validation (124M params)
+- [x] Intra-horizon micro-corrections
+- [x] Checkpoint automation
+
+### v0.3.0 (Planned)
+- [ ] CubeCL CUDA kernels for state encoding
+- [ ] CubeCL CUDA kernel for RSSM forward pass
+- [ ] 1B+ parameter model validation
 - [ ] Integration examples (candle, tch-rs)
+- [ ] Advanced optimizer support (AdamW, LAMB)
+
+### v0.4.0+ (Future)
 - [ ] Distributed training support
-- [ ] Mixed precision support
+- [ ] Mixed precision support (fp16, bf16)
+- [ ] Multi-GPU training
+- [ ] Advanced residual compression techniques
 
 ## Research Background
 

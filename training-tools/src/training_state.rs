@@ -1533,9 +1533,7 @@ mod tests {
         let mut tracker = LossDynamicsTracker::new(20);
 
         // Simulate improving loss that is slowing down
-        let losses = vec![
-            3.0, 2.8, 2.6, 2.45, 2.35, 2.3, 2.28, 2.27, 2.26, 2.26,
-        ];
+        let losses = vec![3.0, 2.8, 2.6, 2.45, 2.35, 2.3, 2.28, 2.27, 2.26, 2.26];
 
         let mut last_acceleration = 0.0;
         for loss in losses {

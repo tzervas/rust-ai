@@ -20,12 +20,27 @@ fn create_test_dataset() -> anyhow::Result<NamedTempFile> {
 
     // Write test data
     writeln!(file, r#"{{"text": "Hello world from Rust"}}"#)?;
-    writeln!(file, r#"{{"text": "This is a longer sequence with more tokens for testing"}}"#)?;
+    writeln!(
+        file,
+        r#"{{"text": "This is a longer sequence with more tokens for testing"}}"#
+    )?;
     writeln!(file, r#"{{"text": "Short text"}}"#)?;
-    writeln!(file, r#"{{"text": "Another example with code: fn main() {{ println!(\"test\"); }}"}}"#)?;
-    writeln!(file, r#"{{"text": "Testing tokenization and batch formation"}}"#)?;
-    writeln!(file, r#"{{"text": "Multiple datasets can be loaded from directories"}}"#)?;
-    writeln!(file, r#"{{"text": "This tests the data loading infrastructure"}}"#)?;
+    writeln!(
+        file,
+        r#"{{"text": "Another example with code: fn main() {{ println!(\"test\"); }}"}}"#
+    )?;
+    writeln!(
+        file,
+        r#"{{"text": "Testing tokenization and batch formation"}}"#
+    )?;
+    writeln!(
+        file,
+        r#"{{"text": "Multiple datasets can be loaded from directories"}}"#
+    )?;
+    writeln!(
+        file,
+        r#"{{"text": "This tests the data loading infrastructure"}}"#
+    )?;
     writeln!(file, r#"{{"text": "Final example for completeness"}}"#)?;
 
     file.flush()?;
@@ -56,8 +71,10 @@ fn main() -> anyhow::Result<()> {
 
     println!("Loading batches...");
     println!("{:-<80}", "");
-    println!("{:>5} | {:>10} | {:>10} | {:>15} | {:>15}",
-             "Batch", "Batch Size", "Seq Length", "Tokens/Step", "Total Tokens");
+    println!(
+        "{:>5} | {:>10} | {:>10} | {:>15} | {:>15}",
+        "Batch", "Batch Size", "Seq Length", "Tokens/Step", "Total Tokens"
+    );
     println!("{:-<80}", "");
 
     let mut batch_count = 0;
@@ -75,12 +92,10 @@ fn main() -> anyhow::Result<()> {
 
         batch_count += 1;
 
-        println!("{:>5} | {:>10} | {:>10} | {:>15} | {:>15}",
-                 batch_count,
-                 batch_size,
-                 seq_len,
-                 tokens_this_step,
-                 total_tokens);
+        println!(
+            "{:>5} | {:>10} | {:>10} | {:>15} | {:>15}",
+            batch_count, batch_size, seq_len, tokens_this_step, total_tokens
+        );
 
         // Verify attention mask exists
         if batch.attention_mask.is_none() {
@@ -91,8 +106,10 @@ fn main() -> anyhow::Result<()> {
         if let Some(mask) = &batch.attention_mask {
             let mask_dims = mask.dims();
             if mask_dims[0] != batch_size || mask_dims[1] != seq_len {
-                println!("ERROR: Attention mask shape mismatch! Expected [{}, {}], got {:?}",
-                         batch_size, seq_len, mask_dims);
+                println!(
+                    "ERROR: Attention mask shape mismatch! Expected [{}, {}], got {:?}",
+                    batch_size, seq_len, mask_dims
+                );
             }
         }
     }
@@ -101,16 +118,29 @@ fn main() -> anyhow::Result<()> {
     println!("\n=== Summary ===");
     println!("Total batches: {}", batch_count);
     println!("Total tokens processed: {}", total_tokens);
-    println!("Average tokens per batch: {}", if batch_count > 0 { total_tokens / batch_count as u64 } else { 0 });
+    println!(
+        "Average tokens per batch: {}",
+        if batch_count > 0 {
+            total_tokens / batch_count as u64
+        } else {
+            0
+        }
+    );
 
     // Expected calculation
     let expected_batches = 8 / config.batch_size; // 8 examples / batch_size
-    println!("\nExpected batches: {} (8 examples / batch_size {})", expected_batches, config.batch_size);
+    println!(
+        "\nExpected batches: {} (8 examples / batch_size {})",
+        expected_batches, config.batch_size
+    );
 
     if batch_count == expected_batches as u64 {
         println!("✓ Batch count matches expected");
     } else {
-        println!("⚠ Batch count mismatch! Expected {}, got {}", expected_batches, batch_count);
+        println!(
+            "⚠ Batch count mismatch! Expected {}, got {}",
+            expected_batches, batch_count
+        );
     }
 
     println!("\n✓ Data loading test complete!");

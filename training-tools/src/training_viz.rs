@@ -527,8 +527,7 @@ impl TrainingVizCapture {
 
     /// Check if we should sample full activations at this step.
     pub fn should_sample(&self, step: u64) -> bool {
-        self.config.sample_every_n_steps > 0
-            && step % self.config.sample_every_n_steps as u64 == 0
+        self.config.sample_every_n_steps > 0 && step % self.config.sample_every_n_steps as u64 == 0
     }
 
     /// Record lightweight per-step statistics.
@@ -536,7 +535,8 @@ impl TrainingVizCapture {
         self.current_step = stats.step;
 
         // Update anomaly detector
-        self.anomaly_detector.update(stats.loss, stats.gradient_norm);
+        self.anomaly_detector
+            .update(stats.loss, stats.gradient_norm);
 
         // Store in local buffer
         self.step_stats.push_back(stats.clone());
@@ -575,7 +575,8 @@ impl TrainingVizCapture {
 
         // Check head limit
         if self.config.max_attention_heads > 0
-            && snapshot.head_idx >= self.config.max_attention_heads {
+            && snapshot.head_idx >= self.config.max_attention_heads
+        {
             return;
         }
 
@@ -694,8 +695,9 @@ impl VizStream {
 
         for stats in self.stats.iter().rev().take(steps) {
             for layer in &stats.layer_stats {
-                let agg = aggregates.entry(layer.layer_idx).or_insert_with(|| {
-                    LayerAggregate {
+                let agg = aggregates
+                    .entry(layer.layer_idx)
+                    .or_insert_with(|| LayerAggregate {
                         layer_idx: layer.layer_idx,
                         mean_activation: 0.0,
                         mean_gradient: 0.0,
@@ -703,8 +705,7 @@ impl VizStream {
                         activation_trend: 0.0,
                         gradient_trend: 0.0,
                         count: 0,
-                    }
-                });
+                    });
                 agg.mean_activation += layer.activation_mean;
                 agg.mean_gradient += layer.gradient_norm;
                 agg.mean_sparsity += layer.sparsity;
@@ -774,7 +775,14 @@ impl DashboardPreset {
             ],
             DashboardPreset::LayerAnalysis => vec![
                 PanelConfig::new("network_3d", PanelKind::Network3D, 0, 0, 2, 2),
-                PanelConfig::new("activation_hist", PanelKind::ActivationHistogram, 2, 0, 1, 1),
+                PanelConfig::new(
+                    "activation_hist",
+                    PanelKind::ActivationHistogram,
+                    2,
+                    0,
+                    1,
+                    1,
+                ),
                 PanelConfig::new("gradient_flow", PanelKind::GradientFlow, 2, 1, 1, 1),
             ],
             DashboardPreset::Full => vec![
@@ -811,7 +819,14 @@ pub struct PanelConfig {
 }
 
 impl PanelConfig {
-    pub fn new(id: &str, kind: PanelKind, col: usize, row: usize, width: usize, height: usize) -> Self {
+    pub fn new(
+        id: &str,
+        kind: PanelKind,
+        col: usize,
+        row: usize,
+        width: usize,
+        height: usize,
+    ) -> Self {
         Self {
             id: id.to_string(),
             kind,
@@ -989,9 +1004,9 @@ impl AnimationController {
         let mut glow = vec![0.0; self.num_layers];
         let active_layer = match self.phase {
             AnimPhase::Forward => (self.progress * self.num_layers as f32) as usize,
-            AnimPhase::Backward => {
-                self.num_layers.saturating_sub((self.progress * self.num_layers as f32) as usize + 1)
-            }
+            AnimPhase::Backward => self
+                .num_layers
+                .saturating_sub((self.progress * self.num_layers as f32) as usize + 1),
             AnimPhase::Update => {
                 // All layers glow during update
                 for g in &mut glow {
@@ -1014,9 +1029,9 @@ impl AnimationController {
         let mut flow = vec![0.0; self.num_layers.saturating_sub(1)];
         let active_conn = match self.phase {
             AnimPhase::Forward => (self.progress * flow.len() as f32) as usize,
-            AnimPhase::Backward => {
-                flow.len().saturating_sub((self.progress * flow.len() as f32) as usize + 1)
-            }
+            AnimPhase::Backward => flow
+                .len()
+                .saturating_sub((self.progress * flow.len() as f32) as usize + 1),
             _ => return flow,
         };
 
@@ -1240,7 +1255,11 @@ impl LayerIssue {
                 format!("Unstable activations (volatility: {:.2})", volatility)
             }
             LayerIssue::AbnormalSparsity { sparsity, expected } => {
-                format!("Unusual sparsity: {:.1}% (expected ~{:.1}%)", sparsity * 100.0, expected * 100.0)
+                format!(
+                    "Unusual sparsity: {:.1}% (expected ~{:.1}%)",
+                    sparsity * 100.0,
+                    expected * 100.0
+                )
             }
         }
     }
@@ -1405,8 +1424,10 @@ impl TrainingAnalyzer {
         let loss_analysis = self.analyze_loss();
         let gradient_analysis = self.analyze_gradients();
         let layer_analysis = self.analyze_layers();
-        let recommendations = self.generate_recommendations(&loss_analysis, &gradient_analysis, &layer_analysis);
-        let health_score = self.compute_health_score(&loss_analysis, &gradient_analysis, &layer_analysis);
+        let recommendations =
+            self.generate_recommendations(&loss_analysis, &gradient_analysis, &layer_analysis);
+        let health_score =
+            self.compute_health_score(&loss_analysis, &gradient_analysis, &layer_analysis);
         let health_status = self.determine_health_status(health_score);
         let performance = self.compute_performance();
 
@@ -1429,13 +1450,13 @@ impl TrainingAnalyzer {
         let current = losses.last().copied().unwrap_or(0.0);
 
         let trend = if losses.len() >= 10 {
-            compute_linear_trend(&losses[losses.len()-10..])
+            compute_linear_trend(&losses[losses.len() - 10..])
         } else {
             0.0
         };
 
         let volatility = if losses.len() >= 10 {
-            let recent = &losses[losses.len()-10..];
+            let recent = &losses[losses.len() - 10..];
             let mean = recent.iter().sum::<f32>() / recent.len() as f32;
             (recent.iter().map(|x| (x - mean).powi(2)).sum::<f32>() / recent.len() as f32).sqrt()
         } else {
@@ -1443,9 +1464,9 @@ impl TrainingAnalyzer {
         };
 
         let is_plateau = losses.len() >= self.plateau_window && {
-            let window = &losses[losses.len()-self.plateau_window..];
-            let first_half = &window[..self.plateau_window/2];
-            let second_half = &window[self.plateau_window/2..];
+            let window = &losses[losses.len() - self.plateau_window..];
+            let first_half = &window[..self.plateau_window / 2];
+            let second_half = &window[self.plateau_window / 2..];
             let first_mean = first_half.iter().sum::<f32>() / first_half.len() as f32;
             let second_mean = second_half.iter().sum::<f32>() / second_half.len() as f32;
             (first_mean - second_mean).abs() / first_mean.max(0.001) < self.plateau_threshold
@@ -1460,7 +1481,11 @@ impl TrainingAnalyzer {
             trend,
             volatility,
             is_plateau,
-            plateau_duration: if is_plateau { Some(self.plateau_window as u64) } else { None },
+            plateau_duration: if is_plateau {
+                Some(self.plateau_window as u64)
+            } else {
+                None
+            },
             is_diverging,
             expected_final: None,
             steps_to_target: None,
@@ -1470,10 +1495,14 @@ impl TrainingAnalyzer {
     fn analyze_gradients(&self) -> GradientAnalysis {
         let grads: Vec<f32> = self.stats_history.iter().map(|s| s.gradient_norm).collect();
         let current_norm = grads.last().copied().unwrap_or(0.0);
-        let mean_norm = if grads.is_empty() { 0.0 } else { grads.iter().sum::<f32>() / grads.len() as f32 };
+        let mean_norm = if grads.is_empty() {
+            0.0
+        } else {
+            grads.iter().sum::<f32>() / grads.len() as f32
+        };
 
         let trend = if grads.len() >= 10 {
-            compute_linear_trend(&grads[grads.len()-10..])
+            compute_linear_trend(&grads[grads.len() - 10..])
         } else {
             0.0
         };
@@ -1494,7 +1523,10 @@ impl TrainingAnalyzer {
             }
         }
 
-        let is_healthy = vanishing_layers == 0 && exploding_layers == 0 && current_norm > 1e-6 && current_norm < 100.0;
+        let is_healthy = vanishing_layers == 0
+            && exploding_layers == 0
+            && current_norm > 1e-6
+            && current_norm < 100.0;
 
         GradientAnalysis {
             current_norm,
@@ -1513,62 +1545,82 @@ impl TrainingAnalyzer {
             return Vec::new();
         };
 
-        stats.layer_stats.iter().map(|layer| {
-            let mut issues = Vec::new();
+        stats
+            .layer_stats
+            .iter()
+            .map(|layer| {
+                let mut issues = Vec::new();
 
-            // Check for vanishing/exploding gradients
-            if layer.gradient_norm < 1e-6 {
-                issues.push(LayerIssue::VanishingGradient { norm: layer.gradient_norm });
-            } else if layer.gradient_norm > 100.0 {
-                issues.push(LayerIssue::ExplodingGradient { norm: layer.gradient_norm });
-            }
+                // Check for vanishing/exploding gradients
+                if layer.gradient_norm < 1e-6 {
+                    issues.push(LayerIssue::VanishingGradient {
+                        norm: layer.gradient_norm,
+                    });
+                } else if layer.gradient_norm > 100.0 {
+                    issues.push(LayerIssue::ExplodingGradient {
+                        norm: layer.gradient_norm,
+                    });
+                }
 
-            // Check for dead neurons
-            if layer.dead_neuron_fraction > 0.1 {
-                issues.push(LayerIssue::DeadNeurons { percentage: layer.dead_neuron_fraction * 100.0 });
-            }
+                // Check for dead neurons
+                if layer.dead_neuron_fraction > 0.1 {
+                    issues.push(LayerIssue::DeadNeurons {
+                        percentage: layer.dead_neuron_fraction * 100.0,
+                    });
+                }
 
-            // Check for saturation
-            let saturation_pct = if layer.activation_max - layer.activation_min < 0.1 {
-                ((layer.activation_max - layer.activation_mean).abs() / (layer.activation_max - layer.activation_min + 0.001)).min(1.0)
-            } else {
-                0.0
-            };
-            if saturation_pct > 0.5 {
-                issues.push(LayerIssue::Saturation { percentage: saturation_pct * 100.0 });
-            }
+                // Check for saturation
+                let saturation_pct = if layer.activation_max - layer.activation_min < 0.1 {
+                    ((layer.activation_max - layer.activation_mean).abs()
+                        / (layer.activation_max - layer.activation_min + 0.001))
+                        .min(1.0)
+                } else {
+                    0.0
+                };
+                if saturation_pct > 0.5 {
+                    issues.push(LayerIssue::Saturation {
+                        percentage: saturation_pct * 100.0,
+                    });
+                }
 
-            let health_score = if issues.is_empty() { 100 } else {
-                100 - (issues.iter().map(|i| match i.severity() {
-                    IssueSeverity::Critical => 40,
-                    IssueSeverity::Warning => 20,
-                    IssueSeverity::Info => 5,
-                }).sum::<u8>()).min(100)
-            };
+                let health_score = if issues.is_empty() {
+                    100
+                } else {
+                    100 - (issues
+                        .iter()
+                        .map(|i| match i.severity() {
+                            IssueSeverity::Critical => 40,
+                            IssueSeverity::Warning => 20,
+                            IssueSeverity::Info => 5,
+                        })
+                        .sum::<u8>())
+                    .min(100)
+                };
 
-            LayerAnalysis {
-                layer_idx: layer.layer_idx,
-                layer_name: format!("layer_{}", layer.layer_idx),
-                health_score,
-                activation_stats: ActivationStats {
-                    mean: layer.activation_mean,
-                    std: layer.activation_std,
-                    min: layer.activation_min,
-                    max: layer.activation_max,
-                    sparsity: layer.sparsity,
-                },
-                gradient_stats: GradientStats {
-                    norm: layer.gradient_norm,
-                    mean: 0.0,
-                    std: 0.0,
-                    max_abs: 0.0,
-                },
-                issues,
-                activation_trend: 0.0,
-                dead_neurons_pct: layer.dead_neuron_fraction * 100.0,
-                saturation_pct: saturation_pct * 100.0,
-            }
-        }).collect()
+                LayerAnalysis {
+                    layer_idx: layer.layer_idx,
+                    layer_name: format!("layer_{}", layer.layer_idx),
+                    health_score,
+                    activation_stats: ActivationStats {
+                        mean: layer.activation_mean,
+                        std: layer.activation_std,
+                        min: layer.activation_min,
+                        max: layer.activation_max,
+                        sparsity: layer.sparsity,
+                    },
+                    gradient_stats: GradientStats {
+                        norm: layer.gradient_norm,
+                        mean: 0.0,
+                        std: 0.0,
+                        max_abs: 0.0,
+                    },
+                    issues,
+                    activation_trend: 0.0,
+                    dead_neurons_pct: layer.dead_neuron_fraction * 100.0,
+                    saturation_pct: saturation_pct * 100.0,
+                }
+            })
+            .collect()
     }
 
     fn generate_recommendations(
@@ -1586,7 +1638,8 @@ impl TrainingAnalyzer {
                 category: RecommendationCategory::LearningRate,
                 title: "Plateau detected".to_string(),
                 description: "Loss has stopped decreasing significantly".to_string(),
-                action: "Increase learning rate by 20-50% or apply learning rate warmup restart".to_string(),
+                action: "Increase learning rate by 20-50% or apply learning rate warmup restart"
+                    .to_string(),
                 expected_impact: "May help escape local minimum".to_string(),
             });
         }
@@ -1608,7 +1661,8 @@ impl TrainingAnalyzer {
                 category: RecommendationCategory::LearningRate,
                 title: "Loss diverging".to_string(),
                 description: "Loss is consistently increasing".to_string(),
-                action: "Immediately reduce learning rate by 50-75% or restore from checkpoint".to_string(),
+                action: "Immediately reduce learning rate by 50-75% or restore from checkpoint"
+                    .to_string(),
                 expected_impact: "Prevent training failure".to_string(),
             });
         }
@@ -1620,7 +1674,9 @@ impl TrainingAnalyzer {
                 category: RecommendationCategory::Architecture,
                 title: "Vanishing gradients".to_string(),
                 description: format!("{} layers have vanishing gradients", grads.vanishing_layers),
-                action: "Consider using skip connections, better initialization, or gradient clipping".to_string(),
+                action:
+                    "Consider using skip connections, better initialization, or gradient clipping"
+                        .to_string(),
                 expected_impact: "Improved gradient flow".to_string(),
             });
         }
@@ -1648,16 +1704,24 @@ impl TrainingAnalyzer {
         let mut score = 100i32;
 
         // Loss penalties
-        if loss.is_diverging { score -= 50; }
-        if loss.is_plateau { score -= 15; }
-        if loss.volatility > 0.5 { score -= 10; }
+        if loss.is_diverging {
+            score -= 50;
+        }
+        if loss.is_plateau {
+            score -= 15;
+        }
+        if loss.volatility > 0.5 {
+            score -= 10;
+        }
 
         // Gradient penalties
         score -= (grads.vanishing_layers * 10) as i32;
         score -= (grads.exploding_layers * 20) as i32;
 
         // Layer penalties
-        let avg_layer_health = if layers.is_empty() { 100 } else {
+        let avg_layer_health = if layers.is_empty() {
+            100
+        } else {
             layers.iter().map(|l| l.health_score as u32).sum::<u32>() / layers.len() as u32
         };
         score -= (100 - avg_layer_health as i32) / 4;
@@ -1680,7 +1744,11 @@ impl TrainingAnalyzer {
             let last = self.stats_history.back().unwrap();
             let time_diff = (last.timestamp_ms - first.timestamp_ms) as f32 / 1000.0;
             let step_diff = (last.step - first.step) as f32;
-            if time_diff > 0.0 { step_diff / time_diff } else { 0.0 }
+            if time_diff > 0.0 {
+                step_diff / time_diff
+            } else {
+                0.0
+            }
         } else {
             0.0
         };
@@ -1723,7 +1791,11 @@ fn compute_linear_trend(values: &[f32]) -> f32 {
         denominator += (x - x_mean).powi(2);
     }
 
-    if denominator.abs() < 1e-10 { 0.0 } else { numerator / denominator }
+    if denominator.abs() < 1e-10 {
+        0.0
+    } else {
+        numerator / denominator
+    }
 }
 
 // ============================================================================

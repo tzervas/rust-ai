@@ -66,17 +66,18 @@ pub use colors::{
     cividis, coolwarm, inferno, magma, plasma, rainbow, tab10, viridis, CategoricalPalette, Color,
     Colormap, ColormapPreset,
 };
+pub use dashboard::{
+    ActivationStats, ArchBlock, ArchBlockType, ArchConnection,
+    ArchitectureDiagram as DashboardArchDiagram, ChartMarker, ChartSeries, ChartView,
+    ChordDiagramData, ConnectionData, DashboardError, DashboardLayout, DashboardPanel,
+    DashboardTheme, EmbeddingCloudData, GradientFlowData, HeatmapView, LayerActivationData,
+    LayerMeshData, LossLandscapeData, Neural3DScene as DashboardNeural3DScene, PanelBounds,
+    PanelContent, PanelPosition, PanelSettings, PanelSize, PanelType, Selection, SelectionItem,
+    TokenCloudData, VisualizationDashboard,
+};
 pub use dense_network::{
     ConnectionColorMode, ConnectionInstance, DenseLayer, DenseNetworkViz, DenseVizConfig,
     GridArrangement, NetworkStats, WeightMatrix,
-};
-pub use dashboard::{
-    ActivationStats, ArchBlock, ArchBlockType, ArchConnection, ArchitectureDiagram as DashboardArchDiagram,
-    ChartMarker, ChartSeries, ChartView, ChordDiagramData, ConnectionData, DashboardError,
-    DashboardLayout, DashboardPanel, DashboardTheme, EmbeddingCloudData, GradientFlowData,
-    HeatmapView, LayerActivationData, LayerMeshData, LossLandscapeData, Neural3DScene as DashboardNeural3DScene,
-    PanelBounds, PanelContent, PanelPosition, PanelSettings, PanelSize, PanelType, Selection,
-    SelectionItem, TokenCloudData, VisualizationDashboard,
 };
 pub use engine::{Camera3D, Mesh3D, Vertex3D, Viz3DConfig, Viz3DEngine};
 pub use neural_3d::{
@@ -93,7 +94,9 @@ pub use embeddings::{
     EmbeddingPoint, PointLabels,
 };
 pub use engine::{Light3D, LightKind, ObjectId, SceneStats};
-pub use landscape::{LandscapeStats, LossLandscape3D, LossLandscapeConfig, SurfaceSource, TrajectoryPoint};
+pub use landscape::{
+    LandscapeStats, LossLandscape3D, LossLandscapeConfig, SurfaceSource, TrajectoryPoint,
+};
 pub use network::{
     LayerConnection as NetworkLayerConnection, LayerType as NetworkLayerType, NetworkGraph3D,
     NetworkGraphConfig, NetworkLayer,

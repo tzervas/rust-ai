@@ -48,7 +48,12 @@ pub struct ChordSegment {
 
 impl ChordSegment {
     /// Create a new chord segment.
-    pub fn new(label: impl Into<String>, start_angle: f32, end_angle: f32, category: impl Into<String>) -> Self {
+    pub fn new(
+        label: impl Into<String>,
+        start_angle: f32,
+        end_angle: f32,
+        category: impl Into<String>,
+    ) -> Self {
         Self {
             label: label.into(),
             start_angle,
@@ -206,7 +211,11 @@ impl ChordDiagram {
     pub fn from_attention(attention_weights: &[Vec<f32>], token_labels: &[String]) -> Self {
         let n = attention_weights.len();
         assert!(n > 0, "Attention weights must not be empty");
-        assert_eq!(token_labels.len(), n, "Token labels must match attention matrix size");
+        assert_eq!(
+            token_labels.len(),
+            n,
+            "Token labels must match attention matrix size"
+        );
 
         let mut diagram = ChordDiagram::new("Attention Pattern");
         let colormap = diagram.config.colormap.colormap();
@@ -224,13 +233,8 @@ impl ChordDiagram {
             let start = current_angle;
             let end = current_angle + angle_per_segment;
 
-            let segment = ChordSegment::new(
-                token_labels[i].clone(),
-                start,
-                end,
-                "Token",
-            )
-            .with_color(category_colors[i % category_colors.len()]);
+            let segment = ChordSegment::new(token_labels[i].clone(), start, end, "Token")
+                .with_color(category_colors[i % category_colors.len()]);
 
             diagram.add_segment(segment);
             current_angle = end + diagram.config.segment_gap;
@@ -241,8 +245,7 @@ impl ChordDiagram {
             for j in 0..n {
                 let strength = attention_weights[i][j];
                 if strength >= diagram.config.min_strength_threshold {
-                    let connection = ChordConnection::new(i, j, strength)
-                        .with_colormap(&colormap);
+                    let connection = ChordConnection::new(i, j, strength).with_colormap(&colormap);
                     diagram.add_connection(connection);
                 }
             }
@@ -290,13 +293,8 @@ impl ChordDiagram {
                 _ => 1,
             };
 
-            let segment = ChordSegment::new(
-                format!("Layer {}", i),
-                start,
-                end,
-                category,
-            )
-            .with_color(category_colors[color_idx]);
+            let segment = ChordSegment::new(format!("Layer {}", i), start, end, category)
+                .with_color(category_colors[color_idx]);
 
             diagram.add_segment(segment);
             current_angle = end + diagram.config.segment_gap;
@@ -309,8 +307,8 @@ impl ChordDiagram {
                 if grad_idx < layer_gradients.len() {
                     let strength = layer_gradients[grad_idx].clamp(0.0, 1.0);
                     if strength >= diagram.config.min_strength_threshold {
-                        let connection = ChordConnection::new(i, j, strength)
-                            .with_colormap(&colormap);
+                        let connection =
+                            ChordConnection::new(i, j, strength).with_colormap(&colormap);
                         diagram.add_connection(connection);
                     }
                     grad_idx += 1;
@@ -467,12 +465,7 @@ impl ChordDiagram {
         let ctrl2_x = end[0] * (1.0 - curvature) + mid_x * curvature;
         let ctrl2_y = end[1] * (1.0 - curvature) + mid_y * curvature;
 
-        vec![
-            start,
-            [ctrl1_x, ctrl1_y],
-            [ctrl2_x, ctrl2_y],
-            end,
-        ]
+        vec![start, [ctrl1_x, ctrl1_y], [ctrl2_x, ctrl2_y], end]
     }
 
     /// Get a point on a cubic bezier curve at parameter t.
@@ -514,17 +507,31 @@ impl ChordDiagram {
         format!(
             r##"    <path d="M {:.1} {:.1} A {:.1} {:.1} 0 {} 1 {:.1} {:.1} L {:.1} {:.1} A {:.1} {:.1} 0 {} 0 {:.1} {:.1} Z" fill="{}" stroke="#333" stroke-width="1"/>
 "##,
-            start_outer[0], start_outer[1],
-            outer_r, outer_r, large_arc,
-            end_outer[0], end_outer[1],
-            end_inner[0], end_inner[1],
-            inner_r, inner_r, large_arc,
-            start_inner[0], start_inner[1],
+            start_outer[0],
+            start_outer[1],
+            outer_r,
+            outer_r,
+            large_arc,
+            end_outer[0],
+            end_outer[1],
+            end_inner[0],
+            end_inner[1],
+            inner_r,
+            inner_r,
+            large_arc,
+            start_inner[0],
+            start_inner[1],
             color
         )
     }
 
-    fn render_connection_svg(&self, conn: &ChordConnection, cx: f32, cy: f32, scale: f32) -> String {
+    fn render_connection_svg(
+        &self,
+        conn: &ChordConnection,
+        cx: f32,
+        cy: f32,
+        scale: f32,
+    ) -> String {
         let source = &self.segments[conn.source_idx];
         let target = &self.segments[conn.target_idx];
 
@@ -552,10 +559,14 @@ impl ChordDiagram {
             return format!(
                 r#"    <path d="M {:.1} {:.1} Q {:.1} {:.1} {:.1} {:.1}" fill="none" stroke="{}" stroke-width="{:.1}" stroke-linecap="round"/>
 "#,
-                source_pt[0], source_pt[1],
-                loop_ctrl[0], loop_ctrl[1],
-                source_pt[0] + 1.0, source_pt[1] + 1.0,
-                color, stroke_width
+                source_pt[0],
+                source_pt[1],
+                loop_ctrl[0],
+                loop_ctrl[1],
+                source_pt[0] + 1.0,
+                source_pt[1] + 1.0,
+                color,
+                stroke_width
             );
         }
 
@@ -575,11 +586,16 @@ impl ChordDiagram {
         format!(
             r#"    <path d="M {:.1} {:.1} C {:.1} {:.1} {:.1} {:.1} {:.1} {:.1}" fill="none" stroke="{}" stroke-width="{:.1}" stroke-linecap="round"/>
 "#,
-            ctrl_points[0][0], ctrl_points[0][1],
-            ctrl_points[1][0], ctrl_points[1][1],
-            ctrl_points[2][0], ctrl_points[2][1],
-            ctrl_points[3][0], ctrl_points[3][1],
-            color, stroke_width
+            ctrl_points[0][0],
+            ctrl_points[0][1],
+            ctrl_points[1][0],
+            ctrl_points[1][1],
+            ctrl_points[2][0],
+            ctrl_points[2][1],
+            ctrl_points[3][0],
+            ctrl_points[3][1],
+            color,
+            stroke_width
         )
     }
 
@@ -608,10 +624,13 @@ impl ChordDiagram {
         format!(
             r#"    <text x="{:.1}" y="{:.1}" text-anchor="{}" font-size="{:.0}" transform="rotate({:.1} {:.1} {:.1})" dx="{:.0}">{}</text>
 "#,
-            pos[0], pos[1],
+            pos[0],
+            pos[1],
             anchor,
             self.config.label_font_size,
-            rotation, pos[0], pos[1],
+            rotation,
+            pos[0],
+            pos[1],
             dx,
             escape_xml(&segment.label)
         )
@@ -659,9 +678,11 @@ impl ChordDiagram {
             ));
         }
 
-        svg.push_str(r#"      </linearGradient>
+        svg.push_str(
+            r#"      </linearGradient>
     </defs>
-"#);
+"#,
+        );
 
         // Color bar
         svg.push_str(&format!(
@@ -723,9 +744,11 @@ impl ChordDiagram {
                     };
 
                     let in_segment = if segment.end_angle > segment.start_angle {
-                        normalized_angle >= segment.start_angle && normalized_angle <= segment.end_angle
+                        normalized_angle >= segment.start_angle
+                            && normalized_angle <= segment.end_angle
                     } else {
-                        normalized_angle >= segment.start_angle || normalized_angle <= segment.end_angle
+                        normalized_angle >= segment.start_angle
+                            || normalized_angle <= segment.end_angle
                     };
 
                     if in_segment {
@@ -797,9 +820,15 @@ impl ChordDiagram {
                             let alpha = conn.color[3];
                             let inv_alpha = 1.0 - alpha;
 
-                            buffer[idx] = ((conn.color[0] * alpha + buffer[idx] as f32 / 255.0 * inv_alpha) * 255.0) as u8;
-                            buffer[idx + 1] = ((conn.color[1] * alpha + buffer[idx + 1] as f32 / 255.0 * inv_alpha) * 255.0) as u8;
-                            buffer[idx + 2] = ((conn.color[2] * alpha + buffer[idx + 2] as f32 / 255.0 * inv_alpha) * 255.0) as u8;
+                            buffer[idx] = ((conn.color[0] * alpha
+                                + buffer[idx] as f32 / 255.0 * inv_alpha)
+                                * 255.0) as u8;
+                            buffer[idx + 1] = ((conn.color[1] * alpha
+                                + buffer[idx + 1] as f32 / 255.0 * inv_alpha)
+                                * 255.0) as u8;
+                            buffer[idx + 2] = ((conn.color[2] * alpha
+                                + buffer[idx + 2] as f32 / 255.0 * inv_alpha)
+                                * 255.0) as u8;
                             buffer[idx + 3] = 255;
                         }
                     }
@@ -980,10 +1009,7 @@ mod tests {
 
     #[test]
     fn test_svg_generation() {
-        let weights = vec![
-            vec![0.5, 0.3],
-            vec![0.3, 0.5],
-        ];
+        let weights = vec![vec![0.5, 0.3], vec![0.3, 0.5]];
         let labels = vec!["A".to_string(), "B".to_string()];
 
         let diagram = ChordDiagram::from_attention(&weights, &labels);
@@ -998,10 +1024,7 @@ mod tests {
 
     #[test]
     fn test_pixel_buffer_generation() {
-        let weights = vec![
-            vec![0.5, 0.3],
-            vec![0.3, 0.5],
-        ];
+        let weights = vec![vec![0.5, 0.3], vec![0.3, 0.5]];
         let labels = vec!["A".to_string(), "B".to_string()];
 
         let diagram = ChordDiagram::from_attention(&weights, &labels);

@@ -54,8 +54,9 @@ impl TritterLinear {
                 .with_per_token_activation(true);
 
             // Quantize to BitLinear
-            let bit_linear = BitLinear::from_weight(&weight, None, &config)
-                .map_err(|e| candle_core::Error::Msg(format!("BitNet quantization failed: {}", e)))?;
+            let bit_linear = BitLinear::from_weight(&weight, None, &config).map_err(|e| {
+                candle_core::Error::Msg(format!("BitNet quantization failed: {}", e))
+            })?;
 
             Ok(Self::BitNet(bit_linear))
         } else {
@@ -68,19 +69,16 @@ impl TritterLinear {
     /// Create from an existing weight tensor.
     ///
     /// This is useful for loading pretrained weights and optionally quantizing them.
-    pub fn from_weight(
-        weight: &Tensor,
-        use_bitnet: bool,
-        _device: &Device,
-    ) -> Result<Self> {
+    pub fn from_weight(weight: &Tensor, use_bitnet: bool, _device: &Device) -> Result<Self> {
         if use_bitnet {
             let config = BitNetConfig::new()
                 .with_group_size(64)
                 .with_ste(true)
                 .with_per_token_activation(true);
 
-            let bit_linear = BitLinear::from_weight(weight, None, &config)
-                .map_err(|e| candle_core::Error::Msg(format!("BitNet quantization failed: {}", e)))?;
+            let bit_linear = BitLinear::from_weight(weight, None, &config).map_err(|e| {
+                candle_core::Error::Msg(format!("BitNet quantization failed: {}", e))
+            })?;
 
             Ok(Self::BitNet(bit_linear))
         } else {

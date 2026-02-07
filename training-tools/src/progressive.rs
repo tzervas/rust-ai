@@ -328,12 +328,14 @@ impl ProgressiveTrainer {
                 datasets.len()
             );
 
-            Box::new(
-                CompositeDataset::new(datasets).with_strategy(blend_strategy),
-            )
+            Box::new(CompositeDataset::new(datasets).with_strategy(blend_strategy))
         };
 
-        Ok(Some(DataLoader::new(final_dataset, data_config, device.clone())))
+        Ok(Some(DataLoader::new(
+            final_dataset,
+            data_config,
+            device.clone(),
+        )))
     }
 
     /// Create a single dataset from a path (file or directory).
@@ -554,8 +556,8 @@ impl ProgressiveTrainer {
 
         // Adaptive learning rate controller for plateau/oscillation handling
         let base_lr = self.config.learning_rate;
-        let min_lr = base_lr * 0.01;  // 1% of base LR
-        let max_lr = base_lr * 3.0;   // 3x base LR for plateau escape
+        let min_lr = base_lr * 0.01; // 1% of base LR
+        let max_lr = base_lr * 3.0; // 3x base LR for plateau escape
         let mut lr_controller = AdaptiveLRController::new(base_lr, min_lr, max_lr);
         let mut current_lr = base_lr;
 
@@ -637,10 +639,16 @@ impl ProgressiveTrainer {
             current_lr = lr_controller.update(result.loss, result.gradient_norm);
             if (current_lr - prev_lr).abs() > 1e-8 {
                 trainer.set_learning_rate::<TritterBatch>(current_lr);
-                let change = if current_lr > prev_lr { "increased" } else { "decreased" };
+                let change = if current_lr > prev_lr {
+                    "increased"
+                } else {
+                    "decreased"
+                };
                 tracing::info!(
                     "LR {} from {:.2e} to {:.2e} (plateau/oscillation handling)",
-                    change, prev_lr, current_lr
+                    change,
+                    prev_lr,
+                    current_lr
                 );
             }
 

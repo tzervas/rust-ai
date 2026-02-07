@@ -643,7 +643,10 @@ mod tests {
         }
 
         let advice = check_loss_plateau(&losses, 1e-4, 1000, 0.001);
-        assert!(advice.is_some(), "Should detect plateau with normalized_slope < 0.001");
+        assert!(
+            advice.is_some(),
+            "Should detect plateau with normalized_slope < 0.001"
+        );
         let advice = advice.unwrap();
         assert_eq!(advice.issue, Issue::LossPlateau);
         assert!(advice.suggested_lr > 1e-4);

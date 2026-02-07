@@ -1214,9 +1214,10 @@ impl RSSMLite {
         // Map spread to confidence: spread=0 (stable) → 1.0, spread≥50% (volatile) → 0.5
         let stability_confidence = (1.0 / (1.0 + 2.0 * relative_spread)).max(0.5);
 
-        // Combine confidences: agreement 50%, historical 30%, stability 20%
-        let confidence = (agreement_confidence * 0.5
-            + historical_confidence * 0.3
+        // Combine confidences: agreement 40%, historical 40%, stability 20%
+        // Reduced ensemble weight because it takes many steps to converge from random init
+        let confidence = (agreement_confidence * 0.4
+            + historical_confidence * 0.4
             + stability_confidence * 0.2)
             .clamp(0.0, 1.0);
 

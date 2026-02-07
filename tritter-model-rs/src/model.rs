@@ -68,14 +68,15 @@ impl TritterModel {
         }
 
         // Final layer norm (using manual impl for CUDA compatibility)
-        let final_norm = manual_layer_norm(config.hidden_size, config.layer_norm_eps, vb.pp("final_norm"))?;
+        let final_norm = manual_layer_norm(
+            config.hidden_size,
+            config.layer_norm_eps,
+            vb.pp("final_norm"),
+        )?;
 
         // LM head (tied to embeddings in some models, separate here)
-        let lm_head = candle_nn::linear_no_bias(
-            config.hidden_size,
-            config.vocab_size,
-            vb.pp("lm_head"),
-        )?;
+        let lm_head =
+            candle_nn::linear_no_bias(config.hidden_size, config.vocab_size, vb.pp("lm_head"))?;
 
         // Initialize checkpoint configuration
         let checkpoint_config = GradientCheckpointConfig::from_model_config(
@@ -234,9 +235,9 @@ impl TritterModel {
     pub fn retrieve_checkpoint(&self, layer_idx: usize) -> TritterResult<Tensor> {
         self.checkpoint_store
             .as_ref()
-            .ok_or_else(|| crate::error::TritterError::Training(
-                "Checkpoint store not initialized".to_string()
-            ))?
+            .ok_or_else(|| {
+                crate::error::TritterError::Training("Checkpoint store not initialized".to_string())
+            })?
             .retrieve(layer_idx)
     }
 
@@ -274,7 +275,8 @@ impl TritterModel {
         };
 
         if enabled {
-            self.checkpoint_store = Some(CheckpointStore::new(&self.checkpoint_config, &self.device));
+            self.checkpoint_store =
+                Some(CheckpointStore::new(&self.checkpoint_config, &self.device));
         } else {
             self.checkpoint_store = None;
         }
@@ -398,7 +400,11 @@ impl TritterModel {
     /// let device = Device::Cpu;
     /// let model = TritterModel::load(&config, std::path::Path::new("model.safetensors"), &device).unwrap();
     /// ```
-    pub fn load(config: &TritterConfig, path: &std::path::Path, device: &Device) -> TritterResult<Self> {
+    pub fn load(
+        config: &TritterConfig,
+        path: &std::path::Path,
+        device: &Device,
+    ) -> TritterResult<Self> {
         let mut var_map = VarMap::new();
         var_map.load(path)?;
         let vb = VarBuilder::from_varmap(&var_map, DType::F32, device);
@@ -406,7 +412,11 @@ impl TritterModel {
     }
 
     /// Alias for load() - loads from safetensors format.
-    pub fn load_safetensors(config: &TritterConfig, path: &std::path::Path, device: &Device) -> TritterResult<Self> {
+    pub fn load_safetensors(
+        config: &TritterConfig,
+        path: &std::path::Path,
+        device: &Device,
+    ) -> TritterResult<Self> {
         Self::load(config, path, device)
     }
 
@@ -630,11 +640,17 @@ mod tests {
 
         // Get checkpoint at layer 0
         let checkpoint_0 = model.retrieve_checkpoint(0).unwrap();
-        assert_eq!(checkpoint_0.dims(), &[batch_size, seq_len, config.hidden_size]);
+        assert_eq!(
+            checkpoint_0.dims(),
+            &[batch_size, seq_len, config.hidden_size]
+        );
 
         // Recompute segment 0-2
         let recomputed = model.recompute_segment(0, 2, checkpoint_0, None).unwrap();
-        assert_eq!(recomputed.dims(), &[batch_size, seq_len, config.hidden_size]);
+        assert_eq!(
+            recomputed.dims(),
+            &[batch_size, seq_len, config.hidden_size]
+        );
     }
 
     #[test]

@@ -163,7 +163,7 @@ pub fn manual_log_softmax_last_dim(x: &Tensor) -> Result<Tensor> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use candle_core::{Device, DType};
+    use candle_core::{DType, Device};
     use candle_nn::VarMap;
 
     #[test]
@@ -198,10 +198,20 @@ mod tests {
 
         // After normalization, mean should be close to 0 and std close to 1
         let mean = out.mean_all().unwrap().to_scalar::<f32>().unwrap();
-        let var = out.sqr().unwrap().mean_all().unwrap().to_scalar::<f32>().unwrap();
+        let var = out
+            .sqr()
+            .unwrap()
+            .mean_all()
+            .unwrap()
+            .to_scalar::<f32>()
+            .unwrap();
 
         assert!(mean.abs() < 0.5, "Mean should be close to 0, got {}", mean);
-        assert!((var - 1.0).abs() < 0.5, "Variance should be close to 1, got {}", var);
+        assert!(
+            (var - 1.0).abs() < 0.5,
+            "Variance should be close to 1, got {}",
+            var
+        );
     }
 
     #[test]

@@ -37,9 +37,12 @@ impl TritterMLP {
         let intermediate = config.intermediate_size;
         let use_bitnet = config.use_bitnet;
 
-        let gate_proj = TritterLinear::new(hidden, intermediate, use_bitnet, vb.pp("gate_proj"), device)?;
-        let up_proj = TritterLinear::new(hidden, intermediate, use_bitnet, vb.pp("up_proj"), device)?;
-        let down_proj = TritterLinear::new(intermediate, hidden, use_bitnet, vb.pp("down_proj"), device)?;
+        let gate_proj =
+            TritterLinear::new(hidden, intermediate, use_bitnet, vb.pp("gate_proj"), device)?;
+        let up_proj =
+            TritterLinear::new(hidden, intermediate, use_bitnet, vb.pp("up_proj"), device)?;
+        let down_proj =
+            TritterLinear::new(intermediate, hidden, use_bitnet, vb.pp("down_proj"), device)?;
 
         Ok(Self {
             gate_proj,

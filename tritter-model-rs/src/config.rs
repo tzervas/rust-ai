@@ -53,7 +53,7 @@ impl TritterConfig {
             hidden_size: 768,
             num_layers: 12,
             num_heads: 12,
-            num_kv_heads: None, // MHA
+            num_kv_heads: None,      // MHA
             intermediate_size: 2048, // ~2.7x hidden
             vocab_size: 65536,
             max_seq_length: 2048,
@@ -73,7 +73,7 @@ impl TritterConfig {
             hidden_size: 1024,
             num_layers: 24,
             num_heads: 16,
-            num_kv_heads: None, // MHA
+            num_kv_heads: None,      // MHA
             intermediate_size: 2816, // ~2.75x hidden
             vocab_size: 65536,
             max_seq_length: 4096,
@@ -93,7 +93,7 @@ impl TritterConfig {
             hidden_size: 2048,
             num_layers: 24,
             num_heads: 16,
-            num_kv_heads: Some(8), // GQA 2:1
+            num_kv_heads: Some(8),   // GQA 2:1
             intermediate_size: 5632, // ~2.75x hidden
             vocab_size: 65536,
             max_seq_length: 8192,
@@ -129,7 +129,7 @@ impl TritterConfig {
             hidden_size: 2048,
             num_layers: 24,
             num_heads: 16,
-            num_kv_heads: Some(8), // GQA 2:1
+            num_kv_heads: Some(8),   // GQA 2:1
             intermediate_size: 8192, // 4x hidden for better MLP capacity
             vocab_size: 32000,
             max_seq_length: 4096,
@@ -149,7 +149,7 @@ impl TritterConfig {
             hidden_size: 2560,
             num_layers: 26,
             num_heads: 20,
-            num_kv_heads: Some(5), // GQA 4:1
+            num_kv_heads: Some(5),   // GQA 4:1
             intermediate_size: 6912, // ~2.7x hidden
             vocab_size: 65536,
             max_seq_length: 131072, // 128K context
@@ -169,7 +169,7 @@ impl TritterConfig {
             hidden_size: 4096,
             num_layers: 32,
             num_heads: 32,
-            num_kv_heads: Some(8), // GQA 4:1
+            num_kv_heads: Some(8),    // GQA 4:1
             intermediate_size: 11008, // ~2.7x hidden
             vocab_size: 65536,
             max_seq_length: 131072, // 128K context
@@ -216,7 +216,8 @@ impl TritterConfig {
     /// Estimate parameter count
     pub fn parameter_count(&self) -> usize {
         let embed = self.vocab_size * self.hidden_size;
-        let attn_qkv = self.hidden_size * (self.hidden_size + 2 * self.kv_heads() * self.head_dim());
+        let attn_qkv =
+            self.hidden_size * (self.hidden_size + 2 * self.kv_heads() * self.head_dim());
         let attn_out = self.hidden_size * self.hidden_size;
         let ffn = self.hidden_size * self.intermediate_size * 3; // gate, up, down
         let layer = attn_qkv + attn_out + ffn + 4 * self.hidden_size; // + norms
@@ -293,7 +294,11 @@ impl TritterConfig {
     /// # Arguments
     /// * `batch_size` - Training batch size
     /// * `seq_len` - Sequence length
-    pub fn total_training_memory_estimate(&self, batch_size: usize, seq_len: usize) -> TrainingMemoryEstimate {
+    pub fn total_training_memory_estimate(
+        &self,
+        batch_size: usize,
+        seq_len: usize,
+    ) -> TrainingMemoryEstimate {
         let params = if self.use_bitnet {
             self.memory_estimate_bitnet()
         } else {
@@ -308,7 +313,8 @@ impl TritterConfig {
 
         // Activations
         let activations = self.activation_memory_estimate(batch_size, seq_len);
-        let activations_no_checkpoint = self.num_layers * self.activation_memory_per_layer(batch_size, seq_len);
+        let activations_no_checkpoint =
+            self.num_layers * self.activation_memory_per_layer(batch_size, seq_len);
 
         TrainingMemoryEstimate {
             parameters: params,
@@ -372,7 +378,9 @@ impl TrainingMemoryEstimate {
         };
 
         let activation_savings = if self.checkpointing_enabled {
-            let saved = self.activations_without_checkpointing.saturating_sub(self.activations);
+            let saved = self
+                .activations_without_checkpointing
+                .saturating_sub(self.activations);
             let pct = if self.activations_without_checkpointing > 0 {
                 100.0 * saved as f64 / self.activations_without_checkpointing as f64
             } else {
@@ -397,7 +405,11 @@ impl TrainingMemoryEstimate {
             format_bytes(self.activations),
             activation_savings,
             format_bytes(self.total),
-            if self.checkpointing_enabled { "enabled" } else { "disabled" },
+            if self.checkpointing_enabled {
+                "enabled"
+            } else {
+                "disabled"
+            },
             self.checkpoint_every_n_layers,
         )
     }
@@ -443,8 +455,16 @@ mod tests {
 
         // Parameter count should be in ~1B range (many "1B" models are 1-2B)
         let params = config.parameter_count();
-        assert!(params > 800_000_000, "Expected > 800M params, got {}", params);
-        assert!(params < 2_000_000_000, "Expected < 2B params, got {}", params);
+        assert!(
+            params > 800_000_000,
+            "Expected > 800M params, got {}",
+            params
+        );
+        assert!(
+            params < 2_000_000_000,
+            "Expected < 2B params, got {}",
+            params
+        );
     }
 
     #[test]
@@ -510,8 +530,10 @@ mod tests {
         assert!(estimate.total > estimate.parameters);
 
         // Verify breakdown adds up
-        let expected_total = estimate.parameters + estimate.optimizer_states
-            + estimate.gradients + estimate.activations;
+        let expected_total = estimate.parameters
+            + estimate.optimizer_states
+            + estimate.gradients
+            + estimate.activations;
         assert_eq!(estimate.total, expected_total);
     }
 

@@ -24,10 +24,10 @@ pub mod curve_analysis;
 pub mod early_stopping;
 pub mod embeddings;
 pub mod gpu_stats;
-pub mod inference_viz;
 pub mod gradient_control;
-pub mod landscape;
 pub mod hf;
+pub mod inference_viz;
+pub mod landscape;
 pub mod live_monitor;
 pub mod lr_advisor;
 pub mod lr_controller;
@@ -37,6 +37,7 @@ pub mod monitor;
 #[cfg(feature = "parquet")]
 pub mod parquet_export;
 pub mod progressive;
+pub mod rerun_viz;
 pub mod screenshot;
 pub mod smoothing;
 pub mod training_config;
@@ -44,13 +45,23 @@ pub mod training_state;
 pub mod training_viz;
 pub mod viz3d;
 pub mod wordcloud;
-pub mod rerun_viz;
 
 pub use alerts::{Alert, AlertCondition, AlertManager, AlertSeverity, MetricsSnapshot};
+pub use attention_viz::{
+    AttentionHead, AttentionPattern, AttentionViz, ColorMap, Connection, ConnectionType,
+    FlowConfig, FlowConnection, FlowDiagram, FlowNode, FlowRenderer, FlowStatistics,
+    GradientHealth, HeadAggregation, HeadAnalysis, HeadPatternType, HeatMap, HeatMapConfig,
+    HeatMapRenderer, LayerType as AttentionLayerType, LayerViz, NetworkArchViz, NetworkRenderer,
+    NetworkVizConfig, OutputFormat, Renderer, VizError, VizResult,
+};
 pub use batch_tuner::{BatchTuner, BatchTunerStats};
 pub use checkpoint_manager::CheckpointManager;
 pub use curve_analysis::{CurveAnalysis, CurveAnalyzer, CurveTrend};
 pub use early_stopping::{EarlyStopping, StoppingDecision, StoppingMode};
+pub use embeddings::{
+    EmbeddingError, EmbeddingProjector, PCABuilder, ProjectionMethod, ProjectionStats, TSNEBuilder,
+    UMAPBuilder, PCA, TSNE, UMAP,
+};
 pub use gpu_stats::{query_gpu_stats, GpuStats, GpuStatsMonitor};
 pub use gradient_control::{GradientAction, GradientController, GradientStats};
 pub use hf::HuggingFaceUploader;
@@ -63,6 +74,10 @@ pub use memory::{
 };
 pub use monitor::{TrainingMonitor, ViewMode};
 pub use progressive::ProgressiveTrainer;
+pub use screenshot::{
+    compare_buffers, create_sample_metrics_file, ComparisonResult, ScreenshotCapture,
+    ScreenshotFormat,
+};
 pub use smoothing::{
     ExponentialMovingAverage, OscillationDamper, SmoothingConfig, SmoothingDiagnostics,
     SmoothingPipeline, SpikeSuppressor,
@@ -70,39 +85,47 @@ pub use smoothing::{
 pub use training_config::{
     DataPreset, HybridPreset, ModelPreset, OptimizationPreset, TrainingPreset,
 };
-pub use screenshot::{
-    compare_buffers, create_sample_metrics_file, ComparisonResult, ScreenshotCapture,
-    ScreenshotFormat,
-};
 pub use training_state::{
     calculate_loss_dynamics, capture_git_info, compute_config_hash, CheckpointEvent,
     GeneralizationHealth, GitInfo, LayerGradientStats, LossDynamicsTracker, PhaseTransition,
     StepMetrics, TrainingConfig, TrainingPhase, TrainingRun, TrainingStatus,
 };
-pub use embeddings::{
-    EmbeddingError, EmbeddingProjector, PCA, PCABuilder, ProjectionMethod, ProjectionStats,
-    TSNE, TSNEBuilder, UMAP, UMAPBuilder,
+pub use viz3d::{
+    isometric_project,
+    // Non-Bevy viz3d types
+    AnimationPhase,
+    ArchitectureDiagram,
+    Camera3D,
+    CategoricalPalette,
+    Color,
+    Colormap,
+    ColormapPreset,
+    DenseLayer,
+    DenseNetworkViz,
+    DenseVizConfig,
+    GradientMagnitude,
+    LayerBlock,
+    LayerConnection,
+    LayerInfo,
+    LayerType as ArchLayerType,
+    LayoutStyle,
+    Mesh3D,
+    NetworkStats,
+    SkipConnection,
+    SkipStyle,
+    TrainingDataPoint,
+    TritterConfig,
+    Vertex3D,
+    Viz3DConfig,
+    Viz3DEngine,
+    Viz3dError,
+    Viz3dResult,
+    WeightMatrix,
 };
 pub use wordcloud::{
     ClusterConfig, ConceptCluster, ForceDirectedLayout, KMeansClusterer, Layout3D, LayoutConfig,
     RenderConfig, RenderToken, SphericalLayout, Token3D, TokenCloud3D, WordCloudError,
     WordRelationGraph,
-};
-pub use attention_viz::{
-    AttentionHead, AttentionPattern, AttentionViz, ColorMap, Connection, ConnectionType,
-    FlowConfig, FlowConnection, FlowDiagram, FlowNode, FlowRenderer, FlowStatistics,
-    GradientHealth, HeadAggregation, HeadAnalysis, HeadPatternType, HeatMap, HeatMapConfig,
-    HeatMapRenderer, LayerType as AttentionLayerType, LayerViz, NetworkArchViz, NetworkRenderer, NetworkVizConfig,
-    OutputFormat, Renderer, VizError, VizResult,
-};
-pub use viz3d::{
-    ArchitectureDiagram, LayerBlock, LayerConnection, LayerInfo, LayerType as ArchLayerType,
-    LayoutStyle, SkipConnection, SkipStyle, TritterConfig, isometric_project,
-    Color, Colormap, ColormapPreset, CategoricalPalette,
-    // Non-Bevy viz3d types
-    AnimationPhase, GradientMagnitude, TrainingDataPoint, Viz3dError, Viz3dResult,
-    Camera3D, Mesh3D, Vertex3D, Viz3DConfig, Viz3DEngine,
-    DenseNetworkViz, DenseVizConfig, DenseLayer, WeightMatrix, NetworkStats,
 };
 
 // Bevy-based 3D viewer (requires viz3d feature)
@@ -114,27 +137,51 @@ pub use viz3d::{
 };
 
 // Training visualization with efficient activation capture
-pub use training_viz::{
-    // Capture configuration
-    CaptureConfig, CaptureConfigBuilder,
-    // Step and snapshot types
-    StepStats, LayerStats, ActivationSnapshot, LayerActivationSample, AttentionSnapshot,
-    TriggerReason,
-    // Capture and streaming
-    TrainingVizCapture, VizStream, LayerAggregate, CaptureExport,
-    // Dashboard presets
-    DashboardPreset, PanelConfig, PanelKind,
-    // Animation
-    AnimationFrame, AnimPhase, AnimationController,
-    // Analysis and assessment
-    TrainingSummary, HealthStatus, LossAnalysis, GradientAnalysis, LayerAnalysis,
-    GradientStats as VizGradientStats, LayerIssue, IssueSeverity,
-    AttentionAnalysis, Recommendation, RecommendationPriority, RecommendationCategory,
-    DetectedAnomaly, AnomalyType, PerformanceMetrics, TrainingAnalyzer,
-};
 pub use landscape::{
-    DirectionMethod, GradientField, GradientSample, LandscapeConfig, LossLandscape,
-    LossSurface, MeshExporter, TrajectoryPoint, TrajectoryTracker,
+    DirectionMethod, GradientField, GradientSample, LandscapeConfig, LossLandscape, LossSurface,
+    MeshExporter, TrajectoryPoint, TrajectoryTracker,
+};
+pub use training_viz::{
+    ActivationSnapshot,
+    AnimPhase,
+    AnimationController,
+    // Animation
+    AnimationFrame,
+    AnomalyType,
+    AttentionAnalysis,
+    AttentionSnapshot,
+    // Capture configuration
+    CaptureConfig,
+    CaptureConfigBuilder,
+    CaptureExport,
+    // Dashboard presets
+    DashboardPreset,
+    DetectedAnomaly,
+    GradientAnalysis,
+    GradientStats as VizGradientStats,
+    HealthStatus,
+    IssueSeverity,
+    LayerActivationSample,
+    LayerAggregate,
+    LayerAnalysis,
+    LayerIssue,
+    LayerStats,
+    LossAnalysis,
+    PanelConfig,
+    PanelKind,
+    PerformanceMetrics,
+    Recommendation,
+    RecommendationCategory,
+    RecommendationPriority,
+    // Step and snapshot types
+    StepStats,
+    TrainingAnalyzer,
+    // Analysis and assessment
+    TrainingSummary,
+    // Capture and streaming
+    TrainingVizCapture,
+    TriggerReason,
+    VizStream,
 };
 
 // Rerun visualization (optional feature)
@@ -151,17 +198,17 @@ pub use rerun_viz::{RerunError, RerunResult};
 
 // Inference visualization
 pub use inference_viz::{
-    ActivationRecorder, ActivationStats, AttentionGraph, AttentionPattern as InferenceAttentionPattern,
-    FlowNode3D, FlowNodeType, FlowRenderer3D, InferenceViz, InferenceVizError, InterpretabilitySummary,
-    LayerActivation, LayerHeatmap, LayerRecord, LayerType as InferenceLayerType, ModelConfig as InferenceModelConfig,
+    ActivationRecorder, ActivationStats, AttentionGraph,
+    AttentionPattern as InferenceAttentionPattern, FlowNode3D, FlowNodeType, FlowRenderer3D,
+    InferenceViz, InferenceVizError, InterpretabilitySummary, LayerActivation, LayerHeatmap,
+    LayerRecord, LayerType as InferenceLayerType, ModelConfig as InferenceModelConfig,
     OutputAnalysis, PredictionEntry, RenderConfig as InferenceRenderConfig, TokenFlow,
 };
 
 // Adaptive training controller
 pub use adaptive::{
-    AdaptiveConfig, AdaptiveTrainingController, AdaptedParam, Adaptation,
-    AdaptationStrategy, AdaptationHistory, TrainingHealthReport,
-    Health, GradientHealth as AdaptiveGradientHealth,
-    AdaptiveProgressiveTrainer, AdaptiveProgressiveConfig,
-    AdaptiveLoopHelper, AdaptiveUpdate, StepResult as AdaptiveStepResult,
+    Adaptation, AdaptationHistory, AdaptationStrategy, AdaptedParam, AdaptiveConfig,
+    AdaptiveLoopHelper, AdaptiveProgressiveConfig, AdaptiveProgressiveTrainer,
+    AdaptiveTrainingController, AdaptiveUpdate, GradientHealth as AdaptiveGradientHealth, Health,
+    StepResult as AdaptiveStepResult, TrainingHealthReport,
 };

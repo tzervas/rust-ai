@@ -282,7 +282,11 @@ impl JsonlDataset {
 
         let file_path = &self.files[self.current_file_idx];
         let file = File::open(file_path).map_err(|e| {
-            TritterError::Data(format!("Failed to open file {}: {}", file_path.display(), e))
+            TritterError::Data(format!(
+                "Failed to open file {}: {}",
+                file_path.display(),
+                e
+            ))
         })?;
         self.reader = Some(BufReader::new(file));
         Ok(())
@@ -567,7 +571,11 @@ impl ParquetDataset {
 
         let file_path = &self.files[self.current_file_idx];
         let file = File::open(file_path).map_err(|e| {
-            TritterError::Data(format!("Failed to open file {}: {}", file_path.display(), e))
+            TritterError::Data(format!(
+                "Failed to open file {}: {}",
+                file_path.display(),
+                e
+            ))
         })?;
 
         let builder = ParquetRecordBatchReaderBuilder::try_new(file).map_err(|e| {
@@ -626,7 +634,10 @@ impl ParquetDataset {
         use arrow_array::cast::AsArray;
         use arrow_array::Array;
 
-        let col_name = self.text_column.as_ref().or(self.detected_column.as_ref())?;
+        let col_name = self
+            .text_column
+            .as_ref()
+            .or(self.detected_column.as_ref())?;
 
         let col_idx = batch.schema().index_of(col_name).ok()?;
         let column = batch.column(col_idx);
@@ -870,7 +881,11 @@ impl DataLoader {
         }
 
         // Collate into batch with max_seq_length enforcement
-        Some(collate_batch_with_max_len(&examples, device, Some(config.max_seq_length)))
+        Some(collate_batch_with_max_len(
+            &examples,
+            device,
+            Some(config.max_seq_length),
+        ))
     }
 
     /// Get the next batch (blocking).
@@ -962,7 +977,10 @@ impl Drop for DataLoader {
 /// A [`TritterBatch`] with:
 /// - `input_ids`: Padded tensor of shape `(batch_size, max_len_in_batch)`
 /// - `attention_mask`: Binary mask where 1 = real token, 0 = padding
-pub fn collate_batch(examples: &[TokenizedExample], device: &Device) -> TritterResult<TritterBatch> {
+pub fn collate_batch(
+    examples: &[TokenizedExample],
+    device: &Device,
+) -> TritterResult<TritterBatch> {
     collate_batch_with_max_len(examples, device, None)
 }
 
@@ -1027,8 +1045,8 @@ pub fn collate_batch_with_max_len(
     let input_ids = Tensor::from_slice(&input_ids_flat, (batch_size, max_len), device)?;
 
     // Convert attention mask to U8 tensor
-    let attention_mask =
-        Tensor::from_slice(&attention_mask_flat, (batch_size, max_len), device)?.to_dtype(DType::U8)?;
+    let attention_mask = Tensor::from_slice(&attention_mask_flat, (batch_size, max_len), device)?
+        .to_dtype(DType::U8)?;
 
     // Validate tensor shapes before returning
     let input_dims = input_ids.dims();
@@ -1450,11 +1468,9 @@ mod tests {
     fn test_collate_batch_shape_validation() {
         use hybrid_predict_trainer_rs::Batch;
 
-        let examples = vec![
-            TokenizedExample {
-                input_ids: vec![1, 2, 3],
-            },
-        ];
+        let examples = vec![TokenizedExample {
+            input_ids: vec![1, 2, 3],
+        }];
 
         let device = Device::Cpu;
         let batch = collate_batch(&examples, &device).unwrap();
@@ -1470,7 +1486,9 @@ mod tests {
     fn test_data_loader_enforces_max_seq_length() {
         let file = create_test_jsonl();
         // Use a very short max_seq_length to test truncation
-        let config = DataConfig::test().with_max_seq_length(10).with_batch_size(2);
+        let config = DataConfig::test()
+            .with_max_seq_length(10)
+            .with_batch_size(2);
         let device = Device::Cpu;
 
         let dataset = JsonlDataset::new(file.path(), config.max_seq_length).unwrap();
@@ -1488,11 +1506,9 @@ mod tests {
     #[test]
     fn test_minimum_sequence_length() {
         // Test that we get at least 2 tokens (for next-token prediction)
-        let examples = vec![
-            TokenizedExample {
-                input_ids: vec![1], // Only 1 token
-            },
-        ];
+        let examples = vec![TokenizedExample {
+            input_ids: vec![1], // Only 1 token
+        }];
 
         let device = Device::Cpu;
         let batch = collate_batch_with_max_len(&examples, &device, Some(100)).unwrap();

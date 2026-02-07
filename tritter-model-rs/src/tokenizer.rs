@@ -161,10 +161,22 @@ impl MultiModalTokenizer {
         );
 
         let mut special_tokens = HashMap::new();
-        special_tokens.insert(special_tokens::PAD_TOKEN.to_string(), special_tokens::PAD_ID);
-        special_tokens.insert(special_tokens::BOS_TOKEN.to_string(), special_tokens::BOS_ID);
-        special_tokens.insert(special_tokens::EOS_TOKEN.to_string(), special_tokens::EOS_ID);
-        special_tokens.insert(special_tokens::UNK_TOKEN.to_string(), special_tokens::UNK_ID);
+        special_tokens.insert(
+            special_tokens::PAD_TOKEN.to_string(),
+            special_tokens::PAD_ID,
+        );
+        special_tokens.insert(
+            special_tokens::BOS_TOKEN.to_string(),
+            special_tokens::BOS_ID,
+        );
+        special_tokens.insert(
+            special_tokens::EOS_TOKEN.to_string(),
+            special_tokens::EOS_ID,
+        );
+        special_tokens.insert(
+            special_tokens::UNK_TOKEN.to_string(),
+            special_tokens::UNK_ID,
+        );
         special_tokens.insert(
             special_tokens::TEXT_PREFIX.to_string(),
             special_tokens::TEXT_PREFIX_ID,
@@ -211,9 +223,8 @@ impl MultiModalTokenizer {
         tokenizer_path: &str,
     ) -> TritterResult<Self> {
         let mut tokenizer = Self::new(vocab_size, max_length);
-        let hf_tokenizer = tokenizers::Tokenizer::from_file(tokenizer_path).map_err(|e| {
-            TritterError::InvalidConfig(format!("Failed to load tokenizer: {}", e))
-        })?;
+        let hf_tokenizer = tokenizers::Tokenizer::from_file(tokenizer_path)
+            .map_err(|e| TritterError::InvalidConfig(format!("Failed to load tokenizer: {}", e)))?;
         tokenizer.tokenizer = Some(hf_tokenizer);
         Ok(tokenizer)
     }
@@ -420,7 +431,8 @@ impl MultiModalTokenizer {
                 }
                 let tiktoken_slot = self.map_unified_to_bpe(token_id);
                 bpe_batch.push(tiktoken_slot);
-            } else if vocab_ranges::KEYWORD_START <= token_id && token_id < vocab_ranges::KEYWORD_END
+            } else if vocab_ranges::KEYWORD_START <= token_id
+                && token_id < vocab_ranges::KEYWORD_END
             {
                 // Keyword token
                 if !bpe_batch.is_empty() {
@@ -589,7 +601,8 @@ impl MultiModalTokenizer {
     /// * `max_len` - Target length (if None, uses longest sequence)
     /// * `pad_right` - If true, pad on right; otherwise pad on left
     pub fn pad_batch(&self, sequences: &mut [Vec<u32>], max_len: Option<usize>, pad_right: bool) {
-        let target_len = max_len.unwrap_or_else(|| sequences.iter().map(|s| s.len()).max().unwrap_or(0));
+        let target_len =
+            max_len.unwrap_or_else(|| sequences.iter().map(|s| s.len()).max().unwrap_or(0));
 
         for seq in sequences.iter_mut() {
             if seq.len() < target_len {
@@ -669,7 +682,9 @@ mod tests {
         let tokenizer = MultiModalTokenizer::new(65536, 131072);
         let original = "Hello, world!";
 
-        let tokens = tokenizer.encode(original, ModalityType::Text, false).unwrap();
+        let tokens = tokenizer
+            .encode(original, ModalityType::Text, false)
+            .unwrap();
         let decoded = tokenizer.decode(&tokens, true).unwrap();
 
         assert_eq!(decoded, original);
@@ -716,7 +731,9 @@ mod tests {
         let tokenizer = MultiModalTokenizer::new(65536, 131072);
         let texts = &["Hello", "World", "Test"];
 
-        let batch = tokenizer.encode_batch(texts, ModalityType::Text, true).unwrap();
+        let batch = tokenizer
+            .encode_batch(texts, ModalityType::Text, true)
+            .unwrap();
 
         assert_eq!(batch.len(), 3);
         for tokens in &batch {
@@ -727,11 +744,7 @@ mod tests {
     #[test]
     fn test_padding() {
         let tokenizer = MultiModalTokenizer::new(65536, 131072);
-        let mut sequences = vec![
-            vec![1, 2, 3],
-            vec![1, 2],
-            vec![1],
-        ];
+        let mut sequences = vec![vec![1, 2, 3], vec![1, 2], vec![1]];
 
         tokenizer.pad_batch(&mut sequences, Some(5), true);
 
@@ -748,7 +761,7 @@ mod tests {
     #[test]
     fn test_attention_mask() {
         let tokenizer = MultiModalTokenizer::new(65536, 131072);
-        let tokens = vec![1, 2, 3, 0, 0];  // Last two are padding
+        let tokens = vec![1, 2, 3, 0, 0]; // Last two are padding
 
         let mask = tokenizer.create_attention_mask(&tokens);
 
@@ -757,10 +770,12 @@ mod tests {
 
     #[test]
     fn test_truncation() {
-        let tokenizer = MultiModalTokenizer::new(65536, 20);  // Small max_length
+        let tokenizer = MultiModalTokenizer::new(65536, 20); // Small max_length
         let long_text = "This is a very long text that should be truncated";
 
-        let tokens = tokenizer.encode(long_text, ModalityType::Text, true).unwrap();
+        let tokens = tokenizer
+            .encode(long_text, ModalityType::Text, true)
+            .unwrap();
 
         assert!(tokens.len() <= 20);
     }
@@ -786,9 +801,11 @@ mod tests {
     #[test]
     fn test_unicode_roundtrip() {
         let tokenizer = MultiModalTokenizer::new(65536, 131072);
-        let unicode_text = "Hello, \u{4e16}\u{754c}! \u{1f600}";  // "Hello, 世界! 😀"
+        let unicode_text = "Hello, \u{4e16}\u{754c}! \u{1f600}"; // "Hello, 世界! 😀"
 
-        let tokens = tokenizer.encode(unicode_text, ModalityType::Text, false).unwrap();
+        let tokens = tokenizer
+            .encode(unicode_text, ModalityType::Text, false)
+            .unwrap();
         let decoded = tokenizer.decode(&tokens, true).unwrap();
 
         assert_eq!(decoded, unicode_text);

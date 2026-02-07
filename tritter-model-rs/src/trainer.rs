@@ -8,9 +8,8 @@ use std::collections::HashMap;
 use candle_core::{DType, Device, Tensor};
 
 use hybrid_predict_trainer_rs::{
-    Batch, GradientInfo, HybridResult, HybridTrainer, HybridTrainerConfig, HybridTrainingError,
-    Model, Optimizer,
-    state::WeightDelta,
+    state::WeightDelta, Batch, GradientInfo, HybridResult, HybridTrainer, HybridTrainerConfig,
+    HybridTrainingError, Model, Optimizer,
 };
 
 use crate::config::TritterConfig;
@@ -18,7 +17,12 @@ use crate::error::TritterResult;
 use crate::model::TritterModel;
 
 /// Helper to create training error
-fn training_error(msg: impl Into<String>) -> (HybridTrainingError, Option<hybrid_predict_trainer_rs::RecoveryAction>) {
+fn training_error(
+    msg: impl Into<String>,
+) -> (
+    HybridTrainingError,
+    Option<hybrid_predict_trainer_rs::RecoveryAction>,
+) {
     (
         HybridTrainingError::IntegrationError {
             crate_name: "tritter-model-rs".to_string(),
@@ -47,7 +51,12 @@ impl TritterBatch {
     }
 
     /// Create batch from u32 slice
-    pub fn from_ids(ids: &[u32], batch_size: usize, seq_len: usize, device: &Device) -> TritterResult<Self> {
+    pub fn from_ids(
+        ids: &[u32],
+        batch_size: usize,
+        seq_len: usize,
+        device: &Device,
+    ) -> TritterResult<Self> {
         let input_ids = Tensor::from_slice(ids, (batch_size, seq_len), device)?;
         Ok(Self::new(input_ids, None))
     }
@@ -116,11 +125,15 @@ impl TritterModelWrapper {
 impl Model<TritterBatch> for TritterModelWrapper {
     fn forward(&mut self, batch: &TritterBatch) -> HybridResult<f32> {
         // Run forward pass with loss computation
-        let logits = self.model.forward(&batch.input_ids)
+        let logits = self
+            .model
+            .forward(&batch.input_ids)
             .map_err(|e| training_error(format!("Forward failed: {}", e)))?;
 
         // Compute cross-entropy loss
-        let loss = self.model.compute_loss(&logits, &batch.input_ids)
+        let loss = self
+            .model
+            .compute_loss(&logits, &batch.input_ids)
             .map_err(|e| training_error(format!("Loss computation failed: {}", e)))?;
 
         // Store for backward
@@ -132,7 +145,9 @@ impl Model<TritterBatch> for TritterModelWrapper {
     }
 
     fn backward(&mut self) -> HybridResult<GradientInfo> {
-        let loss = self.last_loss.as_ref()
+        let loss = self
+            .last_loss
+            .as_ref()
             .ok_or_else(|| training_error("No loss computed - call forward() first"))?;
 
         // Compute gradients via backward pass
@@ -140,7 +155,8 @@ impl Model<TritterBatch> for TritterModelWrapper {
         // computation graph. When checkpointing is enabled, we've stored activations
         // at checkpoint boundaries during forward. The backward pass uses these
         // cached tensors and recomputes intermediates as needed.
-        let grads = loss.backward()
+        let grads = loss
+            .backward()
             .map_err(|e| training_error(format!("Backward failed: {}", e)))?;
 
         // Clear checkpoint store after backward to free memory
@@ -162,7 +178,8 @@ impl Model<TritterBatch> for TritterModelWrapper {
                 grad_map.insert(name.clone(), grad.clone());
 
                 // Compute norm
-                let norm_sq: f32 = grad.sqr()
+                let norm_sq: f32 = grad
+                    .sqr()
                     .and_then(|t| t.sum_all())
                     .and_then(|t| t.to_scalar())
                     .unwrap_or(0.0);
@@ -194,7 +211,9 @@ impl Model<TritterBatch> for TritterModelWrapper {
                 // Create delta tensor
                 let shape = var.dims();
                 let delta_tensor = Tensor::from_slice(delta_vals.as_slice(), shape, var.device())
-                    .map_err(|e| training_error(format!("Delta tensor creation failed: {}", e)))?;
+                    .map_err(|e| {
+                    training_error(format!("Delta tensor creation failed: {}", e))
+                })?;
 
                 // Scale and apply
                 let scaled_delta = (&delta_tensor * delta.scale as f64)
@@ -258,7 +277,11 @@ impl TritterOptimizer {
 }
 
 impl Optimizer<TritterModelWrapper, TritterBatch> for TritterOptimizer {
-    fn step(&mut self, model: &mut TritterModelWrapper, _gradients: &GradientInfo) -> HybridResult<()> {
+    fn step(
+        &mut self,
+        model: &mut TritterModelWrapper,
+        _gradients: &GradientInfo,
+    ) -> HybridResult<()> {
         self.t += 1;
 
         // Bias correction factors
@@ -266,7 +289,9 @@ impl Optimizer<TritterModelWrapper, TritterBatch> for TritterOptimizer {
         let bc2 = 1.0 - self.beta2.powi(self.t as i32);
 
         // Get gradients from model
-        let grads = model.gradients.as_ref()
+        let grads = model
+            .gradients
+            .as_ref()
             .ok_or_else(|| training_error("No gradients available"))?
             .clone();
 
@@ -280,10 +305,16 @@ impl Optimizer<TritterModelWrapper, TritterBatch> for TritterOptimizer {
 
                 // Initialize moments if needed
                 if !self.m.contains_key(name) {
-                    self.m.insert(name.clone(), Tensor::zeros(shape, DType::F32, device)
-                        .map_err(|e| training_error(e.to_string()))?);
-                    self.v.insert(name.clone(), Tensor::zeros(shape, DType::F32, device)
-                        .map_err(|e| training_error(e.to_string()))?);
+                    self.m.insert(
+                        name.clone(),
+                        Tensor::zeros(shape, DType::F32, device)
+                            .map_err(|e| training_error(e.to_string()))?,
+                    );
+                    self.v.insert(
+                        name.clone(),
+                        Tensor::zeros(shape, DType::F32, device)
+                            .map_err(|e| training_error(e.to_string()))?,
+                    );
                 }
 
                 let m = self.m.get(name).unwrap();
@@ -291,14 +322,16 @@ impl Optimizer<TritterModelWrapper, TritterBatch> for TritterOptimizer {
 
                 // Update biased first moment: m = β1 * m + (1 - β1) * g
                 let m_new = ((m * self.beta1 as f64).map_err(|e| training_error(e.to_string()))?
-                    + (grad * (1.0 - self.beta1) as f64).map_err(|e| training_error(e.to_string()))?)
-                    .map_err(|e| training_error(e.to_string()))?;
+                    + (grad * (1.0 - self.beta1) as f64)
+                        .map_err(|e| training_error(e.to_string()))?)
+                .map_err(|e| training_error(e.to_string()))?;
 
                 // Update biased second moment: v = β2 * v + (1 - β2) * g²
                 let grad_sq = grad.sqr().map_err(|e| training_error(e.to_string()))?;
                 let v_new = ((v * self.beta2 as f64).map_err(|e| training_error(e.to_string()))?
-                    + (&grad_sq * (1.0 - self.beta2) as f64).map_err(|e| training_error(e.to_string()))?)
-                    .map_err(|e| training_error(e.to_string()))?;
+                    + (&grad_sq * (1.0 - self.beta2) as f64)
+                        .map_err(|e| training_error(e.to_string()))?)
+                .map_err(|e| training_error(e.to_string()))?;
 
                 // Bias-corrected estimates
                 let m_hat = (&m_new / bc1 as f64).map_err(|e| training_error(e.to_string()))?;
@@ -306,9 +339,11 @@ impl Optimizer<TritterModelWrapper, TritterBatch> for TritterOptimizer {
 
                 // Compute update: lr * m_hat / (sqrt(v_hat) + eps)
                 let v_sqrt = v_hat.sqrt().map_err(|e| training_error(e.to_string()))?;
-                let denom = (&v_sqrt + self.eps as f64).map_err(|e| training_error(e.to_string()))?;
+                let denom =
+                    (&v_sqrt + self.eps as f64).map_err(|e| training_error(e.to_string()))?;
                 let update = (&m_hat / &denom).map_err(|e| training_error(e.to_string()))?;
-                let update = (&update * self.learning_rate as f64).map_err(|e| training_error(e.to_string()))?;
+                let update = (&update * self.learning_rate as f64)
+                    .map_err(|e| training_error(e.to_string()))?;
 
                 // AdamW weight decay: w = w - lr * wd * w
                 let var_tensor = var.as_tensor();
@@ -316,10 +351,13 @@ impl Optimizer<TritterModelWrapper, TritterBatch> for TritterOptimizer {
                     .map_err(|e: candle_core::Error| training_error(e.to_string()))?;
 
                 // Apply update: w = w - update - decay
-                let new_w = ((var_tensor - &update).map_err(|e: candle_core::Error| training_error(e.to_string()))? - &decay)
+                let new_w = ((var_tensor - &update)
+                    .map_err(|e: candle_core::Error| training_error(e.to_string()))?
+                    - &decay)
                     .map_err(|e: candle_core::Error| training_error(e.to_string()))?;
 
-                var.set(&new_w).map_err(|e: candle_core::Error| training_error(e.to_string()))?;
+                var.set(&new_w)
+                    .map_err(|e: candle_core::Error| training_error(e.to_string()))?;
 
                 // Store updated moments
                 self.m.insert(name.clone(), m_new);
@@ -541,13 +579,7 @@ mod tests {
         let trainer_config = HybridTrainerConfig::default();
         let device = Device::Cpu;
 
-        let trainer = create_trainer_with_checkpointing(
-            &config,
-            trainer_config,
-            1e-4,
-            2,
-            &device,
-        );
+        let trainer = create_trainer_with_checkpointing(&config, trainer_config, 1e-4, 2, &device);
 
         assert!(trainer.is_ok());
     }

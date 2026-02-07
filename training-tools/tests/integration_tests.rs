@@ -79,7 +79,10 @@ fn test_step_metrics_roundtrip_normal() {
     assert_eq!(deserialized.loss_acceleration, original.loss_acceleration);
     assert_eq!(deserialized.gradient_entropy, original.gradient_entropy);
     assert_eq!(deserialized.layer_gradients, original.layer_gradients);
-    assert_eq!(deserialized.layer_gradient_stats, original.layer_gradient_stats);
+    assert_eq!(
+        deserialized.layer_gradient_stats,
+        original.layer_gradient_stats
+    );
 }
 
 #[test]
@@ -941,7 +944,7 @@ fn test_layer_gradient_stats_mixed_problems() {
 
     let mut gradients = HashMap::new();
     gradients.insert("layer_0".to_string(), 1e-8); // vanishing
-    gradients.insert("layer_1".to_string(), 0.5);  // normal
+    gradients.insert("layer_1".to_string(), 0.5); // normal
     gradients.insert("layer_2".to_string(), 150.0); // exploding
 
     let stats = LayerGradientStats::from_layer_gradients(&gradients);
@@ -1020,14 +1023,20 @@ fn test_step_metrics_layer_gradients_roundtrip() {
     let deserialized: StepMetrics = serde_json::from_str(&json).expect("deserialization failed");
 
     // Verify layer_gradients
-    let deser_gradients = deserialized.layer_gradients.expect("layer_gradients should be present");
+    let deser_gradients = deserialized
+        .layer_gradients
+        .expect("layer_gradients should be present");
     assert_eq!(deser_gradients.len(), 3);
     assert!((deser_gradients["transformer.layer_0.attention"] - 0.5).abs() < 1e-6);
 
     // Verify layer_gradient_stats
-    let deser_stats = deserialized.layer_gradient_stats.expect("layer_gradient_stats should be present");
+    let deser_stats = deserialized
+        .layer_gradient_stats
+        .expect("layer_gradient_stats should be present");
     assert_eq!(deser_stats.vanishing_layers.len(), 1);
-    assert!(deser_stats.vanishing_layers.contains(&"transformer.layer_2.ffn".to_string()));
+    assert!(deser_stats
+        .vanishing_layers
+        .contains(&"transformer.layer_2.ffn".to_string()));
 }
 
 #[test]
@@ -1050,8 +1059,8 @@ fn test_step_metrics_backward_compatible_deserialization() {
         "perplexity": 12.18
     }"#;
 
-    let deserialized: StepMetrics = serde_json::from_str(old_json)
-        .expect("backward compatible deserialization failed");
+    let deserialized: StepMetrics =
+        serde_json::from_str(old_json).expect("backward compatible deserialization failed");
 
     assert_eq!(deserialized.step, 50);
     assert!(deserialized.layer_gradients.is_none());
@@ -1076,7 +1085,8 @@ fn test_training_run_layer_gradient_history() {
         layer_gradients.insert("layer_0".to_string(), 0.5 + (i as f32 * 0.01));
         layer_gradients.insert("layer_1".to_string(), 0.3 + (i as f32 * 0.005));
 
-        let metric = create_test_metric_with_layer_gradients(i, 2.5 - (i as f32 * 0.1), layer_gradients);
+        let metric =
+            create_test_metric_with_layer_gradients(i, 2.5 - (i as f32 * 0.1), layer_gradients);
         let json = serde_json::to_string(&metric).expect("serialization failed");
         writeln!(file, "{}", json).expect("write failed");
     }

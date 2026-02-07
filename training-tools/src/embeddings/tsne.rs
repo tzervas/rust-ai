@@ -158,10 +158,7 @@ impl TSNE {
         }
 
         let embedding = self.fit_transform(data)?;
-        let result: Vec<[f32; 3]> = embedding
-            .into_iter()
-            .map(|v| [v[0], v[1], v[2]])
-            .collect();
+        let result: Vec<[f32; 3]> = embedding.into_iter().map(|v| [v[0], v[1], v[2]]).collect();
 
         Ok(result)
     }
@@ -228,7 +225,12 @@ impl TSNE {
     }
 
     /// Compute conditional probabilities and entropy for a single point.
-    fn compute_conditional_probs(&self, distances: &[f32], i: usize, sigma: f32) -> (Vec<f32>, f32) {
+    fn compute_conditional_probs(
+        &self,
+        distances: &[f32],
+        i: usize,
+        sigma: f32,
+    ) -> (Vec<f32>, f32) {
         let n = distances.len();
         let beta = 1.0 / (2.0 * sigma * sigma);
 
@@ -452,7 +454,11 @@ impl TSNEBuilder {
 mod tests {
     use super::*;
 
-    fn generate_clustered_data(n_clusters: usize, points_per_cluster: usize, dim: usize) -> Vec<Vec<f32>> {
+    fn generate_clustered_data(
+        n_clusters: usize,
+        points_per_cluster: usize,
+        dim: usize,
+    ) -> Vec<Vec<f32>> {
         let mut data = Vec::new();
         let mut seed = 12345u64;
 

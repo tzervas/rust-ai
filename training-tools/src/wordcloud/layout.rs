@@ -268,12 +268,9 @@ impl Layout3D for ForceDirectedLayout {
 
             for i in 0..n {
                 // Update velocity with damping
-                velocities[i][0] =
-                    (velocities[i][0] + forces[i][0]) * self.config.damping;
-                velocities[i][1] =
-                    (velocities[i][1] + forces[i][1]) * self.config.damping;
-                velocities[i][2] =
-                    (velocities[i][2] + forces[i][2]) * self.config.damping;
+                velocities[i][0] = (velocities[i][0] + forces[i][0]) * self.config.damping;
+                velocities[i][1] = (velocities[i][1] + forces[i][1]) * self.config.damping;
+                velocities[i][2] = (velocities[i][2] + forces[i][2]) * self.config.damping;
 
                 // Limit by temperature
                 let vel_magnitude = (velocities[i][0].powi(2)
@@ -294,15 +291,9 @@ impl Layout3D for ForceDirectedLayout {
                 positions[i][2] += velocities[i][2];
 
                 // Keep within bounds
-                positions[i][0] = positions[i][0]
-                    .max(0.0)
-                    .min(self.config.dimensions[0]);
-                positions[i][1] = positions[i][1]
-                    .max(0.0)
-                    .min(self.config.dimensions[1]);
-                positions[i][2] = positions[i][2]
-                    .max(0.0)
-                    .min(self.config.dimensions[2]);
+                positions[i][0] = positions[i][0].max(0.0).min(self.config.dimensions[0]);
+                positions[i][1] = positions[i][1].max(0.0).min(self.config.dimensions[1]);
+                positions[i][2] = positions[i][2].max(0.0).min(self.config.dimensions[2]);
 
                 max_displacement = max_displacement.max(vel_magnitude);
             }
@@ -313,7 +304,10 @@ impl Layout3D for ForceDirectedLayout {
 
             // Check for convergence
             if max_displacement < self.config.convergence_threshold {
-                tracing::debug!("Force-directed layout converged at iteration {}", _iteration);
+                tracing::debug!(
+                    "Force-directed layout converged at iteration {}",
+                    _iteration
+                );
                 break;
             }
         }
@@ -348,7 +342,8 @@ impl Layout3D for SphericalLayout {
             self.config.dimensions[2] / 2.0,
         ];
 
-        let radius = self.config.dimensions[0].min(self.config.dimensions[1])
+        let radius = self.config.dimensions[0]
+            .min(self.config.dimensions[1])
             .min(self.config.dimensions[2])
             / 2.0
             * 0.8;
@@ -496,8 +491,7 @@ mod tests {
         let emb2 = vec![0.9, 0.1, 0.0]; // Similar to emb1
         let emb3 = vec![0.0, 0.0, 1.0]; // Different
 
-        let embeddings: Vec<Option<&Vec<f32>>> =
-            vec![Some(&emb1), Some(&emb2), Some(&emb3)];
+        let embeddings: Vec<Option<&Vec<f32>>> = vec![Some(&emb1), Some(&emb2), Some(&emb3)];
         let frequencies = vec![100.0, 100.0, 100.0];
 
         let layout = ForceDirectedLayout::new(LayoutConfig::default());

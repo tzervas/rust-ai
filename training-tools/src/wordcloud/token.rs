@@ -78,7 +78,8 @@ impl TokenCloud3D {
     /// Panics if vocabulary and frequencies have different lengths.
     /// Use `try_from_vocabulary` for a fallible version.
     pub fn from_vocabulary(vocab: &[String], frequencies: &[u32]) -> Self {
-        Self::try_from_vocabulary(vocab, frequencies).expect("vocabulary and frequencies must have same length")
+        Self::try_from_vocabulary(vocab, frequencies)
+            .expect("vocabulary and frequencies must have same length")
     }
 
     /// Try to create a new token cloud from vocabulary and frequencies
@@ -176,11 +177,7 @@ impl TokenCloud3D {
         let points: Vec<Vec<f32>> = self
             .tokens
             .iter()
-            .map(|t| {
-                t.embedding
-                    .clone()
-                    .unwrap_or_else(|| t.position.to_vec())
-            })
+            .map(|t| t.embedding.clone().unwrap_or_else(|| t.position.to_vec()))
             .collect();
 
         // Perform k-means clustering

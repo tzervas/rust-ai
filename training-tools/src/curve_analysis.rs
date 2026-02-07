@@ -654,21 +654,9 @@ mod tests {
 
         // Exponential fitting is numerically challenging - allow 50% tolerance
         // The important thing is that we get reasonable parameters
-        assert!(
-            a > 0.0,
-            "Amplitude a should be positive, got {}",
-            a
-        );
-        assert!(
-            b > 0.0,
-            "Decay rate b should be positive, got {}",
-            b
-        );
-        assert!(
-            c >= 0.0,
-            "Asymptote c should be non-negative, got {}",
-            c
-        );
+        assert!(a > 0.0, "Amplitude a should be positive, got {}", a);
+        assert!(b > 0.0, "Decay rate b should be positive, got {}", b);
+        assert!(c >= 0.0, "Asymptote c should be non-negative, got {}", c);
         // Check that fitted curve captures general shape
         assert!(
             (a + c - (true_a + true_c)).abs() < 2.0,

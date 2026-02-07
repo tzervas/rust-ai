@@ -130,10 +130,7 @@ impl UMAP {
         }
 
         let embedding = self.fit_transform(data)?;
-        let result: Vec<[f32; 3]> = embedding
-            .into_iter()
-            .map(|v| [v[0], v[1], v[2]])
-            .collect();
+        let result: Vec<[f32; 3]> = embedding.into_iter().map(|v| [v[0], v[1], v[2]]).collect();
 
         Ok(result)
     }
@@ -146,10 +143,7 @@ impl UMAP {
             .fitted_graph
             .as_ref()
             .ok_or(EmbeddingError::NotFitted)?;
-        let embedding = self
-            .embedding
-            .as_ref()
-            .ok_or(EmbeddingError::NotFitted)?;
+        let embedding = self.embedding.as_ref().ok_or(EmbeddingError::NotFitted)?;
 
         if original_data.is_empty() {
             return Err(EmbeddingError::EmptyInput);
@@ -341,11 +335,7 @@ impl UMAP {
             let mut point = Vec::with_capacity(self.n_components);
 
             // Use neighbor indices to seed position
-            let neighbor_sum: f32 = graph.neighbors[i]
-                .iter()
-                .take(5)
-                .map(|&j| j as f32)
-                .sum();
+            let neighbor_sum: f32 = graph.neighbors[i].iter().take(5).map(|&j| j as f32).sum();
 
             for d in 0..self.n_components {
                 rng_state = rng_state.wrapping_mul(6364136223846793005).wrapping_add(1);
@@ -370,11 +360,9 @@ impl UMAP {
                 }
 
                 for d in 0..self.n_components {
-                    let neighbor_avg: f32 = neighbors
-                        .iter()
-                        .map(|&j| old_embedding[j][d])
-                        .sum::<f32>()
-                        / neighbors.len() as f32;
+                    let neighbor_avg: f32 =
+                        neighbors.iter().map(|&j| old_embedding[j][d]).sum::<f32>()
+                            / neighbors.len() as f32;
 
                     embedding[i][d] = 0.5 * old_embedding[i][d] + 0.5 * neighbor_avg;
                 }
@@ -431,8 +419,8 @@ impl UMAP {
                 let dist = dist_sq.sqrt().max(0.001);
 
                 // Gradient for attractive force
-                let grad_coeff = -2.0 * a * b * dist.powf(2.0 * b - 2.0)
-                    / (1.0 + a * dist.powf(2.0 * b));
+                let grad_coeff =
+                    -2.0 * a * b * dist.powf(2.0 * b - 2.0) / (1.0 + a * dist.powf(2.0 * b));
 
                 for d in 0..self.n_components {
                     let grad = grad_coeff * (embedding[i][d] - embedding[j][d]);
@@ -472,8 +460,7 @@ impl UMAP {
                         embedding[i][d] += alpha * clipped;
                     }
 
-                    epoch_of_next_negative_sample[edge_idx] +=
-                        epochs_per_negative_sample[edge_idx];
+                    epoch_of_next_negative_sample[edge_idx] += epochs_per_negative_sample[edge_idx];
                 }
             }
         }
@@ -578,7 +565,11 @@ impl UMAPBuilder {
 mod tests {
     use super::*;
 
-    fn generate_clustered_data(n_clusters: usize, points_per_cluster: usize, dim: usize) -> Vec<Vec<f32>> {
+    fn generate_clustered_data(
+        n_clusters: usize,
+        points_per_cluster: usize,
+        dim: usize,
+    ) -> Vec<Vec<f32>> {
         let mut data = Vec::new();
         let mut seed = 12345u64;
 

@@ -10,8 +10,7 @@
 
 use std::f32::consts::PI;
 use training_tools::landscape::{
-    DirectionMethod, GradientField, LandscapeConfig, LossLandscape, MeshExporter,
-    TrajectoryTracker,
+    DirectionMethod, GradientField, LandscapeConfig, LossLandscape, MeshExporter, TrajectoryTracker,
 };
 
 fn main() {
@@ -38,8 +37,8 @@ fn main() {
     println!("1. Generating loss landscape...");
 
     let config = LandscapeConfig {
-        resolution: 50,           // 50x50 grid
-        range: 2.0,               // Perturbation range [-2, 2]
+        resolution: 50, // 50x50 grid
+        range: 2.0,     // Perturbation range [-2, 2]
         direction_method: DirectionMethod::Random,
     };
 
@@ -82,7 +81,10 @@ fn main() {
         y -= lr * dy;
 
         if step % 20 == 0 {
-            println!("   Step {}: pos=({:.3}, {:.3}), loss={:.4}", step, x, y, loss);
+            println!(
+                "   Step {}: pos=({:.3}, {:.3}), loss={:.4}",
+                step, x, y, loss
+            );
         }
     }
 
@@ -126,8 +128,14 @@ fn main() {
         }
     }
 
-    println!("   Steepest gradient: {:.4} at ({:.2}, {:.2})", max_gradient, max_point.0, max_point.1);
-    println!("   Flattest point: {:.4} at ({:.2}, {:.2})", min_gradient, min_point.0, min_point.1);
+    println!(
+        "   Steepest gradient: {:.4} at ({:.2}, {:.2})",
+        max_gradient, max_point.0, max_point.1
+    );
+    println!(
+        "   Flattest point: {:.4} at ({:.2}, {:.2})",
+        min_gradient, min_point.0, min_point.1
+    );
     println!();
 
     // ========== 5. Trajectory Statistics ==========
@@ -188,13 +196,18 @@ fn main() {
     // Contour lines
     let contours = exporter.generate_contours(&[0.5, 1.0, 2.0, 5.0, 10.0]);
     let total_segments: usize = contours.iter().map(|(_, s)| s.len()).sum();
-    println!("   Contour lines: {} levels, {} total segments", contours.len(), total_segments);
+    println!(
+        "   Contour lines: {} levels, {} total segments",
+        contours.len(),
+        total_segments
+    );
     println!();
 
     // ========== 7. Critical Points ==========
     println!("7. Finding critical points...");
 
-    let gradient_field = GradientField::from_surface(&landscape.surface, landscape.x_range, landscape.y_range);
+    let gradient_field =
+        GradientField::from_surface(&landscape.surface, landscape.x_range, landscape.y_range);
 
     let minima = gradient_field.find_minima(0.5);
     let saddles = gradient_field.find_saddle_points(0.5);

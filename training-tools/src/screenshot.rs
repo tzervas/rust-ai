@@ -649,7 +649,10 @@ mod tests {
     #[test]
     fn test_color_to_ansi() {
         assert_eq!(color_to_ansi_fg(Color::Red), "\x1b[31m");
-        assert_eq!(color_to_ansi_fg(Color::Rgb(255, 0, 0)), "\x1b[38;2;255;0;0m");
+        assert_eq!(
+            color_to_ansi_fg(Color::Rgb(255, 0, 0)),
+            "\x1b[38;2;255;0;0m"
+        );
         assert_eq!(color_to_ansi_bg(Color::Blue), "\x1b[44m");
     }
 

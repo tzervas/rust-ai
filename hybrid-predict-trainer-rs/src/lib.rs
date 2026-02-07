@@ -742,6 +742,7 @@ impl<M, O> HybridTrainer<M, O> {
         self.state.step += 1;
         self.state.loss = loss;
         self.state.loss_history.push(loss);
+        self.state.loss_ema.update(loss); // CRITICAL FIX: Update EMA for stability confidence
 
         // Update divergence monitor
         self.divergence_monitor

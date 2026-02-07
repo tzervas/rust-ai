@@ -245,7 +245,7 @@ fn main() {
                 max_predict_steps: horizon,
                 full_steps: 3,  // Consistent across experiments
                 sigma,
-                confidence: 0.90,  // Start with balanced confidence
+                confidence: 0.60,  // Achievable with ensemble=5 after warmup
                 check_interval: if sigma <= 2.2 { 3 } else { 5 },  // Tighter check for tighter sigma
             };
 

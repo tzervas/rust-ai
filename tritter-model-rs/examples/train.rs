@@ -16,11 +16,8 @@ use std::time::Instant;
 use candle_core::{Device, Tensor};
 use rand::Rng;
 
-use tritter_model_rs::{
-    TritterConfig, TritterBatch,
-    trainer::create_trainer_with_config,
-};
-use hybrid_predict_trainer_rs::{HybridTrainerConfig, phases::Phase};
+use hybrid_predict_trainer_rs::{phases::Phase, HybridTrainerConfig};
+use tritter_model_rs::{trainer::create_trainer_with_config, TritterBatch, TritterConfig};
 
 fn main() -> anyhow::Result<()> {
     println!("=== Tritter Rust Training ===\n");
@@ -46,7 +43,10 @@ fn main() -> anyhow::Result<()> {
     };
 
     println!("Model size: {}", model_size);
-    println!("Parameters: ~{:.1}M", model_config.parameter_count() as f64 / 1e6);
+    println!(
+        "Parameters: ~{:.1}M",
+        model_config.parameter_count() as f64 / 1e6
+    );
     println!("Hidden size: {}", model_config.hidden_size);
     println!("Layers: {}", model_config.num_layers);
     println!("Heads: {}", model_config.num_heads);
@@ -54,9 +54,9 @@ fn main() -> anyhow::Result<()> {
 
     // Training configuration
     let trainer_config = HybridTrainerConfig::builder()
-        .warmup_steps(50)        // Shorter warmup for demo
-        .full_steps(20)          // Standard full training per cycle
-        .max_predict_steps(80)   // Up to 80 steps with prediction
+        .warmup_steps(50) // Shorter warmup for demo
+        .full_steps(20) // Standard full training per cycle
+        .max_predict_steps(80) // Up to 80 steps with prediction
         .confidence_threshold(0.85)
         .build();
 
@@ -68,12 +68,8 @@ fn main() -> anyhow::Result<()> {
 
     // Create trainer
     let learning_rate = 3e-4;
-    let mut trainer = create_trainer_with_config(
-        &model_config,
-        trainer_config,
-        learning_rate,
-        &device,
-    )?;
+    let mut trainer =
+        create_trainer_with_config(&model_config, trainer_config, learning_rate, &device)?;
 
     println!("Trainer created successfully.");
     println!();
@@ -86,8 +82,10 @@ fn main() -> anyhow::Result<()> {
     // Training loop
     println!("Starting training...");
     println!("{:-<70}", "");
-    println!("{:>6} | {:>8} | {:>10} | {:>8} | {:>8} | {:>8}",
-             "Step", "Phase", "Loss", "Fwd", "Bwd", "ms/step");
+    println!(
+        "{:>6} | {:>8} | {:>10} | {:>8} | {:>8} | {:>8}",
+        "Step", "Phase", "Loss", "Fwd", "Bwd", "ms/step"
+    );
     println!("{:-<70}", "");
 
     let mut total_forward = 0;
@@ -109,7 +107,8 @@ fn main() -> anyhow::Result<()> {
         let batch = TritterBatch::new(input_ids, None);
 
         // Execute training step
-        let result = trainer.step(&batch)
+        let result = trainer
+            .step(&batch)
             .map_err(|(e, _)| anyhow::anyhow!("Training step failed: {}", e))?;
 
         // Track forward/backward passes
@@ -135,8 +134,10 @@ fn main() -> anyhow::Result<()> {
                 100.0
             };
 
-            println!("{:>6} | {:>8} | {:>10.4} | {:>7} | {:>6.1}% | {:>7}",
-                     step, phase_str, result.loss, total_forward, bwd_pct, step_time);
+            println!(
+                "{:>6} | {:>8} | {:>10.4} | {:>7} | {:>6.1}% | {:>7}",
+                step, phase_str, result.loss, total_forward, bwd_pct, step_time
+            );
         }
 
         last_phase = result.phase;

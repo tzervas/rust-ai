@@ -261,8 +261,7 @@ impl WordRelationGraph {
 
     /// Filter relations by minimum strength
     pub fn filter_relations(&mut self, min_strength: f32) {
-        self.relations
-            .retain(|r| r.strength >= min_strength);
+        self.relations.retain(|r| r.strength >= min_strength);
     }
 
     /// Get render data for all visible elements

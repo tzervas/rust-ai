@@ -58,7 +58,10 @@ fn main() -> anyhow::Result<()> {
     println!("  Warmup steps: {}", trainer_config.warmup_steps);
     println!("  Full steps: {}", trainer_config.full_steps);
     println!("  Max predict steps: {}", trainer_config.max_predict_steps);
-    println!("  Confidence threshold: {}", trainer_config.confidence_threshold);
+    println!(
+        "  Confidence threshold: {}",
+        trainer_config.confidence_threshold
+    );
     println!();
 
     // Data configuration - tuned for GPU (100M model fits with batch 2, seq 256)
@@ -84,7 +87,9 @@ fn main() -> anyhow::Result<()> {
     // Load training data - use larger dataset if available
     let data_paths = [
         PathBuf::from("/home/kang/data/tritter/processed/curated_data.jsonl"),
-        PathBuf::from("/home/kang/Documents/projects/github/python-ai/tritter/data/combined/all_data.jsonl"),
+        PathBuf::from(
+            "/home/kang/Documents/projects/github/python-ai/tritter/data/combined/all_data.jsonl",
+        ),
     ];
 
     let data_path = data_paths.iter().find(|p| p.exists()).cloned();
@@ -104,12 +109,8 @@ fn main() -> anyhow::Result<()> {
 
     // Create trainer
     let learning_rate = 3e-4;
-    let mut trainer = create_trainer_with_config(
-        &model_config,
-        trainer_config,
-        learning_rate,
-        &device,
-    )?;
+    let mut trainer =
+        create_trainer_with_config(&model_config, trainer_config, learning_rate, &device)?;
 
     println!("Trainer created successfully.");
     println!();

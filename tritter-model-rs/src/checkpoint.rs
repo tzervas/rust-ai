@@ -251,7 +251,8 @@ impl CheckpointStore {
         }
 
         // Find the checkpoint at or before this layer
-        let checkpoint_idx = (layer_idx / self.config.checkpoint_interval) * self.config.checkpoint_interval;
+        let checkpoint_idx =
+            (layer_idx / self.config.checkpoint_interval) * self.config.checkpoint_interval;
 
         if self.activations.contains_key(&checkpoint_idx) {
             Some(checkpoint_idx)
@@ -273,7 +274,8 @@ impl CheckpointStore {
             return num_layers;
         }
 
-        let next = ((layer_idx / self.config.checkpoint_interval) + 1) * self.config.checkpoint_interval;
+        let next =
+            ((layer_idx / self.config.checkpoint_interval) + 1) * self.config.checkpoint_interval;
         next.min(num_layers)
     }
 

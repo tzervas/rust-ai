@@ -110,10 +110,7 @@ impl PCA {
     ///
     /// Projects data onto principal components.
     pub fn transform(&self, data: &[Vec<f32>]) -> Result<Vec<Vec<f32>>> {
-        let components = self
-            .components
-            .as_ref()
-            .ok_or(EmbeddingError::NotFitted)?;
+        let components = self.components.as_ref().ok_or(EmbeddingError::NotFitted)?;
         let mean = self.mean.as_ref().ok_or(EmbeddingError::NotFitted)?;
 
         if data.is_empty() {
@@ -137,7 +134,10 @@ impl PCA {
             let centered: Vec<f32> = row.iter().zip(mean.iter()).map(|(x, m)| x - m).collect();
 
             // Project onto each component
-            let projected: Vec<f32> = components.iter().map(|pc| utils::dot(&centered, pc)).collect();
+            let projected: Vec<f32> = components
+                .iter()
+                .map(|pc| utils::dot(&centered, pc))
+                .collect();
 
             result.push(projected);
         }
@@ -236,7 +236,9 @@ impl PCA {
 
         for _ in 0..n_components {
             // Initialize random vector
-            let mut v: Vec<f32> = (0..n).map(|i| ((i * 7 + 13) % 100) as f32 / 100.0).collect();
+            let mut v: Vec<f32> = (0..n)
+                .map(|i| ((i * 7 + 13) % 100) as f32 / 100.0)
+                .collect();
             utils::normalize(&mut v);
 
             let mut eigenvalue = 0.0f32;
@@ -258,11 +260,7 @@ impl PCA {
                 utils::normalize(&mut v_new);
 
                 // Check convergence
-                let diff: f32 = v
-                    .iter()
-                    .zip(v_new.iter())
-                    .map(|(a, b)| (a - b).abs())
-                    .sum();
+                let diff: f32 = v.iter().zip(v_new.iter()).map(|(a, b)| (a - b).abs()).sum();
 
                 v = v_new;
                 eigenvalue = new_eigenvalue;

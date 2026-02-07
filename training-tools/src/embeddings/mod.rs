@@ -32,10 +32,10 @@ mod projector;
 mod tsne;
 mod umap;
 
-pub use pca::{PCA, PCABuilder};
+pub use pca::{PCABuilder, PCA};
 pub use projector::{EmbeddingProjector, ProjectionMethod, ProjectionStats};
-pub use tsne::{TSNE, TSNEBuilder};
-pub use umap::{UMAP, UMAPBuilder};
+pub use tsne::{TSNEBuilder, TSNE};
+pub use umap::{UMAPBuilder, UMAP};
 
 /// Error types for embedding operations
 #[derive(Debug, thiserror::Error)]

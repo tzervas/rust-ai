@@ -42,13 +42,13 @@ use chrono::Utc;
 use tokenizers::Tokenizer;
 
 use hybrid_predict_trainer_rs::{HybridTrainerConfig, Phase};
-use tritter_model_rs::{
-    data::{create_data_loader, DataConfig, JsonlDataset},
-    TritterBatch, TritterConfig,
-    trainer::create_trainer_with_config,
-};
 use training_tools::lr_scheduler::{LRScheduler, WSDScheduler};
 use training_tools::{TrainingConfig, TrainingRun, TrainingStatus};
+use tritter_model_rs::{
+    data::{create_data_loader, DataConfig, JsonlDataset},
+    trainer::create_trainer_with_config,
+    TritterBatch, TritterConfig,
+};
 
 /// Command-line arguments
 struct Args {
@@ -257,9 +257,14 @@ fn main() -> anyhow::Result<()> {
     };
 
     println!("Model: {}", args.model_size);
-    println!("Parameters: ~{:.1}M", model_config.parameter_count() as f64 / 1e6);
-    println!("Hidden: {}, Layers: {}, Heads: {}",
-             model_config.hidden_size, model_config.num_layers, model_config.num_heads);
+    println!(
+        "Parameters: ~{:.1}M",
+        model_config.parameter_count() as f64 / 1e6
+    );
+    println!(
+        "Hidden: {}, Layers: {}, Heads: {}",
+        model_config.hidden_size, model_config.num_layers, model_config.num_heads
+    );
     println!();
 
     // Load tokenizer if provided
@@ -285,15 +290,16 @@ fn main() -> anyhow::Result<()> {
     };
 
     println!("Data path: {}", args.data_path.display());
-    println!("Batch size: {}, Seq len: {} (model max: {})",
-             args.batch_size, effective_seq_len, model_config.max_seq_length);
+    println!(
+        "Batch size: {}, Seq len: {} (model max: {})",
+        args.batch_size, effective_seq_len, model_config.max_seq_length
+    );
     println!();
 
     // Create data loader
     let mut loader = if let Some(tok) = tokenizer.clone() {
         // Use JsonlDataset with tokenizer
-        let dataset = JsonlDataset::new(&args.data_path, effective_seq_len)?
-            .with_tokenizer(tok);
+        let dataset = JsonlDataset::new(&args.data_path, effective_seq_len)?.with_tokenizer(tok);
         tritter_model_rs::data::DataLoader::new(
             Box::new(dataset),
             data_config.clone(),
@@ -307,11 +313,11 @@ fn main() -> anyhow::Result<()> {
     // Hybrid training configuration - tuned for ~60% backward reduction
     // Key insight: aggressive prediction early, more validation later
     let trainer_config = HybridTrainerConfig::builder()
-        .warmup_steps(50)           // Shorter warmup to start predicting faster
-        .full_steps(10)             // Fewer full steps per cycle (was 20)
-        .max_predict_steps(150)     // Longer prediction phases (was 80)
+        .warmup_steps(50) // Shorter warmup to start predicting faster
+        .full_steps(10) // Fewer full steps per cycle (was 20)
+        .max_predict_steps(150) // Longer prediction phases (was 80)
         .confidence_threshold(0.70) // More aggressive prediction (was 0.85)
-        .divergence_threshold(5.0)  // More tolerant of deviation (was 3.0)
+        .divergence_threshold(5.0) // More tolerant of deviation (was 3.0)
         .build();
 
     println!("Hybrid Training Config:");
@@ -321,20 +327,16 @@ fn main() -> anyhow::Result<()> {
     println!();
 
     // Create trainer
-    let mut trainer = create_trainer_with_config(
-        &model_config,
-        trainer_config,
-        args.peak_lr,
-        &device,
-    )?;
+    let mut trainer =
+        create_trainer_with_config(&model_config, trainer_config, args.peak_lr, &device)?;
 
     // Learning rate scheduler (WSD)
     let lr_scheduler = WSDScheduler::builder()
         .total_steps(args.total_steps)
         .peak_lr(args.peak_lr)
         .min_lr(args.min_lr)
-        .warmup_fraction(0.01)  // 1% warmup
-        .decay_fraction(0.19)   // 19% decay, 80% stable
+        .warmup_fraction(0.01) // 1% warmup
+        .decay_fraction(0.19) // 19% decay, 80% stable
         .build()?;
 
     println!("LR Schedule (WSD):");
@@ -388,8 +390,10 @@ fn main() -> anyhow::Result<()> {
     // Training loop
     println!("Starting training for {} steps...", args.total_steps);
     println!("{:-<80}", "");
-    println!("{:>6} | {:>8} | {:>10} | {:>10} | {:>8} | {:>8} | {:>8}",
-             "Step", "Phase", "Loss", "LR", "Fwd", "Bwd%", "ms");
+    println!(
+        "{:>6} | {:>8} | {:>10} | {:>10} | {:>8} | {:>8} | {:>8}",
+        "Step", "Phase", "Loss", "LR", "Fwd", "Bwd%", "ms"
+    );
     println!("{:-<80}", "");
 
     let mut total_forward = 0u64;
@@ -414,11 +418,15 @@ fn main() -> anyhow::Result<()> {
                 }
                 Err(e) => {
                     consecutive_data_errors += 1;
-                    eprintln!("[ERROR] Data loading error at step {}: {}. Skipping. ({}/{})",
-                             step, e, consecutive_data_errors, MAX_CONSECUTIVE_ERRORS);
+                    eprintln!(
+                        "[ERROR] Data loading error at step {}: {}. Skipping. ({}/{})",
+                        step, e, consecutive_data_errors, MAX_CONSECUTIVE_ERRORS
+                    );
                     if consecutive_data_errors >= MAX_CONSECUTIVE_ERRORS {
-                        eprintln!("\n[FATAL] {} consecutive data loading errors. Aborting training.",
-                                 MAX_CONSECUTIVE_ERRORS);
+                        eprintln!(
+                            "\n[FATAL] {} consecutive data loading errors. Aborting training.",
+                            MAX_CONSECUTIVE_ERRORS
+                        );
                         eprintln!("Data path: {}", args.data_path.display());
                         std::process::exit(1);
                     }
@@ -444,15 +452,19 @@ fn main() -> anyhow::Result<()> {
                 }
                 Err((e, _)) => {
                     consecutive_errors += 1;
-                    eprintln!("[ERROR] Training error at step {}: {} ({}/{})",
-                             step, e, consecutive_errors, MAX_CONSECUTIVE_ERRORS);
+                    eprintln!(
+                        "[ERROR] Training error at step {}: {} ({}/{})",
+                        step, e, consecutive_errors, MAX_CONSECUTIVE_ERRORS
+                    );
                     eprintln!("  Batch input_ids shape: {:?}", batch.input_ids.dims());
                     if let Some(ref mask) = batch.attention_mask {
                         eprintln!("  Batch attention_mask shape: {:?}", mask.dims());
                     }
                     if consecutive_errors >= MAX_CONSECUTIVE_ERRORS {
-                        eprintln!("\n[FATAL] {} consecutive forward pass errors. Aborting training.",
-                                 MAX_CONSECUTIVE_ERRORS);
+                        eprintln!(
+                            "\n[FATAL] {} consecutive forward pass errors. Aborting training.",
+                            MAX_CONSECUTIVE_ERRORS
+                        );
                         eprintln!("Last error: {}", e);
                         eprintln!("Step: {}, Total forward passes: {}", step, total_forward);
                         std::process::exit(1);
@@ -483,7 +495,11 @@ fn main() -> anyhow::Result<()> {
             let metrics_json = format!(
                 r#"{{"step":{},"loss":{},"gradient_norm":{},"phase":"{}","was_predicted":{},"prediction_error":{},"step_time_ms":{},"timestamp":"{}"}}"#,
                 step,
-                if result.loss.is_finite() { result.loss } else { 0.0 },
+                if result.loss.is_finite() {
+                    result.loss
+                } else {
+                    0.0
+                },
                 result.gradient_norm,
                 phase_to_string(result.phase),
                 was_predicted,
@@ -542,8 +558,10 @@ fn main() -> anyhow::Result<()> {
                     100.0
                 };
 
-                println!("{:>6} | {:>8} | {:>10.4} | {:>10.2e} | {:>7} | {:>6.1}% | {:>7}",
-                         step, phase_str, result.loss, lr, total_forward, bwd_pct, step_time_ms);
+                println!(
+                    "{:>6} | {:>8} | {:>10.4} | {:>10.2e} | {:>7} | {:>6.1}% | {:>7}",
+                    step, phase_str, result.loss, lr, total_forward, bwd_pct, step_time_ms
+                );
             }
 
             // Save checkpoint
@@ -580,9 +598,11 @@ fn main() -> anyhow::Result<()> {
 
     println!("\n=== Training Complete ===");
     println!("Total steps: {}", step);
-    println!("Total time: {:.1}s ({:.2} steps/s)",
-             total_time.as_secs_f64(),
-             step as f64 / total_time.as_secs_f64());
+    println!(
+        "Total time: {:.1}s ({:.2} steps/s)",
+        total_time.as_secs_f64(),
+        step as f64 / total_time.as_secs_f64()
+    );
     println!("Forward passes: {}", total_forward);
     println!("Backward passes: {}", total_backward);
     println!("Backward reduction: {:.1}%", backward_reduction);
@@ -604,7 +624,10 @@ fn main() -> anyhow::Result<()> {
         training_run.steps_per_second = Some(step as f64 / total_time.as_secs_f64());
     }
     training_run.save()?;
-    println!("Run state saved: {}", run_dir.join("run_state.json").display());
+    println!(
+        "Run state saved: {}",
+        run_dir.join("run_state.json").display()
+    );
 
     Ok(())
 }

@@ -14,11 +14,11 @@ use std::path::PathBuf;
 use chrono::Utc;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
+use ratatui::symbols;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{
     Axis, Block, Borders, Chart, Dataset, Gauge, List, ListItem, Paragraph, Tabs,
 };
-use ratatui::symbols;
 
 use training_tools::{
     compare_buffers, ComparisonResult, ScreenshotCapture, ScreenshotFormat, StepMetrics,
@@ -291,7 +291,11 @@ fn test_phase_colors() {
 
             for (i, (name, color)) in phases.iter().enumerate() {
                 let gauge = Gauge::default()
-                    .block(Block::default().borders(Borders::ALL).title(format!(" {} ", name)))
+                    .block(
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .title(format!(" {} ", name)),
+                    )
                     .gauge_style(Style::default().fg(*color))
                     .ratio(0.7)
                     .label(format!("Phase: {}", name));
@@ -384,10 +388,7 @@ fn test_training_progress_sequence() {
                                 Style::default().fg(colors::LOSS_LINE),
                             ),
                         ]),
-                        Line::from(vec![
-                            Span::raw(" Step: "),
-                            Span::raw(format!("{}", step)),
-                        ]),
+                        Line::from(vec![Span::raw(" Step: "), Span::raw(format!("{}", step))]),
                         Line::from(vec![
                             Span::raw(" Phase: "),
                             Span::styled(
@@ -468,9 +469,7 @@ fn test_phase_transition_sequence() {
                     let phase_block = Paragraph::new(vec![
                         Line::from(Span::styled(
                             format!("   {}   ", name),
-                            Style::default()
-                                .fg(color)
-                                .add_modifier(Modifier::BOLD),
+                            Style::default().fg(color).add_modifier(Modifier::BOLD),
                         )),
                         Line::from(Span::styled(
                             match phase {
@@ -522,7 +521,10 @@ fn test_phase_transition_sequence() {
                                 Style::default().fg(Color::White),
                             ),
                             if phase == TrainingPhase::Predict {
-                                Span::styled(" (75% reduction)", Style::default().fg(colors::PREDICT))
+                                Span::styled(
+                                    " (75% reduction)",
+                                    Style::default().fg(colors::PREDICT),
+                                )
                             } else {
                                 Span::raw("")
                             },
@@ -609,7 +611,16 @@ fn test_visual_consistency() {
 // ============================================================================
 
 fn draw_tabs_header(f: &mut ratatui::Frame, area: Rect, active_tab: &str) {
-    let tabs = ["Dashboard", "Overview", "Charts", "Network", "Analysis", "GPU", "History", "Help"];
+    let tabs = [
+        "Dashboard",
+        "Overview",
+        "Charts",
+        "Network",
+        "Analysis",
+        "GPU",
+        "History",
+        "Help",
+    ];
     let active_idx = tabs.iter().position(|t| *t == active_tab).unwrap_or(0);
 
     let titles: Vec<Line> = tabs
@@ -698,7 +709,10 @@ fn draw_dashboard_tab(f: &mut ratatui::Frame, area: Rect, metrics: Option<&VecDe
                 .fg(colors::LOSS_LINE)
                 .add_modifier(Modifier::BOLD),
         )),
-        Line::from(Span::styled(loss_trend, Style::default().fg(colors::PREDICT))),
+        Line::from(Span::styled(
+            loss_trend,
+            Style::default().fg(colors::PREDICT),
+        )),
     ])
     .alignment(ratatui::layout::Alignment::Center)
     .block(Block::default().borders(Borders::ALL).title(" Loss "));
@@ -784,8 +798,11 @@ fn draw_dashboard_tab(f: &mut ratatui::Frame, area: Rect, metrics: Option<&VecDe
         ))]
     };
 
-    let phase_widget = Paragraph::new(phase_content)
-        .block(Block::default().borders(Borders::ALL).title(" Training Phases "));
+    let phase_widget = Paragraph::new(phase_content).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(" Training Phases "),
+    );
     f.render_widget(phase_widget, chunks[1]);
 }
 
@@ -851,7 +868,10 @@ fn draw_overview_tab(f: &mut ratatui::Frame, area: Rect, metrics: &VecDeque<Step
         .data(&data);
 
     let y_min = data.iter().map(|(_, y)| *y).fold(f64::INFINITY, f64::min);
-    let y_max = data.iter().map(|(_, y)| *y).fold(f64::NEG_INFINITY, f64::max);
+    let y_max = data
+        .iter()
+        .map(|(_, y)| *y)
+        .fold(f64::NEG_INFINITY, f64::max);
     let x_max = data.last().map(|(x, _)| *x).unwrap_or(100.0);
 
     let chart = Chart::new(vec![dataset])
@@ -911,7 +931,10 @@ fn draw_charts_tab(
         .data(&data);
 
     let y_min = data.iter().map(|(_, y)| *y).fold(f64::INFINITY, f64::min);
-    let y_max = data.iter().map(|(_, y)| *y).fold(f64::NEG_INFINITY, f64::max);
+    let y_max = data
+        .iter()
+        .map(|(_, y)| *y)
+        .fold(f64::NEG_INFINITY, f64::max);
     let x_max = data.last().map(|(x, _)| *x).unwrap_or(100.0);
 
     let chart = Chart::new(vec![dataset])
@@ -982,10 +1005,7 @@ fn draw_network_tab(f: &mut ratatui::Frame, area: Rect) {
         ]),
         Line::from(vec![
             Span::raw("   "),
-            Span::styled(
-                "+-------------------+",
-                Style::default().fg(colors::FULL),
-            ),
+            Span::styled("+-------------------+", Style::default().fg(colors::FULL)),
         ]),
         Line::from(vec![
             Span::raw("   "),
@@ -997,10 +1017,7 @@ fn draw_network_tab(f: &mut ratatui::Frame, area: Rect) {
         ]),
         Line::from(vec![
             Span::raw("   "),
-            Span::styled(
-                "+-------------------+",
-                Style::default().fg(colors::FULL),
-            ),
+            Span::styled("+-------------------+", Style::default().fg(colors::FULL)),
         ]),
         Line::from(vec![
             Span::raw("         "),
@@ -1104,7 +1121,9 @@ fn draw_analysis_tab(f: &mut ratatui::Frame, area: Rect, metrics: &VecDeque<Step
                 Style::default().fg(Color::Yellow),
             )),
             Line::from(Span::raw("   - Training is progressing normally")),
-            Line::from(Span::raw("   - Consider increasing batch size for stability")),
+            Line::from(Span::raw(
+                "   - Consider increasing batch size for stability",
+            )),
         ]
     } else {
         vec![Line::from(Span::styled(
@@ -1113,8 +1132,8 @@ fn draw_analysis_tab(f: &mut ratatui::Frame, area: Rect, metrics: &VecDeque<Step
         ))]
     };
 
-    let widget = Paragraph::new(content)
-        .block(Block::default().borders(Borders::ALL).title(" Analysis "));
+    let widget =
+        Paragraph::new(content).block(Block::default().borders(Borders::ALL).title(" Analysis "));
     f.render_widget(widget, area);
 }
 
@@ -1139,9 +1158,7 @@ fn draw_gpu_tab(f: &mut ratatui::Frame, area: Rect) {
                     .add_modifier(Modifier::BOLD),
             ),
         ]),
-        Line::from(vec![
-            Span::raw(" Driver: 545.23 | CUDA: 12.3"),
-        ]),
+        Line::from(vec![Span::raw(" Driver: 545.23 | CUDA: 12.3")]),
         Line::from(vec![
             Span::raw(" Utilization: "),
             Span::styled("85%", Style::default().fg(Color::Green)),
@@ -1169,10 +1186,7 @@ fn draw_gpu_tab(f: &mut ratatui::Frame, area: Rect) {
             Span::styled("72C", Style::default().fg(Color::Green)),
             Span::raw(" (throttle: 83C)"),
         ]),
-        Line::from(vec![
-            Span::raw(" Fan Speed: "),
-            Span::raw("65%"),
-        ]),
+        Line::from(vec![Span::raw(" Fan Speed: "), Span::raw("65%")]),
         Line::from(vec![
             Span::raw(" Power: "),
             Span::styled("320W", Style::default().fg(Color::Yellow)),
@@ -1180,17 +1194,40 @@ fn draw_gpu_tab(f: &mut ratatui::Frame, area: Rect) {
         ]),
     ];
 
-    let thermal_widget = Paragraph::new(thermal_info)
-        .block(Block::default().borders(Borders::ALL).title(" Thermals & Power "));
+    let thermal_widget = Paragraph::new(thermal_info).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(" Thermals & Power "),
+    );
     f.render_widget(thermal_widget, chunks[2]);
 }
 
 fn draw_history_tab(f: &mut ratatui::Frame, area: Rect) {
     let history = vec![
-        ("tritter_100m_001", "2024-01-15 10:30", "Completed", colors::COMPLETED_RUN),
-        ("tritter_100m_002", "2024-01-16 14:20", "Failed", colors::FAILED_RUN),
-        ("tritter_500m_001", "2024-01-17 09:00", "Completed", colors::COMPLETED_RUN),
-        ("tritter_1b_001", "2024-01-18 16:45", "Running", colors::ACTIVE_RUN),
+        (
+            "tritter_100m_001",
+            "2024-01-15 10:30",
+            "Completed",
+            colors::COMPLETED_RUN,
+        ),
+        (
+            "tritter_100m_002",
+            "2024-01-16 14:20",
+            "Failed",
+            colors::FAILED_RUN,
+        ),
+        (
+            "tritter_500m_001",
+            "2024-01-17 09:00",
+            "Completed",
+            colors::COMPLETED_RUN,
+        ),
+        (
+            "tritter_1b_001",
+            "2024-01-18 16:45",
+            "Running",
+            colors::ACTIVE_RUN,
+        ),
     ];
 
     let items: Vec<ListItem> = history
@@ -1269,7 +1306,10 @@ fn draw_color_legend(f: &mut ratatui::Frame, area: Rect) {
                 .add_modifier(Modifier::BOLD),
         )),
         Line::from(""),
-        Line::from(Span::styled(" Training Phases:", Style::default().fg(Color::Gray))),
+        Line::from(Span::styled(
+            " Training Phases:",
+            Style::default().fg(Color::Gray),
+        )),
         Line::from(vec![
             Span::raw("   "),
             Span::styled("|||", Style::default().fg(colors::WARMUP)),
@@ -1291,7 +1331,10 @@ fn draw_color_legend(f: &mut ratatui::Frame, area: Rect) {
             Span::raw(" CORRECT - Correcting prediction errors"),
         ]),
         Line::from(""),
-        Line::from(Span::styled(" Run Status:", Style::default().fg(Color::Gray))),
+        Line::from(Span::styled(
+            " Run Status:",
+            Style::default().fg(Color::Gray),
+        )),
         Line::from(vec![
             Span::raw("   "),
             Span::styled(">>>", Style::default().fg(colors::ACTIVE_RUN)),

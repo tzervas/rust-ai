@@ -71,7 +71,8 @@ fn rotate_half(x: &Tensor, cos: &Tensor, sin: &Tensor) -> Result<Tensor> {
 
     // Combine: [x1, x2] * cos + [-x2, x1] * sin
     let rotated = Tensor::cat(&[&x2.neg()?, &x1], D::Minus1)?;
-    x.broadcast_mul(cos)?.broadcast_add(&rotated.broadcast_mul(sin)?)
+    x.broadcast_mul(cos)?
+        .broadcast_add(&rotated.broadcast_mul(sin)?)
 }
 
 /// QK-Norm layer for attention stability
@@ -126,16 +127,48 @@ impl TritterAttention {
         let use_bitnet = config.use_bitnet;
 
         // Projections (optionally BitNet quantized)
-        let q_proj = TritterLinear::new(hidden, num_heads * head_dim, use_bitnet, vb.pp("q_proj"), device)?;
-        let k_proj = TritterLinear::new(hidden, num_kv_heads * head_dim, use_bitnet, vb.pp("k_proj"), device)?;
-        let v_proj = TritterLinear::new(hidden, num_kv_heads * head_dim, use_bitnet, vb.pp("v_proj"), device)?;
-        let o_proj = TritterLinear::new(num_heads * head_dim, hidden, use_bitnet, vb.pp("o_proj"), device)?;
+        let q_proj = TritterLinear::new(
+            hidden,
+            num_heads * head_dim,
+            use_bitnet,
+            vb.pp("q_proj"),
+            device,
+        )?;
+        let k_proj = TritterLinear::new(
+            hidden,
+            num_kv_heads * head_dim,
+            use_bitnet,
+            vb.pp("k_proj"),
+            device,
+        )?;
+        let v_proj = TritterLinear::new(
+            hidden,
+            num_kv_heads * head_dim,
+            use_bitnet,
+            vb.pp("v_proj"),
+            device,
+        )?;
+        let o_proj = TritterLinear::new(
+            num_heads * head_dim,
+            hidden,
+            use_bitnet,
+            vb.pp("o_proj"),
+            device,
+        )?;
 
         // QK-Norm (optional)
         let (q_norm, k_norm) = if config.use_qk_norm {
             (
-                Some(QKNorm::new(head_dim, config.layer_norm_eps, vb.pp("q_norm"))?),
-                Some(QKNorm::new(head_dim, config.layer_norm_eps, vb.pp("k_norm"))?),
+                Some(QKNorm::new(
+                    head_dim,
+                    config.layer_norm_eps,
+                    vb.pp("q_norm"),
+                )?),
+                Some(QKNorm::new(
+                    head_dim,
+                    config.layer_norm_eps,
+                    vb.pp("k_norm"),
+                )?),
             )
         } else {
             (None, None)
@@ -263,9 +296,7 @@ fn repeat_kv(x: &Tensor, n_rep: usize) -> Result<Tensor> {
 /// Create causal attention mask
 pub fn create_causal_mask(seq_len: usize, device: &Device) -> Result<Tensor> {
     let mask: Vec<f32> = (0..seq_len)
-        .flat_map(|i| {
-            (0..seq_len).map(move |j| if j <= i { 0.0 } else { f32::NEG_INFINITY })
-        })
+        .flat_map(|i| (0..seq_len).map(move |j| if j <= i { 0.0 } else { f32::NEG_INFINITY }))
         .collect();
     Tensor::from_vec(mask, (1, 1, seq_len, seq_len), device)
 }
@@ -302,9 +333,9 @@ mod tests {
         let mask_vec: Vec<f32> = mask.flatten_all().unwrap().to_vec1().unwrap();
 
         // Check pattern: lower triangular is 0, upper is -inf
-        assert_eq!(mask_vec[0], 0.0);  // (0,0)
+        assert_eq!(mask_vec[0], 0.0); // (0,0)
         assert!(mask_vec[1].is_infinite()); // (0,1)
-        assert_eq!(mask_vec[5], 0.0);  // (1,1)
+        assert_eq!(mask_vec[5], 0.0); // (1,1)
     }
 
     #[test]

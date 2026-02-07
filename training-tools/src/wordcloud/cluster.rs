@@ -317,8 +317,7 @@ impl HierarchicalClusterer {
                     Linkage::Single => dist_ci.min(dist_cj),
                     Linkage::Complete => dist_ci.max(dist_cj),
                     Linkage::Average => {
-                        (dist_ci * cluster_sizes[ci] as f32
-                            + dist_cj * cluster_sizes[cj] as f32)
+                        (dist_ci * cluster_sizes[ci] as f32 + dist_cj * cluster_sizes[cj] as f32)
                             / new_size as f32
                     }
                 };
@@ -343,7 +342,12 @@ impl HierarchicalClusterer {
     }
 
     /// Cut the dendrogram at a specific number of clusters
-    pub fn cut_tree(&self, merges: &[(usize, usize, f32)], n_points: usize, n_clusters: usize) -> Vec<usize> {
+    pub fn cut_tree(
+        &self,
+        merges: &[(usize, usize, f32)],
+        n_points: usize,
+        n_clusters: usize,
+    ) -> Vec<usize> {
         if n_clusters >= n_points {
             return (0..n_points).collect();
         }
@@ -432,8 +436,7 @@ pub fn silhouette_score(points: &[Vec<f32>], assignments: &[usize]) -> f32 {
         let b_i = other_clusters
             .iter()
             .map(|&c| {
-                let other_points: Vec<_> =
-                    (0..n).filter(|&j| assignments[j] == c).collect();
+                let other_points: Vec<_> = (0..n).filter(|&j| assignments[j] == c).collect();
                 if other_points.is_empty() {
                     f32::MAX
                 } else {

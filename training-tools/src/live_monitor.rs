@@ -50,24 +50,24 @@ pub mod colors {
     use ratatui::style::Color;
 
     // Chart colors - optimized for dark backgrounds
-    pub const LOSS_LINE: Color = Color::Rgb(0, 255, 255);      // Bright cyan - primary data
-    pub const LOSS_SCATTER: Color = Color::Rgb(255, 255, 0);   // Bright yellow dots
-    pub const TREND_LINE: Color = Color::Rgb(255, 100, 255);   // Magenta trend
-    pub const GRAD_NORM: Color = Color::Rgb(50, 255, 50);      // Brighter green for visibility
-    pub const STEP_TIME: Color = Color::Rgb(255, 180, 50);     // Orange
-    pub const PREDICTION: Color = Color::Rgb(120, 220, 255);   // Brighter light blue
+    pub const LOSS_LINE: Color = Color::Rgb(0, 255, 255); // Bright cyan - primary data
+    pub const LOSS_SCATTER: Color = Color::Rgb(255, 255, 0); // Bright yellow dots
+    pub const TREND_LINE: Color = Color::Rgb(255, 100, 255); // Magenta trend
+    pub const GRAD_NORM: Color = Color::Rgb(50, 255, 50); // Brighter green for visibility
+    pub const STEP_TIME: Color = Color::Rgb(255, 180, 50); // Orange
+    pub const PREDICTION: Color = Color::Rgb(120, 220, 255); // Brighter light blue
 
     // Phase colors
-    pub const WARMUP: Color = Color::Rgb(255, 200, 0);         // Orange
-    pub const FULL: Color = Color::Rgb(0, 180, 255);           // Brighter blue
-    pub const PREDICT: Color = Color::Rgb(0, 255, 100);        // Green
-    pub const CORRECT: Color = Color::Rgb(255, 100, 255);      // Magenta
+    pub const WARMUP: Color = Color::Rgb(255, 200, 0); // Orange
+    pub const FULL: Color = Color::Rgb(0, 180, 255); // Brighter blue
+    pub const PREDICT: Color = Color::Rgb(0, 255, 100); // Green
+    pub const CORRECT: Color = Color::Rgb(255, 100, 255); // Magenta
 
     // Status colors
-    pub const ACTIVE_RUN: Color = Color::Rgb(0, 255, 0);       // Bright green
-    pub const COMPLETED_RUN: Color = Color::Rgb(100, 200, 255);// Light blue
-    pub const FAILED_RUN: Color = Color::Rgb(255, 80, 80);     // Red
-    pub const PAUSED_RUN: Color = Color::Rgb(255, 255, 0);     // Yellow
+    pub const ACTIVE_RUN: Color = Color::Rgb(0, 255, 0); // Bright green
+    pub const COMPLETED_RUN: Color = Color::Rgb(100, 200, 255); // Light blue
+    pub const FAILED_RUN: Color = Color::Rgb(255, 80, 80); // Red
+    pub const PAUSED_RUN: Color = Color::Rgb(255, 255, 0); // Yellow
 
     // GPU colors
     pub const MEMORY_OK: Color = Color::Rgb(0, 220, 100);
@@ -79,15 +79,15 @@ pub mod colors {
 
     // UI colors - improved contrast
     pub const HEADER_BG: Color = Color::Rgb(30, 30, 50);
-    pub const SELECTED_BG: Color = Color::Rgb(60, 60, 100);    // Brighter selection
-    pub const TAB_ACTIVE: Color = Color::Rgb(0, 220, 255);     // Brighter active tab
+    pub const SELECTED_BG: Color = Color::Rgb(60, 60, 100); // Brighter selection
+    pub const TAB_ACTIVE: Color = Color::Rgb(0, 220, 255); // Brighter active tab
     pub const TAB_INACTIVE: Color = Color::Rgb(120, 120, 160); // More readable inactive
-    pub const TAB_ACTIVE_BG: Color = Color::Rgb(40, 60, 90);   // Background for active tab
-    pub const BORDER: Color = Color::Rgb(100, 100, 150);       // Brighter border
-    pub const BORDER_ACTIVE: Color = Color::Rgb(0, 180, 255);  // Active panel border
-    pub const HELP_KEY: Color = Color::Rgb(255, 220, 80);      // Brighter help keys
+    pub const TAB_ACTIVE_BG: Color = Color::Rgb(40, 60, 90); // Background for active tab
+    pub const BORDER: Color = Color::Rgb(100, 100, 150); // Brighter border
+    pub const BORDER_ACTIVE: Color = Color::Rgb(0, 180, 255); // Active panel border
+    pub const HELP_KEY: Color = Color::Rgb(255, 220, 80); // Brighter help keys
     pub const LIVE_INDICATOR: Color = Color::Rgb(255, 50, 50);
-    pub const LABEL_DIM: Color = Color::Rgb(150, 150, 170);    // Dimmed labels
+    pub const LABEL_DIM: Color = Color::Rgb(150, 150, 170); // Dimmed labels
     pub const LABEL_BRIGHT: Color = Color::Rgb(220, 220, 240); // Bright labels
 
     // Flame graph colors
@@ -96,29 +96,29 @@ pub mod colors {
     pub const FLAME_COOL: Color = Color::Rgb(100, 200, 100);
 
     // Advanced chart colors - distinct and readable
-    pub const EMA_FAST: Color = Color::Rgb(0, 255, 200);        // Cyan-green for EMA-10
-    pub const EMA_SLOW: Color = Color::Rgb(255, 100, 255);      // Pink-magenta for EMA-50
-    pub const LINEAR_TREND: Color = Color::Rgb(255, 255, 100);  // Bright yellow for regression
-    pub const BOLLINGER_BAND: Color = Color::Rgb(140, 140, 220);// Brighter blue for bands
-    pub const BOLLINGER_FILL: Color = Color::Rgb(50, 50, 100);  // Darker for fill area
-    pub const VELOCITY_POS: Color = Color::Rgb(0, 255, 100);    // Green for improving
-    pub const VELOCITY_NEG: Color = Color::Rgb(255, 80, 80);    // Red for worsening
+    pub const EMA_FAST: Color = Color::Rgb(0, 255, 200); // Cyan-green for EMA-10
+    pub const EMA_SLOW: Color = Color::Rgb(255, 100, 255); // Pink-magenta for EMA-50
+    pub const LINEAR_TREND: Color = Color::Rgb(255, 255, 100); // Bright yellow for regression
+    pub const BOLLINGER_BAND: Color = Color::Rgb(140, 140, 220); // Brighter blue for bands
+    pub const BOLLINGER_FILL: Color = Color::Rgb(50, 50, 100); // Darker for fill area
+    pub const VELOCITY_POS: Color = Color::Rgb(0, 255, 100); // Green for improving
+    pub const VELOCITY_NEG: Color = Color::Rgb(255, 80, 80); // Red for worsening
 
     // Signal colors - VERY PROMINENT for warnings
-    pub const SIGNAL_SPIKE: Color = Color::Rgb(255, 0, 0);      // Pure red for spike
-    pub const SIGNAL_PLATEAU: Color = Color::Rgb(255, 200, 0);  // Orange-yellow - ATTENTION
+    pub const SIGNAL_SPIKE: Color = Color::Rgb(255, 0, 0); // Pure red for spike
+    pub const SIGNAL_PLATEAU: Color = Color::Rgb(255, 200, 0); // Orange-yellow - ATTENTION
     pub const SIGNAL_PLATEAU_BG: Color = Color::Rgb(80, 50, 0); // Dark orange background
-    pub const SIGNAL_INFLECTION: Color = Color::Rgb(100, 180, 255);// Brighter blue
-    pub const SIGNAL_RECOVERY: Color = Color::Rgb(0, 255, 0);   // Pure green for recovery
+    pub const SIGNAL_INFLECTION: Color = Color::Rgb(100, 180, 255); // Brighter blue
+    pub const SIGNAL_RECOVERY: Color = Color::Rgb(0, 255, 0); // Pure green for recovery
 
     // Learning rate display
-    pub const LR_NORMAL: Color = Color::Rgb(255, 200, 0);       // Standard LR color
-    pub const LR_CHANGED: Color = Color::Rgb(255, 100, 255);    // LR recently changed
-    pub const LR_CRITICAL: Color = Color::Rgb(255, 50, 50);     // LR needs attention
+    pub const LR_NORMAL: Color = Color::Rgb(255, 200, 0); // Standard LR color
+    pub const LR_CHANGED: Color = Color::Rgb(255, 100, 255); // LR recently changed
+    pub const LR_CRITICAL: Color = Color::Rgb(255, 50, 50); // LR needs attention
 
     // Chart grid and axis
-    pub const AXIS_LABEL: Color = Color::Rgb(180, 180, 200);    // Readable axis labels
-    pub const GRID_LINE: Color = Color::Rgb(60, 60, 80);        // Subtle grid
+    pub const AXIS_LABEL: Color = Color::Rgb(180, 180, 200); // Readable axis labels
+    pub const GRID_LINE: Color = Color::Rgb(60, 60, 80); // Subtle grid
 }
 
 /// View mode for the monitor.
@@ -299,7 +299,13 @@ pub enum GpuView {
 
 impl GpuView {
     fn all() -> &'static [GpuView] {
-        &[GpuView::Summary, GpuView::Memory, GpuView::Thermal, GpuView::Utilization, GpuView::FlameGraph]
+        &[
+            GpuView::Summary,
+            GpuView::Memory,
+            GpuView::Thermal,
+            GpuView::Utilization,
+            GpuView::FlameGraph,
+        ]
     }
 
     fn title(&self) -> &'static str {
@@ -593,7 +599,10 @@ impl LiveMetricsReader {
     }
 
     pub fn loss_data(&self) -> Vec<(f64, f64)> {
-        self.metrics.iter().map(|m| (m.step as f64, m.loss as f64)).collect()
+        self.metrics
+            .iter()
+            .map(|m| (m.step as f64, m.loss as f64))
+            .collect()
     }
 
     pub fn gradient_data(&self) -> Vec<(f64, f64)> {
@@ -604,7 +613,10 @@ impl LiveMetricsReader {
     }
 
     pub fn step_time_data(&self) -> Vec<(f64, f64)> {
-        self.metrics.iter().map(|m| (m.step as f64, m.step_time_ms as f64)).collect()
+        self.metrics
+            .iter()
+            .map(|m| (m.step as f64, m.step_time_ms as f64))
+            .collect()
     }
 
     pub fn prediction_data(&self) -> Vec<(f64, f64)> {
@@ -629,7 +641,11 @@ impl LiveMetricsReader {
 
         // Compute tokens per second for each step
         let mut result = Vec::new();
-        let tokens_per_step = self.metrics.front().map(|m| m.tokens_this_step).unwrap_or(1024);
+        let tokens_per_step = self
+            .metrics
+            .front()
+            .map(|m| m.tokens_this_step)
+            .unwrap_or(1024);
 
         for (i, m) in self.metrics.iter().enumerate().skip(1) {
             if let Some(prev) = self.metrics.get(i - 1) {
@@ -739,7 +755,12 @@ pub fn compute_sma(data: &[f64], period: usize) -> Vec<f64> {
 
 /// Apply bilateral filter for spike removal.
 /// This preserves edges while smoothing noise.
-pub fn compute_bilateral_filter(data: &[f64], window: usize, sigma_space: f64, sigma_range: f64) -> Vec<f64> {
+pub fn compute_bilateral_filter(
+    data: &[f64],
+    window: usize,
+    sigma_space: f64,
+    sigma_range: f64,
+) -> Vec<f64> {
     if data.is_empty() {
         return Vec::new();
     }
@@ -871,7 +892,8 @@ pub fn detect_signals(data: &[f64], velocity: &[f64]) -> Vec<(usize, SignalType)
 
     // Compute some statistics
     let mean: f64 = data.iter().sum::<f64>() / data.len() as f64;
-    let std_dev: f64 = (data.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / data.len() as f64).sqrt();
+    let std_dev: f64 =
+        (data.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / data.len() as f64).sqrt();
 
     // Recent mean for plateau detection
     let recent_window = data.len().min(50);
@@ -913,9 +935,9 @@ pub fn detect_signals(data: &[f64], velocity: &[f64]) -> Vec<(usize, SignalType)
         let improving_count = recent_velocity.iter().filter(|&&v| v < 0.0).count();
 
         // Check if we had a spike recently and are now recovering
-        let had_recent_spike = signals.iter().any(|(i, s)| {
-            *s == SignalType::Spike && *i > data.len().saturating_sub(30)
-        });
+        let had_recent_spike = signals
+            .iter()
+            .any(|(i, s)| *s == SignalType::Spike && *i > data.len().saturating_sub(30));
 
         if improving_count >= 7 && had_recent_spike {
             signals.push((data.len() - 1, SignalType::Recovery));
@@ -1043,7 +1065,10 @@ impl LiveMonitor {
         }
     }
 
-    fn main_loop(&mut self, terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> anyhow::Result<()> {
+    fn main_loop(
+        &mut self,
+        terminal: &mut Terminal<CrosstermBackend<Stdout>>,
+    ) -> anyhow::Result<()> {
         while !self.should_quit {
             // Discover new runs
             self.run_manager.discover_runs()?;
@@ -1052,7 +1077,11 @@ impl LiveMonitor {
             // Poll metrics in live mode
             if self.view_mode == ViewMode::Live {
                 // Find the currently active (running) run
-                let active_run_id = self.run_manager.active_runs().next().map(|r| r.run_id.clone());
+                let active_run_id = self
+                    .run_manager
+                    .active_runs()
+                    .next()
+                    .map(|r| r.run_id.clone());
 
                 // Auto-select the active run in live mode
                 if let Some(ref active_id) = active_run_id {
@@ -1164,7 +1193,10 @@ impl LiveMonitor {
             KeyCode::Left | KeyCode::Char('[') => {
                 if self.main_tab == MainTab::Charts {
                     let types = ChartType::all();
-                    let idx = types.iter().position(|t| *t == self.chart_type).unwrap_or(0);
+                    let idx = types
+                        .iter()
+                        .position(|t| *t == self.chart_type)
+                        .unwrap_or(0);
                     self.chart_type = types[(idx + types.len() - 1) % types.len()];
                 } else if self.main_tab == MainTab::GPU {
                     let views = GpuView::all();
@@ -1172,14 +1204,20 @@ impl LiveMonitor {
                     self.gpu_view = views[(idx + views.len() - 1) % views.len()];
                 } else if self.main_tab == MainTab::Dimensions {
                     let views = DimensionView::all();
-                    let idx = views.iter().position(|v| *v == self.dimension_view).unwrap_or(0);
+                    let idx = views
+                        .iter()
+                        .position(|v| *v == self.dimension_view)
+                        .unwrap_or(0);
                     self.dimension_view = views[(idx + views.len() - 1) % views.len()];
                 }
             }
             KeyCode::Right | KeyCode::Char(']') => {
                 if self.main_tab == MainTab::Charts {
                     let types = ChartType::all();
-                    let idx = types.iter().position(|t| *t == self.chart_type).unwrap_or(0);
+                    let idx = types
+                        .iter()
+                        .position(|t| *t == self.chart_type)
+                        .unwrap_or(0);
                     self.chart_type = types[(idx + 1) % types.len()];
                 } else if self.main_tab == MainTab::GPU {
                     let views = GpuView::all();
@@ -1187,7 +1225,10 @@ impl LiveMonitor {
                     self.gpu_view = views[(idx + 1) % views.len()];
                 } else if self.main_tab == MainTab::Dimensions {
                     let views = DimensionView::all();
-                    let idx = views.iter().position(|v| *v == self.dimension_view).unwrap_or(0);
+                    let idx = views
+                        .iter()
+                        .position(|v| *v == self.dimension_view)
+                        .unwrap_or(0);
                     self.dimension_view = views[(idx + 1) % views.len()];
                 }
             }
@@ -1196,14 +1237,19 @@ impl LiveMonitor {
             KeyCode::Char('p') => {
                 if self.main_tab == MainTab::Dimensions {
                     let projs = DimensionProjection::all();
-                    let idx = projs.iter().position(|p| *p == self.dimension_projection).unwrap_or(0);
+                    let idx = projs
+                        .iter()
+                        .position(|p| *p == self.dimension_projection)
+                        .unwrap_or(0);
                     self.dimension_projection = projs[(idx + 1) % projs.len()];
                 }
             }
 
             // Animation control (Dimensions tab)
             KeyCode::Char(' ') => {
-                if self.main_tab == MainTab::Dimensions && self.dimension_view == DimensionView::Animation {
+                if self.main_tab == MainTab::Dimensions
+                    && self.dimension_view == DimensionView::Animation
+                {
                     self.animation_playing = !self.animation_playing;
                 }
             }
@@ -1340,12 +1386,18 @@ impl LiveMonitor {
                     .border_style(Style::default().fg(colors::BORDER_ACTIVE))
                     .title(Span::styled(
                         " RUST-AI MONITOR ",
-                        Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
+                        Style::default()
+                            .fg(Color::White)
+                            .add_modifier(Modifier::BOLD),
                     )),
             )
             .select(self.main_tab.index())
             .style(Style::default())
-            .highlight_style(Style::default().fg(colors::TAB_ACTIVE).add_modifier(Modifier::BOLD | Modifier::UNDERLINED));
+            .highlight_style(
+                Style::default()
+                    .fg(colors::TAB_ACTIVE)
+                    .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
+            );
 
         f.render_widget(tabs, chunks[0]);
 
@@ -1362,9 +1414,15 @@ impl LiveMonitor {
         let active = self.run_manager.active_runs().count();
 
         let status = Paragraph::new(Line::from(vec![
-            Span::styled(mode_str, Style::default().fg(mode_color).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                mode_str,
+                Style::default().fg(mode_color).add_modifier(Modifier::BOLD),
+            ),
             Span::raw("  "),
-            Span::styled(format!("{} active", active), Style::default().fg(colors::ACTIVE_RUN)),
+            Span::styled(
+                format!("{} active", active),
+                Style::default().fg(colors::ACTIVE_RUN),
+            ),
         ]))
         .alignment(Alignment::Right)
         .block(
@@ -1406,8 +1464,14 @@ impl LiveMonitor {
             ])
             .split(chunks[1]);
 
-        let selected_run = self.selected_run_id.as_ref().and_then(|id| self.run_manager.get_run(id));
-        let reader = self.selected_run_id.as_ref().and_then(|id| self.metrics_readers.get(id));
+        let selected_run = self
+            .selected_run_id
+            .as_ref()
+            .and_then(|id| self.run_manager.get_run(id));
+        let reader = self
+            .selected_run_id
+            .as_ref()
+            .and_then(|id| self.metrics_readers.get(id));
 
         match (selected_run, reader) {
             (Some(run), Some(reader)) => {
@@ -1431,7 +1495,11 @@ impl LiveMonitor {
         let items: Vec<ListItem> = runs
             .iter()
             .map(|run| {
-                let is_selected = self.selected_run_id.as_ref().map(|id| id == &run.run_id).unwrap_or(false);
+                let is_selected = self
+                    .selected_run_id
+                    .as_ref()
+                    .map(|id| id == &run.run_id)
+                    .unwrap_or(false);
 
                 let (status_icon, status_color) = match run.status {
                     TrainingStatus::Running => ("▶", colors::ACTIVE_RUN),
@@ -1454,14 +1522,27 @@ impl LiveMonitor {
                     .unwrap_or_default();
 
                 let style = if is_selected {
-                    Style::default().fg(Color::White).bg(colors::SELECTED_BG).add_modifier(Modifier::BOLD)
+                    Style::default()
+                        .fg(Color::White)
+                        .bg(colors::SELECTED_BG)
+                        .add_modifier(Modifier::BOLD)
                 } else {
                     Style::default()
                 };
 
                 ListItem::new(Line::from(vec![
-                    Span::styled(format!("{} ", status_icon), Style::default().fg(status_color)),
-                    Span::styled(run.run_name.clone(), style.fg(if is_selected { Color::White } else { status_color })),
+                    Span::styled(
+                        format!("{} ", status_icon),
+                        Style::default().fg(status_color),
+                    ),
+                    Span::styled(
+                        run.run_name.clone(),
+                        style.fg(if is_selected {
+                            Color::White
+                        } else {
+                            status_color
+                        }),
+                    ),
                     Span::styled(step_info, Style::default().fg(Color::Gray)),
                     Span::styled(loss_info, Style::default().fg(colors::LOSS_LINE)),
                 ]))
@@ -1472,13 +1553,24 @@ impl LiveMonitor {
             Block::default()
                 .borders(Borders::ALL)
                 .border_style(Style::default().fg(colors::BORDER))
-                .title(Span::styled(" Runs ", Style::default().fg(Color::White).add_modifier(Modifier::BOLD))),
+                .title(Span::styled(
+                    " Runs ",
+                    Style::default()
+                        .fg(Color::White)
+                        .add_modifier(Modifier::BOLD),
+                )),
         );
 
         f.render_widget(list, area);
     }
 
-    fn draw_progress(&self, f: &mut Frame, area: Rect, run: &TrainingRun, reader: &LiveMetricsReader) {
+    fn draw_progress(
+        &self,
+        f: &mut Frame,
+        area: Rect,
+        run: &TrainingRun,
+        reader: &LiveMetricsReader,
+    ) {
         let latest = reader.latest();
         let step = latest.map(|m| m.step).unwrap_or(run.current_step);
         let progress = step as f64 / run.config.max_steps.max(1) as f64;
@@ -1491,7 +1583,10 @@ impl LiveMonitor {
             TrainingPhase::Correct => colors::CORRECT,
         };
 
-        let title = format!(" {} │ Step {}/{} │ {:?} ", run.run_name, step, run.config.max_steps, phase);
+        let title = format!(
+            " {} │ Step {}/{} │ {:?} ",
+            run.run_name, step, run.config.max_steps, phase
+        );
 
         let gauge = Gauge::default()
             .block(
@@ -1525,17 +1620,43 @@ impl LiveMonitor {
             0.0
         };
 
-        let remaining_steps = run.config.max_steps.saturating_sub(latest.map(|m| m.step).unwrap_or(0));
-        let eta_secs = if steps_per_sec > 0.0 { remaining_steps as f64 / steps_per_sec } else { 0.0 };
+        let remaining_steps = run
+            .config
+            .max_steps
+            .saturating_sub(latest.map(|m| m.step).unwrap_or(0));
+        let eta_secs = if steps_per_sec > 0.0 {
+            remaining_steps as f64 / steps_per_sec
+        } else {
+            0.0
+        };
 
         let eta_str = format_duration(eta_secs);
         let elapsed = self.start_time.elapsed().as_secs_f64();
         let elapsed_str = format_duration(elapsed);
 
         let loss_trend = if metrics.len() >= 20 {
-            let recent: f64 = metrics.iter().rev().take(10).map(|m| m.loss as f64).sum::<f64>() / 10.0;
-            let older: f64 = metrics.iter().rev().skip(10).take(10).map(|m| m.loss as f64).sum::<f64>() / 10.0;
-            if recent < older * 0.99 { "↓ improving" } else if recent > older * 1.01 { "↑ rising" } else { "─ stable" }
+            let recent: f64 = metrics
+                .iter()
+                .rev()
+                .take(10)
+                .map(|m| m.loss as f64)
+                .sum::<f64>()
+                / 10.0;
+            let older: f64 = metrics
+                .iter()
+                .rev()
+                .skip(10)
+                .take(10)
+                .map(|m| m.loss as f64)
+                .sum::<f64>()
+                / 10.0;
+            if recent < older * 0.99 {
+                "↓ improving"
+            } else if recent > older * 1.01 {
+                "↑ rising"
+            } else {
+                "─ stable"
+            }
         } else {
             "─ gathering data"
         };
@@ -1549,23 +1670,46 @@ impl LiveMonitor {
         };
 
         // Token metrics
-        let tokens_trained = latest.map(|m| m.total_tokens_trained).unwrap_or(run.total_tokens_trained);
+        let tokens_trained = latest
+            .map(|m| m.total_tokens_trained)
+            .unwrap_or(run.total_tokens_trained);
         let tokens_remaining = latest.map(|m| m.tokens_remaining).unwrap_or(0);
-        let tokens_per_step = latest.map(|m| m.tokens_this_step).unwrap_or(run.tokens_per_step);
+        let tokens_per_step = latest
+            .map(|m| m.tokens_this_step)
+            .unwrap_or(run.tokens_per_step);
         let tokens_per_sec = run.tokens_per_second.unwrap_or_else(|| {
-            if steps_per_sec > 0.0 { steps_per_sec * tokens_per_step as f64 } else { 0.0 }
+            if steps_per_sec > 0.0 {
+                steps_per_sec * tokens_per_step as f64
+            } else {
+                0.0
+            }
         });
 
         // Gradient norm and learning rate
         let grad_norm = latest.map(|m| m.gradient_norm).unwrap_or(0.0);
         let confidence = latest.map(|m| m.confidence).unwrap_or(0.0);
-        let learning_rate = latest.map(|m| m.learning_rate).unwrap_or(run.config.learning_rate);
+        let learning_rate = latest
+            .map(|m| m.learning_rate)
+            .unwrap_or(run.config.learning_rate);
 
         // Plateau detection - if loss hasn't improved by >1% in last 500 steps, show warning
         let plateau_warning = if metrics.len() >= 500 {
-            let recent_avg: f64 = metrics.iter().rev().take(100).map(|m| m.loss as f64).sum::<f64>() / 100.0;
-            let older_avg: f64 = metrics.iter().rev().skip(400).take(100).map(|m| m.loss as f64).sum::<f64>() / 100.0;
-            recent_avg >= older_avg * 0.99  // Less than 1% improvement
+            let recent_avg: f64 = metrics
+                .iter()
+                .rev()
+                .take(100)
+                .map(|m| m.loss as f64)
+                .sum::<f64>()
+                / 100.0;
+            let older_avg: f64 = metrics
+                .iter()
+                .rev()
+                .skip(400)
+                .take(100)
+                .map(|m| m.loss as f64)
+                .sum::<f64>()
+                / 100.0;
+            recent_avg >= older_avg * 0.99 // Less than 1% improvement
         } else {
             false
         };
@@ -1575,23 +1719,50 @@ impl LiveMonitor {
             // Primary: Current loss with trend - most important
             Line::from(vec![
                 Span::styled(" Loss: ", Style::default().fg(colors::LABEL_DIM)),
-                Span::styled(format!("{:.4}", loss), Style::default().fg(colors::LOSS_LINE).add_modifier(Modifier::BOLD)),
-                Span::styled(format!("  {}", loss_trend), Style::default().fg(trend_color).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    format!("{:.4}", loss),
+                    Style::default()
+                        .fg(colors::LOSS_LINE)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(
+                    format!("  {}", loss_trend),
+                    Style::default()
+                        .fg(trend_color)
+                        .add_modifier(Modifier::BOLD),
+                ),
             ]),
             // Best loss reference
             Line::from(vec![
                 Span::styled(" Best: ", Style::default().fg(colors::LABEL_DIM)),
-                Span::styled(format!("{:.4}", run.best_loss), Style::default().fg(colors::PREDICT)),
-                Span::styled(format!(" @ step {}", run.best_step), Style::default().fg(colors::LABEL_DIM)),
+                Span::styled(
+                    format!("{:.4}", run.best_loss),
+                    Style::default().fg(colors::PREDICT),
+                ),
+                Span::styled(
+                    format!(" @ step {}", run.best_step),
+                    Style::default().fg(colors::LABEL_DIM),
+                ),
             ]),
             // Separator for visual grouping
-            Line::from(Span::styled(" ────────────────────────────────", Style::default().fg(colors::BORDER))),
+            Line::from(Span::styled(
+                " ────────────────────────────────",
+                Style::default().fg(colors::BORDER),
+            )),
             // Speed and ETA - important for monitoring
             Line::from(vec![
                 Span::styled(" Speed: ", Style::default().fg(colors::LABEL_DIM)),
-                Span::styled(format!("{:.2} steps/s", steps_per_sec), Style::default().fg(colors::LABEL_BRIGHT)),
+                Span::styled(
+                    format!("{:.2} steps/s", steps_per_sec),
+                    Style::default().fg(colors::LABEL_BRIGHT),
+                ),
                 Span::styled("  │  ETA: ", Style::default().fg(colors::LABEL_DIM)),
-                Span::styled(eta_str, Style::default().fg(colors::WARMUP).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    eta_str,
+                    Style::default()
+                        .fg(colors::WARMUP)
+                        .add_modifier(Modifier::BOLD),
+                ),
             ]),
             Line::from(vec![
                 Span::styled(" Elapsed: ", Style::default().fg(colors::LABEL_DIM)),
@@ -1605,62 +1776,89 @@ impl LiveMonitor {
             // Token metrics
             Line::from(vec![
                 Span::styled(" Tokens: ", Style::default().fg(colors::LABEL_DIM)),
-                Span::styled(format_tokens(tokens_trained), Style::default().fg(colors::WARMUP)),
+                Span::styled(
+                    format_tokens(tokens_trained),
+                    Style::default().fg(colors::WARMUP),
+                ),
                 Span::styled(" trained  │  ", Style::default().fg(colors::LABEL_DIM)),
-                Span::styled(format_tokens(tokens_remaining), Style::default().fg(colors::LABEL_BRIGHT)),
+                Span::styled(
+                    format_tokens(tokens_remaining),
+                    Style::default().fg(colors::LABEL_BRIGHT),
+                ),
                 Span::styled(" remaining", Style::default().fg(colors::LABEL_DIM)),
             ]),
             Line::from(vec![
                 Span::styled(" Throughput: ", Style::default().fg(colors::LABEL_DIM)),
-                Span::styled(format!("{}/s", format_tokens(tokens_per_sec as u64)), Style::default().fg(colors::STEP_TIME)),
-                Span::styled(format!("  │  {} tok/step", format_tokens(tokens_per_step)), Style::default().fg(colors::LABEL_DIM)),
+                Span::styled(
+                    format!("{}/s", format_tokens(tokens_per_sec as u64)),
+                    Style::default().fg(colors::STEP_TIME),
+                ),
+                Span::styled(
+                    format!("  │  {} tok/step", format_tokens(tokens_per_step)),
+                    Style::default().fg(colors::LABEL_DIM),
+                ),
             ]),
             // Gradient and confidence
             Line::from(vec![
                 Span::styled(" Grad Norm: ", Style::default().fg(colors::LABEL_DIM)),
-                Span::styled(format!("{:.4}", grad_norm), Style::default().fg(colors::GRAD_NORM)),
+                Span::styled(
+                    format!("{:.4}", grad_norm),
+                    Style::default().fg(colors::GRAD_NORM),
+                ),
                 Span::styled("  │  Confidence: ", Style::default().fg(colors::LABEL_DIM)),
-                Span::styled(format!("{:.1}%", confidence * 100.0), Style::default().fg(colors::PREDICTION)),
+                Span::styled(
+                    format!("{:.1}%", confidence * 100.0),
+                    Style::default().fg(colors::PREDICTION),
+                ),
             ]),
         ];
 
         // Learning Rate - PROMINENT display
-        stats.push(Line::from(Span::styled(" ────────────────────────────────", Style::default().fg(colors::BORDER))));
+        stats.push(Line::from(Span::styled(
+            " ────────────────────────────────",
+            Style::default().fg(colors::BORDER),
+        )));
         stats.push(Line::from(vec![
-            Span::styled(" Learning Rate: ", Style::default().fg(colors::LABEL_BRIGHT)),
+            Span::styled(
+                " Learning Rate: ",
+                Style::default().fg(colors::LABEL_BRIGHT),
+            ),
             Span::styled(
                 format!("{:.2e}", learning_rate),
-                Style::default().fg(colors::LR_NORMAL).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(colors::LR_NORMAL)
+                    .add_modifier(Modifier::BOLD),
             ),
         ]));
 
         // PLATEAU WARNING - MAXIMUM VISIBILITY with blinking effect via REVERSED + BOLD
         if plateau_warning {
             stats.push(Line::from(Span::raw("")));
-            stats.push(Line::from(vec![
-                Span::styled(
-                    " !! PLATEAU DETECTED !! ",
-                    Style::default()
-                        .fg(Color::Black)
-                        .bg(colors::SIGNAL_PLATEAU)
-                        .add_modifier(Modifier::BOLD | Modifier::SLOW_BLINK)
-                ),
-            ]));
-            stats.push(Line::from(vec![
-                Span::styled(
-                    " Loss not improving - Consider: ",
-                    Style::default().fg(colors::SIGNAL_PLATEAU).add_modifier(Modifier::BOLD)
-                ),
-            ]));
-            stats.push(Line::from(vec![
-                Span::styled("   - Increase LR by 20-50%", Style::default().fg(colors::LABEL_BRIGHT)),
-            ]));
-            stats.push(Line::from(vec![
-                Span::styled("   - Check for gradient issues", Style::default().fg(colors::LABEL_BRIGHT)),
-            ]));
-            stats.push(Line::from(vec![
-                Span::styled("   - Review data quality", Style::default().fg(colors::LABEL_BRIGHT)),
-            ]));
+            stats.push(Line::from(vec![Span::styled(
+                " !! PLATEAU DETECTED !! ",
+                Style::default()
+                    .fg(Color::Black)
+                    .bg(colors::SIGNAL_PLATEAU)
+                    .add_modifier(Modifier::BOLD | Modifier::SLOW_BLINK),
+            )]));
+            stats.push(Line::from(vec![Span::styled(
+                " Loss not improving - Consider: ",
+                Style::default()
+                    .fg(colors::SIGNAL_PLATEAU)
+                    .add_modifier(Modifier::BOLD),
+            )]));
+            stats.push(Line::from(vec![Span::styled(
+                "   - Increase LR by 20-50%",
+                Style::default().fg(colors::LABEL_BRIGHT),
+            )]));
+            stats.push(Line::from(vec![Span::styled(
+                "   - Check for gradient issues",
+                Style::default().fg(colors::LABEL_BRIGHT),
+            )]));
+            stats.push(Line::from(vec![Span::styled(
+                "   - Review data quality",
+                Style::default().fg(colors::LABEL_BRIGHT),
+            )]));
         }
 
         let para = Paragraph::new(stats).block(
@@ -1680,7 +1878,11 @@ impl LiveMonitor {
         if raw_data.is_empty() {
             let msg = Paragraph::new("Waiting for training data...")
                 .style(Style::default().fg(Color::Gray))
-                .block(Block::default().borders(Borders::ALL).title(" Enhanced Loss Chart "));
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(" Enhanced Loss Chart "),
+                );
             f.render_widget(msg, area);
             return;
         }
@@ -1704,7 +1906,8 @@ impl LiveMonitor {
         };
 
         // Combine steps with smoothed values for the main data
-        let main_data: Vec<(f64, f64)> = steps.iter()
+        let main_data: Vec<(f64, f64)> = steps
+            .iter()
             .zip(smoothed_values.iter())
             .map(|(&s, &l)| (s, l))
             .collect();
@@ -1727,9 +1930,21 @@ impl LiveMonitor {
         };
 
         // Compute trend lines if enabled
-        let ema_fast = if self.show_trend_lines { compute_ema(&loss_values, 10) } else { Vec::new() };
-        let ema_slow = if self.show_trend_lines { compute_ema(&loss_values, 50) } else { Vec::new() };
-        let linear_trend = if self.show_trend_lines { compute_linear_regression(&loss_values) } else { Vec::new() };
+        let ema_fast = if self.show_trend_lines {
+            compute_ema(&loss_values, 10)
+        } else {
+            Vec::new()
+        };
+        let ema_slow = if self.show_trend_lines {
+            compute_ema(&loss_values, 50)
+        } else {
+            Vec::new()
+        };
+        let linear_trend = if self.show_trend_lines {
+            compute_linear_regression(&loss_values)
+        } else {
+            Vec::new()
+        };
 
         if self.show_trend_lines {
             all_values.extend(ema_fast.iter().copied());
@@ -1761,8 +1976,16 @@ impl LiveMonitor {
         let upper_band_data: Vec<(f64, f64)>;
         let lower_band_data: Vec<(f64, f64)>;
         if self.show_bollinger_bands && !upper_band.is_empty() {
-            upper_band_data = steps.iter().zip(upper_band.iter()).map(|(&s, &l)| (s, l)).collect();
-            lower_band_data = steps.iter().zip(lower_band.iter()).map(|(&s, &l)| (s, l)).collect();
+            upper_band_data = steps
+                .iter()
+                .zip(upper_band.iter())
+                .map(|(&s, &l)| (s, l))
+                .collect();
+            lower_band_data = steps
+                .iter()
+                .zip(lower_band.iter())
+                .map(|(&s, &l)| (s, l))
+                .collect();
 
             datasets.push(
                 Dataset::default()
@@ -1787,9 +2010,21 @@ impl LiveMonitor {
         let ema_slow_data: Vec<(f64, f64)>;
         let linear_data: Vec<(f64, f64)>;
         if self.show_trend_lines && !ema_fast.is_empty() {
-            ema_fast_data = steps.iter().zip(ema_fast.iter()).map(|(&s, &l)| (s, l)).collect();
-            ema_slow_data = steps.iter().zip(ema_slow.iter()).map(|(&s, &l)| (s, l)).collect();
-            linear_data = steps.iter().zip(linear_trend.iter()).map(|(&s, &l)| (s, l)).collect();
+            ema_fast_data = steps
+                .iter()
+                .zip(ema_fast.iter())
+                .map(|(&s, &l)| (s, l))
+                .collect();
+            ema_slow_data = steps
+                .iter()
+                .zip(ema_slow.iter())
+                .map(|(&s, &l)| (s, l))
+                .collect();
+            linear_data = steps
+                .iter()
+                .zip(linear_trend.iter())
+                .map(|(&s, &l)| (s, l))
+                .collect();
 
             datasets.push(
                 Dataset::default()
@@ -1823,10 +2058,15 @@ impl LiveMonitor {
             let velocity = compute_velocity(&loss_values);
             // Normalize velocity to fit on the chart
             let vel_max = velocity.iter().map(|v| v.abs()).fold(0.0f64, f64::max);
-            let scale = if vel_max > 0.0 { (y_max - y_min) * 0.3 / vel_max } else { 1.0 };
+            let scale = if vel_max > 0.0 {
+                (y_max - y_min) * 0.3 / vel_max
+            } else {
+                1.0
+            };
             let mid_y = (y_max + y_min) / 2.0;
 
-            velocity_data = steps.iter()
+            velocity_data = steps
+                .iter()
                 .zip(velocity.iter())
                 .map(|(&s, &v)| (s, mid_y + v * scale))
                 .collect();
@@ -1836,35 +2076,60 @@ impl LiveMonitor {
                     .name("Velocity")
                     .marker(symbols::Marker::Dot)
                     .graph_type(GraphType::Scatter)
-                    .style(Style::default().fg(if velocity.last().copied().unwrap_or(0.0) < 0.0 {
-                        colors::VELOCITY_POS  // Negative velocity = loss decreasing = good
-                    } else {
-                        colors::VELOCITY_NEG  // Positive velocity = loss increasing = bad
-                    }))
+                    .style(
+                        Style::default().fg(if velocity.last().copied().unwrap_or(0.0) < 0.0 {
+                            colors::VELOCITY_POS // Negative velocity = loss decreasing = good
+                        } else {
+                            colors::VELOCITY_NEG // Positive velocity = loss increasing = bad
+                        }),
+                    )
                     .data(&velocity_data),
             );
         }
 
         // Build title with color-coded legend for clarity
         let mut title_spans: Vec<Span> = vec![
-            Span::styled(" Loss ", Style::default().fg(colors::LOSS_LINE).add_modifier(Modifier::BOLD)),
-            Span::styled(format!("({})", self.smoothing_method.title()), Style::default().fg(colors::LABEL_DIM)),
+            Span::styled(
+                " Loss ",
+                Style::default()
+                    .fg(colors::LOSS_LINE)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                format!("({})", self.smoothing_method.title()),
+                Style::default().fg(colors::LABEL_DIM),
+            ),
         ];
         if self.show_trend_lines {
             title_spans.push(Span::styled(" | ", Style::default().fg(colors::BORDER)));
-            title_spans.push(Span::styled("EMA-10", Style::default().fg(colors::EMA_FAST)));
+            title_spans.push(Span::styled(
+                "EMA-10",
+                Style::default().fg(colors::EMA_FAST),
+            ));
             title_spans.push(Span::styled(" ", Style::default()));
-            title_spans.push(Span::styled("EMA-50", Style::default().fg(colors::EMA_SLOW)));
+            title_spans.push(Span::styled(
+                "EMA-50",
+                Style::default().fg(colors::EMA_SLOW),
+            ));
             title_spans.push(Span::styled(" ", Style::default()));
-            title_spans.push(Span::styled("Linear", Style::default().fg(colors::LINEAR_TREND)));
+            title_spans.push(Span::styled(
+                "Linear",
+                Style::default().fg(colors::LINEAR_TREND),
+            ));
         }
         if self.show_bollinger_bands {
             title_spans.push(Span::styled(" | ", Style::default().fg(colors::BORDER)));
-            title_spans.push(Span::styled("BB", Style::default().fg(colors::BOLLINGER_BAND)));
+            title_spans.push(Span::styled(
+                "BB",
+                Style::default().fg(colors::BOLLINGER_BAND),
+            ));
         }
         if self.show_velocity_overlay {
             title_spans.push(Span::styled(" | ", Style::default().fg(colors::BORDER)));
-            title_spans.push(Span::styled("Vel", Style::default().fg(colors::VELOCITY_POS)));
+            title_spans.push(Span::styled(
+                "Vel",
+                Style::default().fg(colors::VELOCITY_POS),
+            ));
         }
 
         // Calculate step interval for better axis labels
@@ -1882,24 +2147,52 @@ impl LiveMonitor {
             )
             .x_axis(
                 Axis::default()
-                    .title(Span::styled("Step", Style::default().fg(colors::AXIS_LABEL).add_modifier(Modifier::BOLD)))
+                    .title(Span::styled(
+                        "Step",
+                        Style::default()
+                            .fg(colors::AXIS_LABEL)
+                            .add_modifier(Modifier::BOLD),
+                    ))
                     .style(Style::default().fg(colors::AXIS_LABEL))
                     .bounds([min_step, max_step])
                     .labels(vec![
-                        Span::styled(format!("{:.0}", min_step), Style::default().fg(colors::AXIS_LABEL)),
-                        Span::styled(format!("{:.0}", mid_step), Style::default().fg(colors::LABEL_DIM)),
-                        Span::styled(format!("{:.0}", max_step), Style::default().fg(colors::AXIS_LABEL)),
+                        Span::styled(
+                            format!("{:.0}", min_step),
+                            Style::default().fg(colors::AXIS_LABEL),
+                        ),
+                        Span::styled(
+                            format!("{:.0}", mid_step),
+                            Style::default().fg(colors::LABEL_DIM),
+                        ),
+                        Span::styled(
+                            format!("{:.0}", max_step),
+                            Style::default().fg(colors::AXIS_LABEL),
+                        ),
                     ]),
             )
             .y_axis(
                 Axis::default()
-                    .title(Span::styled("Loss", Style::default().fg(colors::AXIS_LABEL).add_modifier(Modifier::BOLD)))
+                    .title(Span::styled(
+                        "Loss",
+                        Style::default()
+                            .fg(colors::AXIS_LABEL)
+                            .add_modifier(Modifier::BOLD),
+                    ))
                     .style(Style::default().fg(colors::AXIS_LABEL))
                     .bounds([y_min, y_max])
                     .labels(vec![
-                        Span::styled(format!("{:.4}", y_min), Style::default().fg(colors::AXIS_LABEL)),
-                        Span::styled(format!("{:.4}", mid_y), Style::default().fg(colors::LABEL_DIM)),
-                        Span::styled(format!("{:.4}", y_max), Style::default().fg(colors::AXIS_LABEL)),
+                        Span::styled(
+                            format!("{:.4}", y_min),
+                            Style::default().fg(colors::AXIS_LABEL),
+                        ),
+                        Span::styled(
+                            format!("{:.4}", mid_y),
+                            Style::default().fg(colors::LABEL_DIM),
+                        ),
+                        Span::styled(
+                            format!("{:.4}", y_max),
+                            Style::default().fg(colors::AXIS_LABEL),
+                        ),
                     ]),
             );
 
@@ -1910,17 +2203,22 @@ impl LiveMonitor {
         let signals = detect_signals(&loss_values, &velocity);
 
         // Check for critical signals (plateau, spike)
-        let has_plateau = signals.iter().any(|(_, s)| matches!(s, SignalType::Plateau));
+        let has_plateau = signals
+            .iter()
+            .any(|(_, s)| matches!(s, SignalType::Plateau));
         let has_spike = signals.iter().any(|(_, s)| matches!(s, SignalType::Spike));
 
-        let mut signal_spans: Vec<Span> = vec![
-            Span::styled(" Signals: ", Style::default().fg(colors::LABEL_BRIGHT).add_modifier(Modifier::BOLD))
-        ];
+        let mut signal_spans: Vec<Span> = vec![Span::styled(
+            " Signals: ",
+            Style::default()
+                .fg(colors::LABEL_BRIGHT)
+                .add_modifier(Modifier::BOLD),
+        )];
 
         if signals.is_empty() {
             signal_spans.push(Span::styled(
                 "OK - No issues detected",
-                Style::default().fg(colors::SIGNAL_RECOVERY)
+                Style::default().fg(colors::SIGNAL_RECOVERY),
             ));
         } else {
             // Show most recent signals (up to 4) with enhanced styling
@@ -1959,35 +2257,49 @@ impl LiveMonitor {
         };
 
         let title_style = if has_spike || has_plateau {
-            Style::default().fg(border_color).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(border_color)
+                .add_modifier(Modifier::BOLD)
         } else {
             Style::default().fg(colors::LABEL_BRIGHT)
         };
 
-        let signals_para = Paragraph::new(Line::from(signal_spans))
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .border_style(Style::default().fg(border_color))
-                    .title(Span::styled(" Training Signals ", title_style)),
-            );
+        let signals_para = Paragraph::new(Line::from(signal_spans)).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(border_color))
+                .title(Span::styled(" Training Signals ", title_style)),
+        );
         f.render_widget(signals_para, chunks[1]);
     }
 
     #[allow(dead_code)]
-    fn draw_loss_line_chart(&self, f: &mut Frame, area: Rect, reader: &LiveMetricsReader, title: &str) {
+    fn draw_loss_line_chart(
+        &self,
+        f: &mut Frame,
+        area: Rect,
+        reader: &LiveMetricsReader,
+        title: &str,
+    ) {
         let data = reader.loss_data();
 
         if data.is_empty() {
             let msg = Paragraph::new("Waiting for training data...")
                 .style(Style::default().fg(Color::Gray))
-                .block(Block::default().borders(Borders::ALL).title(format!(" {} ", title)));
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(format!(" {} ", title)),
+                );
             f.render_widget(msg, area);
             return;
         }
 
         let min_loss = data.iter().map(|(_, l)| *l).fold(f64::INFINITY, f64::min);
-        let max_loss = data.iter().map(|(_, l)| *l).fold(f64::NEG_INFINITY, f64::max);
+        let max_loss = data
+            .iter()
+            .map(|(_, l)| *l)
+            .fold(f64::NEG_INFINITY, f64::max);
         let min_step = data.first().map(|(s, _)| *s).unwrap_or(0.0);
         let max_step = data.last().map(|(s, _)| *s).unwrap_or(1.0);
 
@@ -2007,7 +2319,10 @@ impl LiveMonitor {
                 Block::default()
                     .borders(Borders::ALL)
                     .border_style(Style::default().fg(colors::BORDER))
-                    .title(Span::styled(format!(" {} ", title), Style::default().fg(Color::White))),
+                    .title(Span::styled(
+                        format!(" {} ", title),
+                        Style::default().fg(Color::White),
+                    )),
             )
             .x_axis(
                 Axis::default()
@@ -2038,13 +2353,23 @@ impl LiveMonitor {
         if scatter_data.is_empty() {
             let msg = Paragraph::new("Waiting for training data...")
                 .style(Style::default().fg(Color::Gray))
-                .block(Block::default().borders(Borders::ALL).title(" Loss (Scatter + Trend) "));
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(" Loss (Scatter + Trend) "),
+                );
             f.render_widget(msg, area);
             return;
         }
 
-        let min_loss = scatter_data.iter().map(|(_, l)| *l).fold(f64::INFINITY, f64::min);
-        let max_loss = scatter_data.iter().map(|(_, l)| *l).fold(f64::NEG_INFINITY, f64::max);
+        let min_loss = scatter_data
+            .iter()
+            .map(|(_, l)| *l)
+            .fold(f64::INFINITY, f64::min);
+        let max_loss = scatter_data
+            .iter()
+            .map(|(_, l)| *l)
+            .fold(f64::NEG_INFINITY, f64::max);
         let min_step = scatter_data.first().map(|(s, _)| *s).unwrap_or(0.0);
         let max_step = scatter_data.last().map(|(s, _)| *s).unwrap_or(1.0);
 
@@ -2102,9 +2427,9 @@ impl LiveMonitor {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(3),  // Chart type selector
-                Constraint::Length(2),  // Enhancement controls status bar
-                Constraint::Min(10),    // Main chart area
+                Constraint::Length(3), // Chart type selector
+                Constraint::Length(2), // Enhancement controls status bar
+                Constraint::Min(10),   // Main chart area
             ])
             .split(area);
 
@@ -2113,7 +2438,9 @@ impl LiveMonitor {
             .iter()
             .map(|t| {
                 let style = if *t == self.chart_type {
-                    Style::default().fg(colors::TAB_ACTIVE).add_modifier(Modifier::BOLD)
+                    Style::default()
+                        .fg(colors::TAB_ACTIVE)
+                        .add_modifier(Modifier::BOLD)
                 } else {
                     Style::default().fg(colors::TAB_INACTIVE)
                 };
@@ -2121,13 +2448,12 @@ impl LiveMonitor {
             })
             .collect();
 
-        let selector = Paragraph::new(Line::from(chart_titles))
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .border_style(Style::default().fg(colors::BORDER))
-                    .title(" Chart Type [</>] "),
-            );
+        let selector = Paragraph::new(Line::from(chart_titles)).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(colors::BORDER))
+                .title(" Chart Type [</>] "),
+        );
 
         f.render_widget(selector, chunks[0]);
 
@@ -2137,29 +2463,63 @@ impl LiveMonitor {
         } else {
             colors::TAB_INACTIVE
         };
-        let trend_color = if self.show_trend_lines { colors::TAB_ACTIVE } else { colors::TAB_INACTIVE };
-        let bollinger_color = if self.show_bollinger_bands { colors::TAB_ACTIVE } else { colors::TAB_INACTIVE };
-        let velocity_color = if self.show_velocity_overlay { colors::TAB_ACTIVE } else { colors::TAB_INACTIVE };
+        let trend_color = if self.show_trend_lines {
+            colors::TAB_ACTIVE
+        } else {
+            colors::TAB_INACTIVE
+        };
+        let bollinger_color = if self.show_bollinger_bands {
+            colors::TAB_ACTIVE
+        } else {
+            colors::TAB_INACTIVE
+        };
+        let velocity_color = if self.show_velocity_overlay {
+            colors::TAB_ACTIVE
+        } else {
+            colors::TAB_INACTIVE
+        };
 
         let controls = Line::from(vec![
             Span::styled(" [s]mooth: ", Style::default().fg(colors::HELP_KEY)),
-            Span::styled(self.smoothing_method.title(), Style::default().fg(smoothing_color)),
+            Span::styled(
+                self.smoothing_method.title(),
+                Style::default().fg(smoothing_color),
+            ),
             Span::raw("  "),
             Span::styled("[t]rends: ", Style::default().fg(colors::HELP_KEY)),
-            Span::styled(if self.show_trend_lines { "ON" } else { "OFF" }, Style::default().fg(trend_color)),
+            Span::styled(
+                if self.show_trend_lines { "ON" } else { "OFF" },
+                Style::default().fg(trend_color),
+            ),
             Span::raw("  "),
             Span::styled("[b]ollinger: ", Style::default().fg(colors::HELP_KEY)),
-            Span::styled(if self.show_bollinger_bands { "ON" } else { "OFF" }, Style::default().fg(bollinger_color)),
+            Span::styled(
+                if self.show_bollinger_bands {
+                    "ON"
+                } else {
+                    "OFF"
+                },
+                Style::default().fg(bollinger_color),
+            ),
             Span::raw("  "),
             Span::styled("[v]elocity: ", Style::default().fg(colors::HELP_KEY)),
-            Span::styled(if self.show_velocity_overlay { "ON" } else { "OFF" }, Style::default().fg(velocity_color)),
+            Span::styled(
+                if self.show_velocity_overlay {
+                    "ON"
+                } else {
+                    "OFF"
+                },
+                Style::default().fg(velocity_color),
+            ),
         ]);
 
-        let controls_para = Paragraph::new(controls)
-            .style(Style::default().fg(Color::White));
+        let controls_para = Paragraph::new(controls).style(Style::default().fg(Color::White));
         f.render_widget(controls_para, chunks[1]);
 
-        let reader = self.selected_run_id.as_ref().and_then(|id| self.metrics_readers.get(id));
+        let reader = self
+            .selected_run_id
+            .as_ref()
+            .and_then(|id| self.metrics_readers.get(id));
 
         if let Some(reader) = reader {
             match self.chart_type {
@@ -2184,13 +2544,20 @@ impl LiveMonitor {
         if data.is_empty() {
             let msg = Paragraph::new("No gradient norm data available")
                 .style(Style::default().fg(Color::Gray))
-                .block(Block::default().borders(Borders::ALL).title(" Gradient Norm "));
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(" Gradient Norm "),
+                );
             f.render_widget(msg, area);
             return;
         }
 
         let min_val = data.iter().map(|(_, v)| *v).fold(f64::INFINITY, f64::min);
-        let max_val = data.iter().map(|(_, v)| *v).fold(f64::NEG_INFINITY, f64::max);
+        let max_val = data
+            .iter()
+            .map(|(_, v)| *v)
+            .fold(f64::NEG_INFINITY, f64::max);
         let min_step = data.first().map(|(s, _)| *s).unwrap_or(0.0);
         let max_step = data.last().map(|(s, _)| *s).unwrap_or(1.0);
 
@@ -2238,7 +2605,10 @@ impl LiveMonitor {
         }
 
         let min_val = data.iter().map(|(_, v)| *v).fold(f64::INFINITY, f64::min);
-        let max_val = data.iter().map(|(_, v)| *v).fold(f64::NEG_INFINITY, f64::max);
+        let max_val = data
+            .iter()
+            .map(|(_, v)| *v)
+            .fold(f64::NEG_INFINITY, f64::max);
         let min_step = data.first().map(|(s, _)| *s).unwrap_or(0.0);
         let max_step = data.last().map(|(s, _)| *s).unwrap_or(1.0);
 
@@ -2279,7 +2649,11 @@ impl LiveMonitor {
         if stats.is_empty() {
             let msg = Paragraph::new("No phase data available")
                 .style(Style::default().fg(Color::Gray))
-                .block(Block::default().borders(Borders::ALL).title(" Phase Breakdown "));
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(" Phase Breakdown "),
+                );
             f.render_widget(msg, area);
             return;
         }
@@ -2287,12 +2661,19 @@ impl LiveMonitor {
         let mut lines = vec![
             Line::from(Span::styled(
                 " Phase         │ Steps │ Avg Loss │ Avg Time",
-                Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD),
             )),
             Line::from(Span::raw(" ──────────────┼───────┼──────────┼──────────")),
         ];
 
-        for phase in [TrainingPhase::Warmup, TrainingPhase::Full, TrainingPhase::Predict, TrainingPhase::Correct] {
+        for phase in [
+            TrainingPhase::Warmup,
+            TrainingPhase::Full,
+            TrainingPhase::Predict,
+            TrainingPhase::Correct,
+        ] {
             if let Some((count, avg_loss, avg_time)) = stats.get(&phase) {
                 let color = match phase {
                     TrainingPhase::Warmup => colors::WARMUP,
@@ -2306,9 +2687,15 @@ impl LiveMonitor {
                     Span::raw(" │ "),
                     Span::styled(format!("{:5}", count), Style::default().fg(Color::White)),
                     Span::raw(" │ "),
-                    Span::styled(format!("{:8.4}", avg_loss), Style::default().fg(colors::LOSS_LINE)),
+                    Span::styled(
+                        format!("{:8.4}", avg_loss),
+                        Style::default().fg(colors::LOSS_LINE),
+                    ),
                     Span::raw(" │ "),
-                    Span::styled(format!("{:6.0}ms", avg_time), Style::default().fg(colors::STEP_TIME)),
+                    Span::styled(
+                        format!("{:6.0}ms", avg_time),
+                        Style::default().fg(colors::STEP_TIME),
+                    ),
                 ]));
             }
         }
@@ -2327,9 +2714,15 @@ impl LiveMonitor {
         let data = reader.prediction_data();
 
         if data.is_empty() {
-            let msg = Paragraph::new("No prediction data available (shown during PREDICT/CORRECT phases)")
-                .style(Style::default().fg(Color::Gray))
-                .block(Block::default().borders(Borders::ALL).title(" Prediction Accuracy "));
+            let msg = Paragraph::new(
+                "No prediction data available (shown during PREDICT/CORRECT phases)",
+            )
+            .style(Style::default().fg(Color::Gray))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(" Prediction Accuracy "),
+            );
             f.render_widget(msg, area);
             return;
         }
@@ -2377,7 +2770,9 @@ impl LiveMonitor {
             .iter()
             .map(|v| {
                 let style = if *v == self.gpu_view {
-                    Style::default().fg(colors::TAB_ACTIVE).add_modifier(Modifier::BOLD)
+                    Style::default()
+                        .fg(colors::TAB_ACTIVE)
+                        .add_modifier(Modifier::BOLD)
                 } else {
                     Style::default().fg(colors::TAB_INACTIVE)
                 };
@@ -2385,13 +2780,12 @@ impl LiveMonitor {
             })
             .collect();
 
-        let selector = Paragraph::new(Line::from(view_titles))
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .border_style(Style::default().fg(colors::BORDER))
-                    .title(" GPU View [←/→] "),
-            );
+        let selector = Paragraph::new(Line::from(view_titles)).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(colors::BORDER))
+                .title(" GPU View [←/→] "),
+        );
 
         f.render_widget(selector, chunks[0]);
 
@@ -2426,16 +2820,32 @@ impl LiveMonitor {
                 Line::from(vec![
                     Span::styled(" GPU: ", Style::default().fg(Color::Gray)),
                     Span::styled(
-                        format!("{:.1}/{:.1}GB", stats.memory_used as f64 / 1e9, stats.memory_total as f64 / 1e9),
+                        format!(
+                            "{:.1}/{:.1}GB",
+                            stats.memory_used as f64 / 1e9,
+                            stats.memory_total as f64 / 1e9
+                        ),
                         Style::default().fg(mem_color).add_modifier(Modifier::BOLD),
                     ),
-                    Span::styled(format!(" ({:.0}%)", stats.memory_percent()), Style::default().fg(mem_color)),
+                    Span::styled(
+                        format!(" ({:.0}%)", stats.memory_percent()),
+                        Style::default().fg(mem_color),
+                    ),
                     Span::styled("  │  ", Style::default().fg(colors::BORDER)),
-                    Span::styled(format!("{}°C", stats.temperature), Style::default().fg(temp_color)),
+                    Span::styled(
+                        format!("{}°C", stats.temperature),
+                        Style::default().fg(temp_color),
+                    ),
                     Span::styled("  │  ", Style::default().fg(colors::BORDER)),
-                    Span::styled(format!("{:.0}W", stats.power_draw), Style::default().fg(Color::White)),
+                    Span::styled(
+                        format!("{:.0}W", stats.power_draw),
+                        Style::default().fg(Color::White),
+                    ),
                     Span::styled("  │  ", Style::default().fg(colors::BORDER)),
-                    Span::styled(format!("{}%", stats.gpu_util), Style::default().fg(Color::White)),
+                    Span::styled(
+                        format!("{}%", stats.gpu_util),
+                        Style::default().fg(Color::White),
+                    ),
                 ]),
                 Line::from(vec![
                     Span::styled(" Peak: ", Style::default().fg(Color::Gray)),
@@ -2444,15 +2854,24 @@ impl LiveMonitor {
                         Style::default().fg(mem_color),
                     ),
                     Span::styled("  │  ", Style::default().fg(colors::BORDER)),
-                    Span::styled(format!("{}°C", self.gpu_monitor.peak_temperature()), Style::default().fg(temp_color)),
+                    Span::styled(
+                        format!("{}°C", self.gpu_monitor.peak_temperature()),
+                        Style::default().fg(temp_color),
+                    ),
                     Span::styled("  │  ", Style::default().fg(colors::BORDER)),
-                    Span::styled(format!("{:.0}W", self.gpu_monitor.peak_power()), Style::default().fg(Color::White)),
+                    Span::styled(
+                        format!("{:.0}W", self.gpu_monitor.peak_power()),
+                        Style::default().fg(Color::White),
+                    ),
                     Span::styled("  │  ", Style::default().fg(colors::BORDER)),
                     Span::styled(stats.pstate.clone(), Style::default().fg(Color::Yellow)),
                 ]),
             ]
         } else {
-            vec![Line::from(Span::styled(" GPU stats unavailable", Style::default().fg(Color::Gray)))]
+            vec![Line::from(Span::styled(
+                " GPU stats unavailable",
+                Style::default().fg(Color::Gray),
+            ))]
         };
 
         let para = Paragraph::new(content).block(
@@ -2499,10 +2918,17 @@ impl LiveMonitor {
                 Line::from(vec![
                     Span::styled(" Memory:    ", Style::default().fg(Color::Gray)),
                     Span::styled(
-                        format!("{:.2} / {:.2} GB", stats.memory_used as f64 / 1e9, stats.memory_total as f64 / 1e9),
+                        format!(
+                            "{:.2} / {:.2} GB",
+                            stats.memory_used as f64 / 1e9,
+                            stats.memory_total as f64 / 1e9
+                        ),
                         Style::default().fg(mem_color).add_modifier(Modifier::BOLD),
                     ),
-                    Span::styled(format!("  ({:.1}%)", mem_pct), Style::default().fg(mem_color)),
+                    Span::styled(
+                        format!("  ({:.1}%)", mem_pct),
+                        Style::default().fg(mem_color),
+                    ),
                 ]),
                 Line::from(vec![
                     Span::styled(" Peak Mem:  ", Style::default().fg(Color::Gray)),
@@ -2514,22 +2940,42 @@ impl LiveMonitor {
                 Line::from(Span::raw("")),
                 Line::from(vec![
                     Span::styled(" Temp:      ", Style::default().fg(Color::Gray)),
-                    Span::styled(format!("{}°C", stats.temperature), Style::default().fg(temp_color).add_modifier(Modifier::BOLD)),
-                    Span::styled(format!("  (peak {}°C)", self.gpu_monitor.peak_temperature()), Style::default().fg(Color::Gray)),
+                    Span::styled(
+                        format!("{}°C", stats.temperature),
+                        Style::default().fg(temp_color).add_modifier(Modifier::BOLD),
+                    ),
+                    Span::styled(
+                        format!("  (peak {}°C)", self.gpu_monitor.peak_temperature()),
+                        Style::default().fg(Color::Gray),
+                    ),
                 ]),
                 Line::from(vec![
                     Span::styled(" Power:     ", Style::default().fg(Color::Gray)),
-                    Span::styled(format!("{:.0} / {:.0} W", stats.power_draw, stats.power_limit), Style::default().fg(Color::White)),
-                    Span::styled(format!("  (peak {:.0}W)", self.gpu_monitor.peak_power()), Style::default().fg(Color::Gray)),
+                    Span::styled(
+                        format!("{:.0} / {:.0} W", stats.power_draw, stats.power_limit),
+                        Style::default().fg(Color::White),
+                    ),
+                    Span::styled(
+                        format!("  (peak {:.0}W)", self.gpu_monitor.peak_power()),
+                        Style::default().fg(Color::Gray),
+                    ),
                 ]),
                 Line::from(Span::raw("")),
                 Line::from(vec![
                     Span::styled(" GPU Util:  ", Style::default().fg(Color::Gray)),
-                    Span::styled(format!("{}%", stats.gpu_util), Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
+                    Span::styled(
+                        format!("{}%", stats.gpu_util),
+                        Style::default()
+                            .fg(Color::White)
+                            .add_modifier(Modifier::BOLD),
+                    ),
                 ]),
                 Line::from(vec![
                     Span::styled(" Mem Util:  ", Style::default().fg(Color::Gray)),
-                    Span::styled(format!("{}%", stats.memory_util), Style::default().fg(Color::White)),
+                    Span::styled(
+                        format!("{}%", stats.memory_util),
+                        Style::default().fg(Color::White),
+                    ),
                 ]),
                 Line::from(vec![
                     Span::styled(" P-State:   ", Style::default().fg(Color::Gray)),
@@ -2537,12 +2983,21 @@ impl LiveMonitor {
                 ]),
                 Line::from(vec![
                     Span::styled(" Clocks:    ", Style::default().fg(Color::Gray)),
-                    Span::styled(format!("{} MHz (GPU)", stats.clock_graphics), Style::default().fg(Color::White)),
-                    Span::styled(format!("  {} MHz (Mem)", stats.clock_memory), Style::default().fg(Color::Gray)),
+                    Span::styled(
+                        format!("{} MHz (GPU)", stats.clock_graphics),
+                        Style::default().fg(Color::White),
+                    ),
+                    Span::styled(
+                        format!("  {} MHz (Mem)", stats.clock_memory),
+                        Style::default().fg(Color::Gray),
+                    ),
                 ]),
             ]
         } else {
-            vec![Line::from(Span::styled(" GPU stats unavailable - nvidia-smi not found?", Style::default().fg(Color::Gray)))]
+            vec![Line::from(Span::styled(
+                " GPU stats unavailable - nvidia-smi not found?",
+                Style::default().fg(Color::Gray),
+            ))]
         };
 
         let para = Paragraph::new(content).block(
@@ -2572,7 +3027,11 @@ impl LiveMonitor {
             .collect();
 
         let _max_mem = data.iter().map(|(_, v)| *v).fold(0.0f64, f64::max);
-        let total_mem = self.gpu_monitor.current().map(|s| s.memory_total as f64 / 1e9).unwrap_or(16.0);
+        let total_mem = self
+            .gpu_monitor
+            .current()
+            .map(|s| s.memory_total as f64 / 1e9)
+            .unwrap_or(16.0);
 
         let datasets = vec![Dataset::default()
             .name("Memory (GB)")
@@ -2588,7 +3047,11 @@ impl LiveMonitor {
                     .border_style(Style::default().fg(colors::BORDER))
                     .title(" GPU Memory Usage "),
             )
-            .x_axis(Axis::default().style(Style::default().fg(Color::Gray)).bounds([0.0, data.len() as f64]))
+            .x_axis(
+                Axis::default()
+                    .style(Style::default().fg(Color::Gray))
+                    .bounds([0.0, data.len() as f64]),
+            )
             .y_axis(
                 Axis::default()
                     .style(Style::default().fg(Color::Gray))
@@ -2607,12 +3070,21 @@ impl LiveMonitor {
         if self.gpu_history.is_empty() {
             let msg = Paragraph::new("Collecting GPU thermal data...")
                 .style(Style::default().fg(Color::Gray))
-                .block(Block::default().borders(Borders::ALL).title(" GPU Temperature "));
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(" GPU Temperature "),
+                );
             f.render_widget(msg, area);
             return;
         }
 
-        let data: Vec<(f64, f64)> = self.gpu_history.iter().enumerate().map(|(i, s)| (i as f64, s.temp_c as f64)).collect();
+        let data: Vec<(f64, f64)> = self
+            .gpu_history
+            .iter()
+            .enumerate()
+            .map(|(i, s)| (i as f64, s.temp_c as f64))
+            .collect();
 
         let _max_temp = data.iter().map(|(_, v)| *v).fold(0.0f64, f64::max);
 
@@ -2630,12 +3102,20 @@ impl LiveMonitor {
                     .border_style(Style::default().fg(colors::BORDER))
                     .title(" GPU Temperature "),
             )
-            .x_axis(Axis::default().style(Style::default().fg(Color::Gray)).bounds([0.0, data.len() as f64]))
+            .x_axis(
+                Axis::default()
+                    .style(Style::default().fg(Color::Gray))
+                    .bounds([0.0, data.len() as f64]),
+            )
             .y_axis(
                 Axis::default()
                     .style(Style::default().fg(Color::Gray))
                     .bounds([0.0, 100.0])
-                    .labels(vec![Span::raw("0°C"), Span::raw("50°C"), Span::raw("100°C")]),
+                    .labels(vec![
+                        Span::raw("0°C"),
+                        Span::raw("50°C"),
+                        Span::raw("100°C"),
+                    ]),
             );
 
         f.render_widget(chart, area);
@@ -2645,12 +3125,21 @@ impl LiveMonitor {
         if self.gpu_history.is_empty() {
             let msg = Paragraph::new("Collecting GPU utilization data...")
                 .style(Style::default().fg(Color::Gray))
-                .block(Block::default().borders(Borders::ALL).title(" GPU Utilization "));
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(" GPU Utilization "),
+                );
             f.render_widget(msg, area);
             return;
         }
 
-        let data: Vec<(f64, f64)> = self.gpu_history.iter().enumerate().map(|(i, s)| (i as f64, s.util_percent)).collect();
+        let data: Vec<(f64, f64)> = self
+            .gpu_history
+            .iter()
+            .enumerate()
+            .map(|(i, s)| (i as f64, s.util_percent))
+            .collect();
 
         let datasets = vec![Dataset::default()
             .name("Util (%)")
@@ -2666,7 +3155,11 @@ impl LiveMonitor {
                     .border_style(Style::default().fg(colors::BORDER))
                     .title(" GPU Utilization "),
             )
-            .x_axis(Axis::default().style(Style::default().fg(Color::Gray)).bounds([0.0, data.len() as f64]))
+            .x_axis(
+                Axis::default()
+                    .style(Style::default().fg(Color::Gray))
+                    .bounds([0.0, data.len() as f64]),
+            )
             .y_axis(
                 Axis::default()
                     .style(Style::default().fg(Color::Gray))
@@ -2682,7 +3175,11 @@ impl LiveMonitor {
         if self.gpu_history.len() < 10 {
             let msg = Paragraph::new("Collecting data for flame graph (need 10+ samples)...")
                 .style(Style::default().fg(Color::Gray))
-                .block(Block::default().borders(Borders::ALL).title(" GPU Flame Graph "));
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(" GPU Flame Graph "),
+                );
             f.render_widget(msg, area);
             return;
         }
@@ -2731,8 +3228,14 @@ impl LiveMonitor {
         self.draw_run_list(f, chunks[0]);
 
         // Run details/history
-        let selected_run = self.selected_run_id.as_ref().and_then(|id| self.run_manager.get_run(id));
-        let reader = self.selected_run_id.as_ref().and_then(|id| self.metrics_readers.get(id));
+        let selected_run = self
+            .selected_run_id
+            .as_ref()
+            .and_then(|id| self.run_manager.get_run(id));
+        let reader = self
+            .selected_run_id
+            .as_ref()
+            .and_then(|id| self.metrics_readers.get(id));
 
         match (selected_run, reader) {
             (Some(run), Some(reader)) => {
@@ -2747,19 +3250,32 @@ impl LiveMonitor {
             _ => {
                 let msg = Paragraph::new("Select a run to view history")
                     .style(Style::default().fg(Color::Gray))
-                    .block(Block::default().borders(Borders::ALL).title(" Run History "));
+                    .block(
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .title(" Run History "),
+                    );
                 f.render_widget(msg, chunks[1]);
             }
         }
     }
 
-    fn draw_run_history_details(&self, f: &mut Frame, area: Rect, run: &TrainingRun, reader: &LiveMetricsReader) {
+    fn draw_run_history_details(
+        &self,
+        f: &mut Frame,
+        area: Rect,
+        run: &TrainingRun,
+        reader: &LiveMetricsReader,
+    ) {
         let metrics = reader.all_metrics();
         let _first = metrics.front();
         let _last = metrics.back();
 
         let start_time = run.started_at.format("%Y-%m-%d %H:%M:%S").to_string();
-        let end_time = run.ended_at.map(|t| t.format("%H:%M:%S").to_string()).unwrap_or_else(|| "running...".to_string());
+        let end_time = run
+            .ended_at
+            .map(|t| t.format("%H:%M:%S").to_string())
+            .unwrap_or_else(|| "running...".to_string());
 
         let duration = if let Some(end) = run.ended_at {
             let dur = (end - run.started_at).num_seconds();
@@ -2800,11 +3316,17 @@ impl LiveMonitor {
             ]),
             Line::from(vec![
                 Span::styled(" Data pts:   ", Style::default().fg(Color::Gray)),
-                Span::styled(format!("{}", metrics.len()), Style::default().fg(Color::White)),
+                Span::styled(
+                    format!("{}", metrics.len()),
+                    Style::default().fg(Color::White),
+                ),
             ]),
             Line::from(vec![
                 Span::styled(" Best Loss:  ", Style::default().fg(Color::Gray)),
-                Span::styled(format!("{:.4} @ step {}", run.best_loss, run.best_step), Style::default().fg(colors::PREDICT)),
+                Span::styled(
+                    format!("{:.4} @ step {}", run.best_loss, run.best_step),
+                    Style::default().fg(colors::PREDICT),
+                ),
             ]),
         ];
 
@@ -2822,74 +3344,127 @@ impl LiveMonitor {
         let help_text = vec![
             Line::from(Span::styled(
                 " KEYBOARD SHORTCUTS",
-                Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD),
             )),
             Line::from(Span::raw("")),
+            Line::from(vec![Span::styled(
+                " Navigation",
+                Style::default()
+                    .fg(colors::WARMUP)
+                    .add_modifier(Modifier::BOLD),
+            )]),
             Line::from(vec![
-                Span::styled(" Navigation", Style::default().fg(colors::WARMUP).add_modifier(Modifier::BOLD)),
-            ]),
-            Line::from(vec![
-                Span::styled("   Tab / Shift+Tab  ", Style::default().fg(colors::HELP_KEY)),
+                Span::styled(
+                    "   Tab / Shift+Tab  ",
+                    Style::default().fg(colors::HELP_KEY),
+                ),
                 Span::raw("Cycle through main tabs"),
             ]),
             Line::from(vec![
-                Span::styled("   1-5              ", Style::default().fg(colors::HELP_KEY)),
+                Span::styled(
+                    "   1-5              ",
+                    Style::default().fg(colors::HELP_KEY),
+                ),
                 Span::raw("Jump to specific tab (Overview/Charts/GPU/History/Help)"),
             ]),
             Line::from(vec![
-                Span::styled("   j/k or ↑/↓       ", Style::default().fg(colors::HELP_KEY)),
+                Span::styled(
+                    "   j/k or ↑/↓       ",
+                    Style::default().fg(colors::HELP_KEY),
+                ),
                 Span::raw("Navigate between runs"),
             ]),
             Line::from(vec![
-                Span::styled("   [/] or ←/→       ", Style::default().fg(colors::HELP_KEY)),
+                Span::styled(
+                    "   [/] or ←/→       ",
+                    Style::default().fg(colors::HELP_KEY),
+                ),
                 Span::raw("Cycle chart types / GPU views within tabs"),
             ]),
             Line::from(Span::raw("")),
+            Line::from(vec![Span::styled(
+                " Mode Toggle",
+                Style::default()
+                    .fg(colors::WARMUP)
+                    .add_modifier(Modifier::BOLD),
+            )]),
             Line::from(vec![
-                Span::styled(" Mode Toggle", Style::default().fg(colors::WARMUP).add_modifier(Modifier::BOLD)),
-            ]),
-            Line::from(vec![
-                Span::styled("   l                ", Style::default().fg(colors::HELP_KEY)),
+                Span::styled(
+                    "   l                ",
+                    Style::default().fg(colors::HELP_KEY),
+                ),
                 Span::raw("Toggle LIVE ↔ HISTORY mode"),
             ]),
             Line::from(Span::raw("")),
+            Line::from(vec![Span::styled(
+                " Actions",
+                Style::default()
+                    .fg(colors::WARMUP)
+                    .add_modifier(Modifier::BOLD),
+            )]),
             Line::from(vec![
-                Span::styled(" Actions", Style::default().fg(colors::WARMUP).add_modifier(Modifier::BOLD)),
-            ]),
-            Line::from(vec![
-                Span::styled("   r                ", Style::default().fg(colors::HELP_KEY)),
+                Span::styled(
+                    "   r                ",
+                    Style::default().fg(colors::HELP_KEY),
+                ),
                 Span::raw("Refresh / rediscover runs"),
             ]),
             Line::from(vec![
-                Span::styled("   c                ", Style::default().fg(colors::HELP_KEY)),
+                Span::styled(
+                    "   c                ",
+                    Style::default().fg(colors::HELP_KEY),
+                ),
                 Span::raw("Clear cached metrics for selected run"),
             ]),
             Line::from(vec![
-                Span::styled("   ? or F1          ", Style::default().fg(colors::HELP_KEY)),
+                Span::styled(
+                    "   ? or F1          ",
+                    Style::default().fg(colors::HELP_KEY),
+                ),
                 Span::raw("Show help overlay"),
             ]),
             Line::from(vec![
-                Span::styled("   q or Esc         ", Style::default().fg(colors::HELP_KEY)),
+                Span::styled(
+                    "   q or Esc         ",
+                    Style::default().fg(colors::HELP_KEY),
+                ),
                 Span::raw("Quit"),
             ]),
             Line::from(Span::raw("")),
+            Line::from(vec![Span::styled(
+                " Chart Types (Charts Tab)",
+                Style::default()
+                    .fg(colors::WARMUP)
+                    .add_modifier(Modifier::BOLD),
+            )]),
             Line::from(vec![
-                Span::styled(" Chart Types (Charts Tab)", Style::default().fg(colors::WARMUP).add_modifier(Modifier::BOLD)),
-            ]),
-            Line::from(vec![
-                Span::styled("   Loss (Line)       ", Style::default().fg(colors::LOSS_LINE)),
+                Span::styled(
+                    "   Loss (Line)       ",
+                    Style::default().fg(colors::LOSS_LINE),
+                ),
                 Span::raw("Standard line chart of loss over steps"),
             ]),
             Line::from(vec![
-                Span::styled("   Loss (Scatter)    ", Style::default().fg(colors::LOSS_SCATTER)),
+                Span::styled(
+                    "   Loss (Scatter)    ",
+                    Style::default().fg(colors::LOSS_SCATTER),
+                ),
                 Span::raw("Scatter plot with EMA trend overlay"),
             ]),
             Line::from(vec![
-                Span::styled("   Gradient Norm     ", Style::default().fg(colors::GRAD_NORM)),
+                Span::styled(
+                    "   Gradient Norm     ",
+                    Style::default().fg(colors::GRAD_NORM),
+                ),
                 Span::raw("Gradient magnitude over training"),
             ]),
             Line::from(vec![
-                Span::styled("   Step Time         ", Style::default().fg(colors::STEP_TIME)),
+                Span::styled(
+                    "   Step Time         ",
+                    Style::default().fg(colors::STEP_TIME),
+                ),
                 Span::raw("Time per training step (ms)"),
             ]),
             Line::from(vec![
@@ -2897,71 +3472,119 @@ impl LiveMonitor {
                 Span::raw("Statistics by training phase"),
             ]),
             Line::from(vec![
-                Span::styled("   Prediction Acc    ", Style::default().fg(colors::PREDICTION)),
+                Span::styled(
+                    "   Prediction Acc    ",
+                    Style::default().fg(colors::PREDICTION),
+                ),
                 Span::raw("Prediction error in hybrid training"),
             ]),
             Line::from(Span::raw("")),
+            Line::from(vec![Span::styled(
+                " Chart Enhancements (Charts Tab)",
+                Style::default()
+                    .fg(colors::WARMUP)
+                    .add_modifier(Modifier::BOLD),
+            )]),
             Line::from(vec![
-                Span::styled(" Chart Enhancements (Charts Tab)", Style::default().fg(colors::WARMUP).add_modifier(Modifier::BOLD)),
-            ]),
-            Line::from(vec![
-                Span::styled("   s                 ", Style::default().fg(colors::HELP_KEY)),
+                Span::styled(
+                    "   s                 ",
+                    Style::default().fg(colors::HELP_KEY),
+                ),
                 Span::raw("Cycle smoothing: Raw -> EMA -> SMA -> Bilateral"),
             ]),
             Line::from(vec![
-                Span::styled("   t                 ", Style::default().fg(colors::HELP_KEY)),
+                Span::styled(
+                    "   t                 ",
+                    Style::default().fg(colors::HELP_KEY),
+                ),
                 Span::raw("Toggle trend lines (EMA-10/50, linear regression)"),
             ]),
             Line::from(vec![
-                Span::styled("   b                 ", Style::default().fg(colors::HELP_KEY)),
+                Span::styled(
+                    "   b                 ",
+                    Style::default().fg(colors::HELP_KEY),
+                ),
                 Span::raw("Toggle Bollinger Bands (2 std dev, 20-step)"),
             ]),
             Line::from(vec![
-                Span::styled("   v                 ", Style::default().fg(colors::HELP_KEY)),
+                Span::styled(
+                    "   v                 ",
+                    Style::default().fg(colors::HELP_KEY),
+                ),
                 Span::raw("Toggle velocity overlay (loss derivative)"),
             ]),
             Line::from(Span::raw("")),
+            Line::from(vec![Span::styled(
+                " Signal Indicators",
+                Style::default()
+                    .fg(colors::WARMUP)
+                    .add_modifier(Modifier::BOLD),
+            )]),
             Line::from(vec![
-                Span::styled(" Signal Indicators", Style::default().fg(colors::WARMUP).add_modifier(Modifier::BOLD)),
-            ]),
-            Line::from(vec![
-                Span::styled("   !! (Red)          ", Style::default().fg(colors::SIGNAL_SPIKE)),
+                Span::styled(
+                    "   !! (Red)          ",
+                    Style::default().fg(colors::SIGNAL_SPIKE),
+                ),
                 Span::raw("Loss spike detected"),
             ]),
             Line::from(vec![
-                Span::styled("   ~~ (Yellow)       ", Style::default().fg(colors::SIGNAL_PLATEAU)),
+                Span::styled(
+                    "   ~~ (Yellow)       ",
+                    Style::default().fg(colors::SIGNAL_PLATEAU),
+                ),
                 Span::raw("Plateau warning (loss not improving)"),
             ]),
             Line::from(vec![
-                Span::styled("   <> (Blue)         ", Style::default().fg(colors::SIGNAL_INFLECTION)),
+                Span::styled(
+                    "   <> (Blue)         ",
+                    Style::default().fg(colors::SIGNAL_INFLECTION),
+                ),
                 Span::raw("Inflection point (curvature change)"),
             ]),
             Line::from(vec![
-                Span::styled("   OK (Green)        ", Style::default().fg(colors::SIGNAL_RECOVERY)),
+                Span::styled(
+                    "   OK (Green)        ",
+                    Style::default().fg(colors::SIGNAL_RECOVERY),
+                ),
                 Span::raw("Recovery confirmed after issue"),
             ]),
             Line::from(Span::raw("")),
-            Line::from(vec![
-                Span::styled(" GPU Views (GPU Tab)", Style::default().fg(colors::WARMUP).add_modifier(Modifier::BOLD)),
-            ]),
+            Line::from(vec![Span::styled(
+                " GPU Views (GPU Tab)",
+                Style::default()
+                    .fg(colors::WARMUP)
+                    .add_modifier(Modifier::BOLD),
+            )]),
             Line::from(vec![
                 Span::styled("   Summary           ", Style::default().fg(Color::White)),
                 Span::raw("Full GPU info: device, clocks, power, etc."),
             ]),
             Line::from(vec![
-                Span::styled("   Memory            ", Style::default().fg(colors::MEMORY_OK)),
+                Span::styled(
+                    "   Memory            ",
+                    Style::default().fg(colors::MEMORY_OK),
+                ),
                 Span::raw("VRAM usage over time"),
             ]),
             Line::from(vec![
-                Span::styled("   Thermal           ", Style::default().fg(colors::TEMP_WARN)),
+                Span::styled(
+                    "   Thermal           ",
+                    Style::default().fg(colors::TEMP_WARN),
+                ),
                 Span::raw("GPU temperature history"),
             ]),
             Line::from(vec![
-                Span::styled("   Utilization       ", Style::default().fg(colors::PREDICT)),
+                Span::styled(
+                    "   Utilization       ",
+                    Style::default().fg(colors::PREDICT),
+                ),
                 Span::raw("GPU compute utilization %"),
             ]),
             Line::from(vec![
-                Span::styled("   Flame             ", Style::default().fg(colors::FLAME_WARM)),
+                Span::styled(
+                    "   Flame             ",
+                    Style::default().fg(colors::FLAME_WARM),
+                ),
                 Span::raw("Activity flame graph visualization"),
             ]),
         ];
@@ -2997,33 +3620,85 @@ impl LiveMonitor {
         let help_text = vec![
             Line::from(Span::styled(
                 " QUICK REFERENCE ",
-                Style::default().fg(colors::TAB_ACTIVE).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(colors::TAB_ACTIVE)
+                    .add_modifier(Modifier::BOLD),
             )),
-            Line::from(Span::styled("─────────────────────────────────────────", Style::default().fg(colors::BORDER))),
+            Line::from(Span::styled(
+                "─────────────────────────────────────────",
+                Style::default().fg(colors::BORDER),
+            )),
             Line::from(Span::raw("")),
             // Navigation section
-            Line::from(Span::styled(" Navigation", Style::default().fg(colors::WARMUP).add_modifier(Modifier::BOLD))),
+            Line::from(Span::styled(
+                " Navigation",
+                Style::default()
+                    .fg(colors::WARMUP)
+                    .add_modifier(Modifier::BOLD),
+            )),
             Line::from(vec![
-                Span::styled("   Tab      ", Style::default().fg(colors::HELP_KEY).add_modifier(Modifier::BOLD)),
-                Span::styled("Cycle through main tabs", Style::default().fg(colors::LABEL_BRIGHT)),
+                Span::styled(
+                    "   Tab      ",
+                    Style::default()
+                        .fg(colors::HELP_KEY)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(
+                    "Cycle through main tabs",
+                    Style::default().fg(colors::LABEL_BRIGHT),
+                ),
             ]),
             Line::from(vec![
-                Span::styled("   1-6      ", Style::default().fg(colors::HELP_KEY).add_modifier(Modifier::BOLD)),
-                Span::styled("Jump to specific tab", Style::default().fg(colors::LABEL_BRIGHT)),
+                Span::styled(
+                    "   1-6      ",
+                    Style::default()
+                        .fg(colors::HELP_KEY)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(
+                    "Jump to specific tab",
+                    Style::default().fg(colors::LABEL_BRIGHT),
+                ),
             ]),
             Line::from(vec![
-                Span::styled("   j/k ↑↓   ", Style::default().fg(colors::HELP_KEY).add_modifier(Modifier::BOLD)),
-                Span::styled("Navigate between runs", Style::default().fg(colors::LABEL_BRIGHT)),
+                Span::styled(
+                    "   j/k ↑↓   ",
+                    Style::default()
+                        .fg(colors::HELP_KEY)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(
+                    "Navigate between runs",
+                    Style::default().fg(colors::LABEL_BRIGHT),
+                ),
             ]),
             Line::from(vec![
-                Span::styled("   [/] ←→   ", Style::default().fg(colors::HELP_KEY).add_modifier(Modifier::BOLD)),
-                Span::styled("Cycle chart types / sub-views", Style::default().fg(colors::LABEL_BRIGHT)),
+                Span::styled(
+                    "   [/] ←→   ",
+                    Style::default()
+                        .fg(colors::HELP_KEY)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(
+                    "Cycle chart types / sub-views",
+                    Style::default().fg(colors::LABEL_BRIGHT),
+                ),
             ]),
             Line::from(Span::raw("")),
             // Actions section
-            Line::from(Span::styled(" Actions", Style::default().fg(colors::WARMUP).add_modifier(Modifier::BOLD))),
+            Line::from(Span::styled(
+                " Actions",
+                Style::default()
+                    .fg(colors::WARMUP)
+                    .add_modifier(Modifier::BOLD),
+            )),
             Line::from(vec![
-                Span::styled("   l        ", Style::default().fg(colors::HELP_KEY).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    "   l        ",
+                    Style::default()
+                        .fg(colors::HELP_KEY)
+                        .add_modifier(Modifier::BOLD),
+                ),
                 Span::styled("Toggle ", Style::default().fg(colors::LABEL_BRIGHT)),
                 Span::styled("LIVE", Style::default().fg(colors::LIVE_INDICATOR)),
                 Span::styled(" / ", Style::default().fg(colors::LABEL_BRIGHT)),
@@ -3031,31 +3706,81 @@ impl LiveMonitor {
                 Span::styled(" mode", Style::default().fg(colors::LABEL_BRIGHT)),
             ]),
             Line::from(vec![
-                Span::styled("   r        ", Style::default().fg(colors::HELP_KEY).add_modifier(Modifier::BOLD)),
-                Span::styled("Refresh / rediscover runs", Style::default().fg(colors::LABEL_BRIGHT)),
+                Span::styled(
+                    "   r        ",
+                    Style::default()
+                        .fg(colors::HELP_KEY)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(
+                    "Refresh / rediscover runs",
+                    Style::default().fg(colors::LABEL_BRIGHT),
+                ),
             ]),
             Line::from(vec![
-                Span::styled("   c        ", Style::default().fg(colors::HELP_KEY).add_modifier(Modifier::BOLD)),
-                Span::styled("Clear cached metrics", Style::default().fg(colors::LABEL_BRIGHT)),
+                Span::styled(
+                    "   c        ",
+                    Style::default()
+                        .fg(colors::HELP_KEY)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(
+                    "Clear cached metrics",
+                    Style::default().fg(colors::LABEL_BRIGHT),
+                ),
             ]),
             Line::from(Span::raw("")),
             // Chart enhancements
-            Line::from(Span::styled(" Chart Enhancements (Charts tab)", Style::default().fg(colors::WARMUP).add_modifier(Modifier::BOLD))),
+            Line::from(Span::styled(
+                " Chart Enhancements (Charts tab)",
+                Style::default()
+                    .fg(colors::WARMUP)
+                    .add_modifier(Modifier::BOLD),
+            )),
             Line::from(vec![
-                Span::styled("   s        ", Style::default().fg(colors::HELP_KEY).add_modifier(Modifier::BOLD)),
-                Span::styled("Cycle smoothing methods", Style::default().fg(colors::LABEL_BRIGHT)),
+                Span::styled(
+                    "   s        ",
+                    Style::default()
+                        .fg(colors::HELP_KEY)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(
+                    "Cycle smoothing methods",
+                    Style::default().fg(colors::LABEL_BRIGHT),
+                ),
             ]),
             Line::from(vec![
-                Span::styled("   t/b/v    ", Style::default().fg(colors::HELP_KEY).add_modifier(Modifier::BOLD)),
-                Span::styled("Toggle trends/Bollinger/velocity", Style::default().fg(colors::LABEL_BRIGHT)),
+                Span::styled(
+                    "   t/b/v    ",
+                    Style::default()
+                        .fg(colors::HELP_KEY)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(
+                    "Toggle trends/Bollinger/velocity",
+                    Style::default().fg(colors::LABEL_BRIGHT),
+                ),
             ]),
             Line::from(Span::raw("")),
-            Line::from(Span::styled("─────────────────────────────────────────", Style::default().fg(colors::BORDER))),
+            Line::from(Span::styled(
+                "─────────────────────────────────────────",
+                Style::default().fg(colors::BORDER),
+            )),
             Line::from(vec![
-                Span::styled("   q/Esc    ", Style::default().fg(colors::HELP_KEY).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    "   q/Esc    ",
+                    Style::default()
+                        .fg(colors::HELP_KEY)
+                        .add_modifier(Modifier::BOLD),
+                ),
                 Span::styled("Quit  ", Style::default().fg(colors::LABEL_BRIGHT)),
                 Span::styled("│  ", Style::default().fg(colors::BORDER)),
-                Span::styled("?       ", Style::default().fg(colors::HELP_KEY).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    "?       ",
+                    Style::default()
+                        .fg(colors::HELP_KEY)
+                        .add_modifier(Modifier::BOLD),
+                ),
                 Span::styled("Close this overlay", Style::default().fg(colors::LABEL_DIM)),
             ]),
         ];
@@ -3065,7 +3790,12 @@ impl LiveMonitor {
                 .borders(Borders::ALL)
                 .border_style(Style::default().fg(colors::TAB_ACTIVE))
                 .style(Style::default().bg(Color::Rgb(25, 25, 40)))
-                .title(Span::styled(" ? Help ", Style::default().fg(colors::TAB_ACTIVE).add_modifier(Modifier::BOLD))),
+                .title(Span::styled(
+                    " ? Help ",
+                    Style::default()
+                        .fg(colors::TAB_ACTIVE)
+                        .add_modifier(Modifier::BOLD),
+                )),
         );
 
         f.render_widget(popup, popup_area);
@@ -3085,33 +3815,69 @@ impl LiveMonitor {
         let mode_indicator = match self.view_mode {
             ViewMode::Live => Span::styled(
                 format!(" {} {} ", '\u{25CF}', mode_str), // Bullet point
-                Style::default().fg(Color::Black).bg(mode_color).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(Color::Black)
+                    .bg(mode_color)
+                    .add_modifier(Modifier::BOLD),
             ),
             ViewMode::History => Span::styled(
                 format!(" {} {} ", '\u{25C6}', mode_str), // Diamond
-                Style::default().fg(Color::Black).bg(mode_color).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(Color::Black)
+                    .bg(mode_color)
+                    .add_modifier(Modifier::BOLD),
             ),
         };
 
         let footer = Paragraph::new(Line::from(vec![
             mode_indicator,
             Span::styled(" ", Style::default()),
-            Span::styled("Tab", Style::default().fg(colors::HELP_KEY).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "Tab",
+                Style::default()
+                    .fg(colors::HELP_KEY)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled(":tabs ", Style::default().fg(colors::LABEL_DIM)),
             Span::styled("│ ", Style::default().fg(colors::BORDER)),
-            Span::styled("j/k", Style::default().fg(colors::HELP_KEY).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "j/k",
+                Style::default()
+                    .fg(colors::HELP_KEY)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled(":runs ", Style::default().fg(colors::LABEL_DIM)),
             Span::styled("│ ", Style::default().fg(colors::BORDER)),
-            Span::styled("[/]", Style::default().fg(colors::HELP_KEY).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "[/]",
+                Style::default()
+                    .fg(colors::HELP_KEY)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled(":views ", Style::default().fg(colors::LABEL_DIM)),
             Span::styled("│ ", Style::default().fg(colors::BORDER)),
-            Span::styled("l", Style::default().fg(colors::HELP_KEY).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "l",
+                Style::default()
+                    .fg(colors::HELP_KEY)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled(":mode ", Style::default().fg(colors::LABEL_DIM)),
             Span::styled("│ ", Style::default().fg(colors::BORDER)),
-            Span::styled("?", Style::default().fg(colors::HELP_KEY).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "?",
+                Style::default()
+                    .fg(colors::HELP_KEY)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled(":help ", Style::default().fg(colors::LABEL_DIM)),
             Span::styled("│ ", Style::default().fg(colors::BORDER)),
-            Span::styled("q", Style::default().fg(colors::HELP_KEY).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "q",
+                Style::default()
+                    .fg(colors::HELP_KEY)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled(":quit", Style::default().fg(colors::LABEL_DIM)),
         ]))
         .style(Style::default().bg(colors::HEADER_BG));
@@ -3134,18 +3900,22 @@ impl LiveMonitor {
         self.draw_dimension_view_selector(f, chunks[0]);
 
         // Main visualization content
-        let selected_run = self.selected_run_id.as_ref().and_then(|id| self.run_manager.get_run(id));
-        let reader = self.selected_run_id.as_ref().and_then(|id| self.metrics_readers.get(id));
+        let selected_run = self
+            .selected_run_id
+            .as_ref()
+            .and_then(|id| self.run_manager.get_run(id));
+        let reader = self
+            .selected_run_id
+            .as_ref()
+            .and_then(|id| self.metrics_readers.get(id));
 
         match (selected_run, reader) {
-            (Some(run), Some(reader)) => {
-                match self.dimension_view {
-                    DimensionView::Heatmap4D => self.draw_4d_heatmap(f, chunks[1], run, reader),
-                    DimensionView::Slice5D => self.draw_5d_slice(f, chunks[1], run, reader),
-                    DimensionView::Animation => self.draw_animation_view(f, chunks[1], run, reader),
-                    DimensionView::Summary => self.draw_dimension_summary(f, chunks[1], run, reader),
-                }
-            }
+            (Some(run), Some(reader)) => match self.dimension_view {
+                DimensionView::Heatmap4D => self.draw_4d_heatmap(f, chunks[1], run, reader),
+                DimensionView::Slice5D => self.draw_5d_slice(f, chunks[1], run, reader),
+                DimensionView::Animation => self.draw_animation_view(f, chunks[1], run, reader),
+                DimensionView::Summary => self.draw_dimension_summary(f, chunks[1], run, reader),
+            },
             _ => {
                 let msg = Paragraph::new(vec![
                     Line::from(""),
@@ -3175,7 +3945,9 @@ impl LiveMonitor {
             .iter()
             .map(|v| {
                 let style = if *v == self.dimension_view {
-                    Style::default().fg(colors::TAB_ACTIVE).add_modifier(Modifier::BOLD)
+                    Style::default()
+                        .fg(colors::TAB_ACTIVE)
+                        .add_modifier(Modifier::BOLD)
                 } else {
                     Style::default().fg(colors::TAB_INACTIVE)
                 };
@@ -3202,7 +3974,13 @@ impl LiveMonitor {
     }
 
     /// Draw 4D Layer x Time heatmap with gradient intensity and loss state.
-    fn draw_4d_heatmap(&self, f: &mut Frame, area: Rect, run: &TrainingRun, reader: &LiveMetricsReader) {
+    fn draw_4d_heatmap(
+        &self,
+        f: &mut Frame,
+        area: Rect,
+        run: &TrainingRun,
+        reader: &LiveMetricsReader,
+    ) {
         let chunks = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([Constraint::Min(50), Constraint::Length(35)])
@@ -3212,7 +3990,13 @@ impl LiveMonitor {
         self.draw_4d_heatmap_legend(f, chunks[1], reader);
     }
 
-    fn draw_4d_heatmap_grid(&self, f: &mut Frame, area: Rect, run: &TrainingRun, reader: &LiveMetricsReader) {
+    fn draw_4d_heatmap_grid(
+        &self,
+        f: &mut Frame,
+        area: Rect,
+        run: &TrainingRun,
+        reader: &LiveMetricsReader,
+    ) {
         let metrics = reader.all_metrics();
         let num_layers = run.config.num_layers;
 
@@ -3228,8 +4012,13 @@ impl LiveMonitor {
         let mut lines: Vec<Line> = Vec::new();
 
         lines.push(Line::from(Span::styled(
-            format!("4D Layer x Time Heatmap (gradient intensity, last {} steps)", recent_metrics.len()),
-            Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
+            format!(
+                "4D Layer x Time Heatmap (gradient intensity, last {} steps)",
+                recent_metrics.len()
+            ),
+            Style::default()
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD),
         )));
 
         lines.push(Line::from(Span::styled(
@@ -3240,13 +4029,26 @@ impl LiveMonitor {
         let step_labels: String = if recent_metrics.len() > 10 {
             let first_step = recent_metrics.first().map(|m| m.step).unwrap_or(0);
             let last_step = recent_metrics.last().map(|m| m.step).unwrap_or(0);
-            format!("Layer   {:>6} {:>width$} {:>6}", first_step, "Time (steps)", last_step, width = steps_to_show.saturating_sub(14))
+            format!(
+                "Layer   {:>6} {:>width$} {:>6}",
+                first_step,
+                "Time (steps)",
+                last_step,
+                width = steps_to_show.saturating_sub(14)
+            )
         } else {
             "Layer   <-- Time (steps) -->".to_string()
         };
-        lines.push(Line::from(Span::styled(step_labels, Style::default().fg(Color::Gray))));
+        lines.push(Line::from(Span::styled(
+            step_labels,
+            Style::default().fg(Color::Gray),
+        )));
 
-        let layer_step = if num_layers > layers_to_show { num_layers / layers_to_show } else { 1 };
+        let layer_step = if num_layers > layers_to_show {
+            num_layers / layers_to_show
+        } else {
+            1
+        };
 
         for display_idx in 0..layers_to_show {
             let layer_idx = if num_layers > layers_to_show {
@@ -3258,24 +4060,36 @@ impl LiveMonitor {
             let layer_name = format!("layer_{}", layer_idx);
             let mut row_spans: Vec<Span> = Vec::new();
 
-            row_spans.push(Span::styled(format!("{:>5}  ", layer_idx), Style::default().fg(Color::Gray)));
+            row_spans.push(Span::styled(
+                format!("{:>5}  ", layer_idx),
+                Style::default().fg(Color::Gray),
+            ));
 
             for metric in &recent_metrics {
                 let grad_norm = metric
                     .layer_gradients
                     .as_ref()
-                    .and_then(|g| g.get(&layer_name).or_else(|| g.get(&format!("transformer.layer.{}", layer_idx))))
+                    .and_then(|g| {
+                        g.get(&layer_name)
+                            .or_else(|| g.get(&format!("transformer.layer.{}", layer_idx)))
+                    })
                     .copied()
                     .unwrap_or(metric.gradient_norm / num_layers as f32);
 
                 let cell_char = self.loss_to_char(metric.loss);
                 let cell_color = self.gradient_to_color(grad_norm);
-                row_spans.push(Span::styled(cell_char.to_string(), Style::default().fg(cell_color)));
+                row_spans.push(Span::styled(
+                    cell_char.to_string(),
+                    Style::default().fg(cell_color),
+                ));
             }
 
             let remaining = steps_to_show.saturating_sub(recent_metrics.len());
             if remaining > 0 {
-                row_spans.push(Span::styled(" ".repeat(remaining), Style::default().fg(Color::DarkGray)));
+                row_spans.push(Span::styled(
+                    " ".repeat(remaining),
+                    Style::default().fg(Color::DarkGray),
+                ));
             }
 
             lines.push(Line::from(row_spans));
@@ -3307,26 +4121,92 @@ impl LiveMonitor {
         let latest = reader.latest();
         let mut lines: Vec<Line> = Vec::new();
 
-        lines.push(Line::from(Span::styled(" Legend", Style::default().fg(Color::White).add_modifier(Modifier::BOLD))));
+        lines.push(Line::from(Span::styled(
+            " Legend",
+            Style::default()
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD),
+        )));
         lines.push(Line::from(""));
-        lines.push(Line::from(Span::styled(" Character = Loss State:", Style::default().fg(Color::Gray))));
-        lines.push(Line::from(vec![Span::raw("   "), Span::styled("X", Style::default().fg(colors::PREDICT)), Span::raw(" healthy  (loss < 2.0)")]));
-        lines.push(Line::from(vec![Span::raw("   "), Span::styled("#", Style::default().fg(colors::PAUSED_RUN)), Span::raw(" elevated (2.0 - 5.0)")]));
-        lines.push(Line::from(vec![Span::raw("   "), Span::styled("%", Style::default().fg(colors::FLAME_WARM)), Span::raw(" warning  (5.0 - 10.0)")]));
-        lines.push(Line::from(vec![Span::raw("   "), Span::styled("@", Style::default().fg(colors::FAILED_RUN)), Span::raw(" critical (> 10.0)")]));
+        lines.push(Line::from(Span::styled(
+            " Character = Loss State:",
+            Style::default().fg(Color::Gray),
+        )));
+        lines.push(Line::from(vec![
+            Span::raw("   "),
+            Span::styled("X", Style::default().fg(colors::PREDICT)),
+            Span::raw(" healthy  (loss < 2.0)"),
+        ]));
+        lines.push(Line::from(vec![
+            Span::raw("   "),
+            Span::styled("#", Style::default().fg(colors::PAUSED_RUN)),
+            Span::raw(" elevated (2.0 - 5.0)"),
+        ]));
+        lines.push(Line::from(vec![
+            Span::raw("   "),
+            Span::styled("%", Style::default().fg(colors::FLAME_WARM)),
+            Span::raw(" warning  (5.0 - 10.0)"),
+        ]));
+        lines.push(Line::from(vec![
+            Span::raw("   "),
+            Span::styled("@", Style::default().fg(colors::FAILED_RUN)),
+            Span::raw(" critical (> 10.0)"),
+        ]));
         lines.push(Line::from(""));
-        lines.push(Line::from(Span::styled(" Color = Gradient Norm:", Style::default().fg(Color::Gray))));
-        lines.push(Line::from(vec![Span::raw("   "), Span::styled("*", Style::default().fg(Color::Rgb(50, 50, 200))), Span::raw(" vanishing (< 0.001)")]));
-        lines.push(Line::from(vec![Span::raw("   "), Span::styled("*", Style::default().fg(Color::Rgb(100, 255, 100))), Span::raw(" healthy   (0.01-1.0)")]));
-        lines.push(Line::from(vec![Span::raw("   "), Span::styled("*", Style::default().fg(Color::Rgb(255, 200, 50))), Span::raw(" elevated  (1.0-10.0)")]));
-        lines.push(Line::from(vec![Span::raw("   "), Span::styled("*", Style::default().fg(Color::Rgb(255, 50, 50))), Span::raw(" exploding (> 10.0)")]));
+        lines.push(Line::from(Span::styled(
+            " Color = Gradient Norm:",
+            Style::default().fg(Color::Gray),
+        )));
+        lines.push(Line::from(vec![
+            Span::raw("   "),
+            Span::styled("*", Style::default().fg(Color::Rgb(50, 50, 200))),
+            Span::raw(" vanishing (< 0.001)"),
+        ]));
+        lines.push(Line::from(vec![
+            Span::raw("   "),
+            Span::styled("*", Style::default().fg(Color::Rgb(100, 255, 100))),
+            Span::raw(" healthy   (0.01-1.0)"),
+        ]));
+        lines.push(Line::from(vec![
+            Span::raw("   "),
+            Span::styled("*", Style::default().fg(Color::Rgb(255, 200, 50))),
+            Span::raw(" elevated  (1.0-10.0)"),
+        ]));
+        lines.push(Line::from(vec![
+            Span::raw("   "),
+            Span::styled("*", Style::default().fg(Color::Rgb(255, 50, 50))),
+            Span::raw(" exploding (> 10.0)"),
+        ]));
         lines.push(Line::from(""));
 
         if let Some(m) = latest {
-            lines.push(Line::from(Span::styled(" Current Step:", Style::default().fg(Color::White).add_modifier(Modifier::BOLD))));
-            lines.push(Line::from(vec![Span::raw("   Step: "), Span::styled(format!("{}", m.step), Style::default().fg(colors::PREDICTION))]));
-            lines.push(Line::from(vec![Span::raw("   Loss: "), Span::styled(format!("{:.4}", m.loss), Style::default().fg(colors::LOSS_LINE))]));
-            lines.push(Line::from(vec![Span::raw("   Grad: "), Span::styled(format!("{:.4}", m.gradient_norm), Style::default().fg(self.gradient_to_color(m.gradient_norm)))]));
+            lines.push(Line::from(Span::styled(
+                " Current Step:",
+                Style::default()
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD),
+            )));
+            lines.push(Line::from(vec![
+                Span::raw("   Step: "),
+                Span::styled(
+                    format!("{}", m.step),
+                    Style::default().fg(colors::PREDICTION),
+                ),
+            ]));
+            lines.push(Line::from(vec![
+                Span::raw("   Loss: "),
+                Span::styled(
+                    format!("{:.4}", m.loss),
+                    Style::default().fg(colors::LOSS_LINE),
+                ),
+            ]));
+            lines.push(Line::from(vec![
+                Span::raw("   Grad: "),
+                Span::styled(
+                    format!("{:.4}", m.gradient_norm),
+                    Style::default().fg(self.gradient_to_color(m.gradient_norm)),
+                ),
+            ]));
         }
 
         let para = Paragraph::new(lines).block(
@@ -3339,7 +4219,13 @@ impl LiveMonitor {
         f.render_widget(para, area);
     }
 
-    fn draw_5d_slice(&self, f: &mut Frame, area: Rect, run: &TrainingRun, reader: &LiveMetricsReader) {
+    fn draw_5d_slice(
+        &self,
+        f: &mut Frame,
+        area: Rect,
+        run: &TrainingRun,
+        reader: &LiveMetricsReader,
+    ) {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([Constraint::Length(3), Constraint::Min(10)])
@@ -3347,9 +4233,17 @@ impl LiveMonitor {
 
         let proj_info = Paragraph::new(Line::from(vec![
             Span::styled(" Active Projection: ", Style::default().fg(Color::Gray)),
-            Span::styled(self.dimension_projection.title(), Style::default().fg(colors::TAB_ACTIVE).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                self.dimension_projection.title(),
+                Style::default()
+                    .fg(colors::TAB_ACTIVE)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::raw(" | "),
-            Span::styled(self.dimension_projection.description(), Style::default().fg(Color::White)),
+            Span::styled(
+                self.dimension_projection.description(),
+                Style::default().fg(Color::White),
+            ),
             Span::raw(" | Press 'p' to cycle"),
         ]))
         .block(
@@ -3362,13 +4256,25 @@ impl LiveMonitor {
 
         match self.dimension_projection {
             DimensionProjection::LayerTime => self.draw_4d_heatmap_grid(f, chunks[1], run, reader),
-            DimensionProjection::LayerAttention => self.draw_layer_attention_projection(f, chunks[1], run, reader),
-            DimensionProjection::TimeGradient => self.draw_time_gradient_projection(f, chunks[1], reader),
-            DimensionProjection::LayerLoss => self.draw_layer_loss_projection(f, chunks[1], run, reader),
+            DimensionProjection::LayerAttention => {
+                self.draw_layer_attention_projection(f, chunks[1], run, reader)
+            }
+            DimensionProjection::TimeGradient => {
+                self.draw_time_gradient_projection(f, chunks[1], reader)
+            }
+            DimensionProjection::LayerLoss => {
+                self.draw_layer_loss_projection(f, chunks[1], run, reader)
+            }
         }
     }
 
-    fn draw_layer_attention_projection(&self, f: &mut Frame, area: Rect, run: &TrainingRun, reader: &LiveMetricsReader) {
+    fn draw_layer_attention_projection(
+        &self,
+        f: &mut Frame,
+        area: Rect,
+        run: &TrainingRun,
+        reader: &LiveMetricsReader,
+    ) {
         let metrics = reader.all_metrics();
         let num_layers = run.config.num_layers;
         let num_heads = run.config.num_heads.max(8);
@@ -3381,19 +4287,38 @@ impl LiveMonitor {
         let mut lines: Vec<Line> = Vec::new();
 
         lines.push(Line::from(Span::styled(
-            format!("Layer x Attention Head Activity ({} heads x {} layers)", heads_to_show, layers_to_show),
-            Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
+            format!(
+                "Layer x Attention Head Activity ({} heads x {} layers)",
+                heads_to_show, layers_to_show
+            ),
+            Style::default()
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD),
         )));
-        lines.push(Line::from(Span::styled("-".repeat(inner_width + 8), Style::default().fg(colors::BORDER))));
+        lines.push(Line::from(Span::styled(
+            "-".repeat(inner_width + 8),
+            Style::default().fg(colors::BORDER),
+        )));
 
-        let header: String = format!("Layer   {}", (0..heads_to_show).map(|h| format!("{:>2}", h % 100)).collect::<Vec<_>>().join(""));
-        lines.push(Line::from(Span::styled(header, Style::default().fg(Color::Gray))));
+        let header: String = format!(
+            "Layer   {}",
+            (0..heads_to_show)
+                .map(|h| format!("{:>2}", h % 100))
+                .collect::<Vec<_>>()
+                .join("")
+        );
+        lines.push(Line::from(Span::styled(
+            header,
+            Style::default().fg(Color::Gray),
+        )));
 
         let latest = metrics.back();
 
         for display_idx in 0..layers_to_show {
             let layer_idx = num_layers - 1 - (display_idx * (num_layers / layers_to_show).max(1));
-            if layer_idx >= num_layers { continue; }
+            if layer_idx >= num_layers {
+                continue;
+            }
 
             let layer_name = format!("layer_{}", layer_idx);
             let base_grad = latest
@@ -3403,14 +4328,28 @@ impl LiveMonitor {
                 .unwrap_or(0.1);
 
             let mut row_spans: Vec<Span> = Vec::new();
-            row_spans.push(Span::styled(format!("{:>5}  ", layer_idx), Style::default().fg(Color::Gray)));
+            row_spans.push(Span::styled(
+                format!("{:>5}  ", layer_idx),
+                Style::default().fg(Color::Gray),
+            ));
 
             for head_idx in 0..heads_to_show {
                 let seed = (layer_idx * 17 + head_idx * 31) as f32;
                 let activity = ((seed.sin() + 1.0) / 2.0) * base_grad;
-                let cell_char = if activity < 0.01 { '.' } else if activity < 0.1 { 'o' } else if activity < 0.5 { 'O' } else { '@' };
+                let cell_char = if activity < 0.01 {
+                    '.'
+                } else if activity < 0.1 {
+                    'o'
+                } else if activity < 0.5 {
+                    'O'
+                } else {
+                    '@'
+                };
                 let color = self.gradient_to_color(activity);
-                row_spans.push(Span::styled(format!("{:>2}", cell_char), Style::default().fg(color)));
+                row_spans.push(Span::styled(
+                    format!("{:>2}", cell_char),
+                    Style::default().fg(color),
+                ));
             }
 
             lines.push(Line::from(row_spans));
@@ -3437,7 +4376,14 @@ impl LiveMonitor {
         let inner_width = (area.width as usize).saturating_sub(15);
         let inner_height = (area.height as usize).saturating_sub(5);
 
-        let buckets = ["< 0.001", "0.001-0.01", "0.01-0.1", "0.1-1.0", "1.0-10", "> 10"];
+        let buckets = [
+            "< 0.001",
+            "0.001-0.01",
+            "0.01-0.1",
+            "0.1-1.0",
+            "1.0-10",
+            "> 10",
+        ];
         let num_buckets = buckets.len().min(inner_height);
         let steps_to_show = inner_width.min(80);
 
@@ -3447,15 +4393,29 @@ impl LiveMonitor {
         let mut lines: Vec<Line> = Vec::new();
 
         lines.push(Line::from(Span::styled(
-            format!("Time x Gradient Distribution (last {} steps)", recent_metrics.len()),
-            Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
+            format!(
+                "Time x Gradient Distribution (last {} steps)",
+                recent_metrics.len()
+            ),
+            Style::default()
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD),
         )));
-        lines.push(Line::from(Span::styled("-".repeat(inner_width + 12), Style::default().fg(colors::BORDER))));
-        lines.push(Line::from(Span::styled("Grad Range  <-- Time (steps) -->", Style::default().fg(Color::Gray))));
+        lines.push(Line::from(Span::styled(
+            "-".repeat(inner_width + 12),
+            Style::default().fg(colors::BORDER),
+        )));
+        lines.push(Line::from(Span::styled(
+            "Grad Range  <-- Time (steps) -->",
+            Style::default().fg(Color::Gray),
+        )));
 
         for (bucket_idx, bucket_label) in buckets.iter().enumerate().take(num_buckets) {
             let mut row_spans: Vec<Span> = Vec::new();
-            row_spans.push(Span::styled(format!("{:>10} ", bucket_label), Style::default().fg(Color::Gray)));
+            row_spans.push(Span::styled(
+                format!("{:>10} ", bucket_label),
+                Style::default().fg(Color::Gray),
+            ));
 
             for metric in &recent_metrics {
                 let grad = metric.gradient_norm;
@@ -3468,8 +4428,15 @@ impl LiveMonitor {
                     _ => grad >= 10.0,
                 };
                 let cell_char = if in_bucket { '#' } else { '.' };
-                let color = if in_bucket { self.gradient_to_color(grad) } else { Color::Rgb(40, 40, 40) };
-                row_spans.push(Span::styled(cell_char.to_string(), Style::default().fg(color)));
+                let color = if in_bucket {
+                    self.gradient_to_color(grad)
+                } else {
+                    Color::Rgb(40, 40, 40)
+                };
+                row_spans.push(Span::styled(
+                    cell_char.to_string(),
+                    Style::default().fg(color),
+                ));
             }
 
             lines.push(Line::from(row_spans));
@@ -3485,11 +4452,20 @@ impl LiveMonitor {
             lines.push(Line::from(vec![
                 Span::styled("  Stats: ", Style::default().fg(Color::White)),
                 Span::raw("Min="),
-                Span::styled(format!("{:.4}", min), Style::default().fg(self.gradient_to_color(min))),
+                Span::styled(
+                    format!("{:.4}", min),
+                    Style::default().fg(self.gradient_to_color(min)),
+                ),
                 Span::raw("  Mean="),
-                Span::styled(format!("{:.4}", mean), Style::default().fg(self.gradient_to_color(mean))),
+                Span::styled(
+                    format!("{:.4}", mean),
+                    Style::default().fg(self.gradient_to_color(mean)),
+                ),
                 Span::raw("  Max="),
-                Span::styled(format!("{:.4}", max), Style::default().fg(self.gradient_to_color(max))),
+                Span::styled(
+                    format!("{:.4}", max),
+                    Style::default().fg(self.gradient_to_color(max)),
+                ),
             ]));
         }
 
@@ -3503,7 +4479,13 @@ impl LiveMonitor {
         f.render_widget(para, area);
     }
 
-    fn draw_layer_loss_projection(&self, f: &mut Frame, area: Rect, run: &TrainingRun, reader: &LiveMetricsReader) {
+    fn draw_layer_loss_projection(
+        &self,
+        f: &mut Frame,
+        area: Rect,
+        run: &TrainingRun,
+        reader: &LiveMetricsReader,
+    ) {
         let metrics = reader.all_metrics();
         let num_layers = run.config.num_layers;
         let inner_width = (area.width as usize).saturating_sub(15);
@@ -3514,47 +4496,81 @@ impl LiveMonitor {
 
         lines.push(Line::from(Span::styled(
             "Layer x Loss Contribution (estimated from gradient magnitude)",
-            Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD),
         )));
-        lines.push(Line::from(Span::styled("-".repeat(inner_width + 12), Style::default().fg(colors::BORDER))));
+        lines.push(Line::from(Span::styled(
+            "-".repeat(inner_width + 12),
+            Style::default().fg(colors::BORDER),
+        )));
 
         let latest = metrics.back();
         let layer_gradients = latest.and_then(|m| m.layer_gradients.as_ref());
 
-        let header = format!("Layer      {:>width$}", "Low <--- Loss Contribution ---> High", width = inner_width.min(40));
-        lines.push(Line::from(Span::styled(header, Style::default().fg(Color::Gray))));
+        let header = format!(
+            "Layer      {:>width$}",
+            "Low <--- Loss Contribution ---> High",
+            width = inner_width.min(40)
+        );
+        lines.push(Line::from(Span::styled(
+            header,
+            Style::default().fg(Color::Gray),
+        )));
 
         let mut layer_contributions: Vec<(usize, f32)> = Vec::new();
         let total_grad: f32 = if let Some(grads) = layer_gradients {
             for i in 0..num_layers {
                 let layer_name = format!("layer_{}", i);
-                let grad = grads.get(&layer_name)
+                let grad = grads
+                    .get(&layer_name)
                     .or_else(|| grads.get(&format!("transformer.layer.{}", i)))
                     .copied()
                     .unwrap_or(0.0);
                 layer_contributions.push((i, grad));
             }
             layer_contributions.iter().map(|(_, g)| g).sum()
-        } else { 1.0 };
+        } else {
+            1.0
+        };
 
-        layer_contributions.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        layer_contributions
+            .sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         for (layer_idx, contribution) in layer_contributions.iter().take(layers_to_show) {
-            let normalized = if total_grad > 0.0 { contribution / total_grad } else { 0.0 };
+            let normalized = if total_grad > 0.0 {
+                contribution / total_grad
+            } else {
+                0.0
+            };
             let bar_width = inner_width.min(50);
             let filled = (normalized * bar_width as f32).round() as usize;
             let empty = bar_width.saturating_sub(filled);
 
-            let bar_color = if normalized > 0.2 { colors::FAILED_RUN }
-                else if normalized > 0.1 { colors::FLAME_WARM }
-                else if normalized > 0.05 { colors::PAUSED_RUN }
-                else { colors::PREDICT };
+            let bar_color = if normalized > 0.2 {
+                colors::FAILED_RUN
+            } else if normalized > 0.1 {
+                colors::FLAME_WARM
+            } else if normalized > 0.05 {
+                colors::PAUSED_RUN
+            } else {
+                colors::PREDICT
+            };
 
             lines.push(Line::from(vec![
-                Span::styled(format!("{:>5}     ", layer_idx), Style::default().fg(Color::Gray)),
+                Span::styled(
+                    format!("{:>5}     ", layer_idx),
+                    Style::default().fg(Color::Gray),
+                ),
                 Span::styled("#".repeat(filled), Style::default().fg(bar_color)),
-                Span::styled(".".repeat(empty), Style::default().fg(Color::Rgb(40, 40, 40))),
-                Span::styled(format!(" {:.1}%", normalized * 100.0), Style::default().fg(Color::White)),
+                Span::styled(
+                    ".".repeat(empty),
+                    Style::default().fg(Color::Rgb(40, 40, 40)),
+                ),
+                Span::styled(
+                    format!(" {:.1}%", normalized * 100.0),
+                    Style::default().fg(Color::White),
+                ),
             ]));
         }
 
@@ -3575,7 +4591,13 @@ impl LiveMonitor {
         f.render_widget(para, area);
     }
 
-    fn draw_animation_view(&self, f: &mut Frame, area: Rect, run: &TrainingRun, reader: &LiveMetricsReader) {
+    fn draw_animation_view(
+        &self,
+        f: &mut Frame,
+        area: Rect,
+        run: &TrainingRun,
+        reader: &LiveMetricsReader,
+    ) {
         let metrics = reader.all_metrics();
         let num_layers = run.config.num_layers;
         let inner_height = (area.height as usize).saturating_sub(6);
@@ -3590,29 +4612,60 @@ impl LiveMonitor {
         let current_metric = metrics.iter().nth(frame_idx);
         let mut lines: Vec<Line> = Vec::new();
 
-        let play_indicator = if self.animation_playing { "> Playing" } else { "|| Paused" };
+        let play_indicator = if self.animation_playing {
+            "> Playing"
+        } else {
+            "|| Paused"
+        };
         lines.push(Line::from(vec![
-            Span::styled(format!(" Animation Frame: {}/{} ", frame_idx + 1, metrics.len()), Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
-            Span::styled(format!(" [{}] ", play_indicator), Style::default().fg(if self.animation_playing { colors::ACTIVE_RUN } else { colors::PAUSED_RUN })),
+            Span::styled(
+                format!(" Animation Frame: {}/{} ", frame_idx + 1, metrics.len()),
+                Style::default()
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                format!(" [{}] ", play_indicator),
+                Style::default().fg(if self.animation_playing {
+                    colors::ACTIVE_RUN
+                } else {
+                    colors::PAUSED_RUN
+                }),
+            ),
             Span::styled(" Press SPACE to toggle", Style::default().fg(Color::Gray)),
         ]));
 
-        lines.push(Line::from(Span::styled("-".repeat((area.width as usize).saturating_sub(4)), Style::default().fg(colors::BORDER))));
+        lines.push(Line::from(Span::styled(
+            "-".repeat((area.width as usize).saturating_sub(4)),
+            Style::default().fg(colors::BORDER),
+        )));
 
         if let Some(metric) = current_metric {
             lines.push(Line::from(vec![
                 Span::styled("  Step: ", Style::default().fg(Color::Gray)),
-                Span::styled(format!("{}", metric.step), Style::default().fg(colors::PREDICTION)),
+                Span::styled(
+                    format!("{}", metric.step),
+                    Style::default().fg(colors::PREDICTION),
+                ),
                 Span::styled("  Loss: ", Style::default().fg(Color::Gray)),
-                Span::styled(format!("{:.4}", metric.loss), Style::default().fg(colors::LOSS_LINE)),
+                Span::styled(
+                    format!("{:.4}", metric.loss),
+                    Style::default().fg(colors::LOSS_LINE),
+                ),
                 Span::styled("  Grad: ", Style::default().fg(Color::Gray)),
-                Span::styled(format!("{:.4}", metric.gradient_norm), Style::default().fg(self.gradient_to_color(metric.gradient_norm))),
+                Span::styled(
+                    format!("{:.4}", metric.gradient_norm),
+                    Style::default().fg(self.gradient_to_color(metric.gradient_norm)),
+                ),
             ]));
 
             lines.push(Line::from(""));
 
             if let Some(ref layer_grads) = metric.layer_gradients {
-                lines.push(Line::from(Span::styled("  Layer Gradients at this step:", Style::default().fg(Color::White))));
+                lines.push(Line::from(Span::styled(
+                    "  Layer Gradients at this step:",
+                    Style::default().fg(Color::White),
+                )));
 
                 let mut sorted_layers: Vec<_> = layer_grads.iter().collect();
                 sorted_layers.sort_by(|a, b| a.0.cmp(b.0));
@@ -3626,33 +4679,58 @@ impl LiveMonitor {
                     let color = self.gradient_to_color(grad_val);
 
                     lines.push(Line::from(vec![
-                        Span::styled(format!("    {:>12} ", layer_name), Style::default().fg(Color::Gray)),
+                        Span::styled(
+                            format!("    {:>12} ", layer_name),
+                            Style::default().fg(Color::Gray),
+                        ),
                         Span::styled("#".repeat(filled), Style::default().fg(color)),
-                        Span::styled(".".repeat(empty), Style::default().fg(Color::Rgb(40, 40, 40))),
+                        Span::styled(
+                            ".".repeat(empty),
+                            Style::default().fg(Color::Rgb(40, 40, 40)),
+                        ),
                         Span::styled(format!(" {:.4}", grad), Style::default().fg(color)),
                     ]));
                 }
 
                 if layer_grads.len() > layers_to_show {
-                    lines.push(Line::from(Span::styled(format!("    ... {} more layers", layer_grads.len() - layers_to_show), Style::default().fg(Color::DarkGray))));
+                    lines.push(Line::from(Span::styled(
+                        format!("    ... {} more layers", layer_grads.len() - layers_to_show),
+                        Style::default().fg(Color::DarkGray),
+                    )));
                 }
             } else {
-                lines.push(Line::from(Span::styled("  Layer gradient data not available for this step.", Style::default().fg(Color::DarkGray))));
+                lines.push(Line::from(Span::styled(
+                    "  Layer gradient data not available for this step.",
+                    Style::default().fg(Color::DarkGray),
+                )));
             }
         } else {
-            lines.push(Line::from(Span::styled("  No data available for animation.", Style::default().fg(Color::DarkGray))));
+            lines.push(Line::from(Span::styled(
+                "  No data available for animation.",
+                Style::default().fg(Color::DarkGray),
+            )));
         }
 
         lines.push(Line::from(""));
         let timeline_width = (area.width as usize).saturating_sub(10);
-        let progress = if metrics.is_empty() { 0.0 } else { frame_idx as f64 / metrics.len() as f64 };
+        let progress = if metrics.is_empty() {
+            0.0
+        } else {
+            frame_idx as f64 / metrics.len() as f64
+        };
         let progress_pos = (progress * timeline_width as f64) as usize;
 
         let mut timeline_spans = vec![Span::styled("  [", Style::default().fg(colors::BORDER))];
         for i in 0..timeline_width {
-            let char_style = if i == progress_pos { Style::default().fg(colors::TAB_ACTIVE).add_modifier(Modifier::BOLD) }
-                else if i < progress_pos { Style::default().fg(colors::PREDICTION) }
-                else { Style::default().fg(Color::Rgb(60, 60, 60)) };
+            let char_style = if i == progress_pos {
+                Style::default()
+                    .fg(colors::TAB_ACTIVE)
+                    .add_modifier(Modifier::BOLD)
+            } else if i < progress_pos {
+                Style::default().fg(colors::PREDICTION)
+            } else {
+                Style::default().fg(Color::Rgb(60, 60, 60))
+            };
             let ch = if i == progress_pos { "V" } else { "-" };
             timeline_spans.push(Span::styled(ch, char_style));
         }
@@ -3669,77 +4747,146 @@ impl LiveMonitor {
         f.render_widget(para, area);
     }
 
-    fn draw_dimension_summary(&self, f: &mut Frame, area: Rect, run: &TrainingRun, reader: &LiveMetricsReader) {
+    fn draw_dimension_summary(
+        &self,
+        f: &mut Frame,
+        area: Rect,
+        run: &TrainingRun,
+        reader: &LiveMetricsReader,
+    ) {
         let metrics = reader.all_metrics();
         let num_layers = run.config.num_layers;
         let mut lines: Vec<Line> = Vec::new();
 
-        lines.push(Line::from(Span::styled(" Dimensional Analysis Summary", Style::default().fg(Color::White).add_modifier(Modifier::BOLD))));
+        lines.push(Line::from(Span::styled(
+            " Dimensional Analysis Summary",
+            Style::default()
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD),
+        )));
         lines.push(Line::from(""));
 
-        lines.push(Line::from(Span::styled(" Model Configuration:", Style::default().fg(colors::TAB_ACTIVE))));
+        lines.push(Line::from(Span::styled(
+            " Model Configuration:",
+            Style::default().fg(colors::TAB_ACTIVE),
+        )));
         lines.push(Line::from(vec![
             Span::raw("   Layers: "),
-            Span::styled(format!("{}", num_layers), Style::default().fg(colors::PREDICTION)),
+            Span::styled(
+                format!("{}", num_layers),
+                Style::default().fg(colors::PREDICTION),
+            ),
             Span::raw("  |  Hidden: "),
-            Span::styled(format!("{}", run.config.hidden_size), Style::default().fg(colors::PREDICTION)),
+            Span::styled(
+                format!("{}", run.config.hidden_size),
+                Style::default().fg(colors::PREDICTION),
+            ),
             Span::raw("  |  Heads: "),
-            Span::styled(format!("{}", run.config.num_heads), Style::default().fg(colors::PREDICTION)),
+            Span::styled(
+                format!("{}", run.config.num_heads),
+                Style::default().fg(colors::PREDICTION),
+            ),
         ]));
         lines.push(Line::from(""));
 
-        lines.push(Line::from(Span::styled(" Gradient Statistics:", Style::default().fg(colors::TAB_ACTIVE))));
+        lines.push(Line::from(Span::styled(
+            " Gradient Statistics:",
+            Style::default().fg(colors::TAB_ACTIVE),
+        )));
 
         let grads: Vec<f32> = metrics.iter().map(|m| m.gradient_norm).collect();
         if !grads.is_empty() {
             let mean = grads.iter().sum::<f32>() / grads.len() as f32;
             let max = grads.iter().cloned().fold(0.0f32, f32::max);
             let min = grads.iter().cloned().fold(f32::MAX, f32::min);
-            let variance = grads.iter().map(|g| (g - mean).powi(2)).sum::<f32>() / grads.len() as f32;
+            let variance =
+                grads.iter().map(|g| (g - mean).powi(2)).sum::<f32>() / grads.len() as f32;
             let std_dev = variance.sqrt();
 
             lines.push(Line::from(vec![
                 Span::raw("   Mean: "),
-                Span::styled(format!("{:.6}", mean), Style::default().fg(self.gradient_to_color(mean))),
+                Span::styled(
+                    format!("{:.6}", mean),
+                    Style::default().fg(self.gradient_to_color(mean)),
+                ),
                 Span::raw("  |  Std: "),
                 Span::styled(format!("{:.6}", std_dev), Style::default().fg(Color::White)),
             ]));
             lines.push(Line::from(vec![
                 Span::raw("   Min:  "),
-                Span::styled(format!("{:.6}", min), Style::default().fg(self.gradient_to_color(min))),
+                Span::styled(
+                    format!("{:.6}", min),
+                    Style::default().fg(self.gradient_to_color(min)),
+                ),
                 Span::raw("  |  Max: "),
-                Span::styled(format!("{:.6}", max), Style::default().fg(self.gradient_to_color(max))),
+                Span::styled(
+                    format!("{:.6}", max),
+                    Style::default().fg(self.gradient_to_color(max)),
+                ),
             ]));
 
-            let health = if max > 10.0 || min < 0.0001 { ("Critical - Gradient problems detected", colors::FAILED_RUN) }
-                else if max > 1.0 || min < 0.001 { ("Warning - Gradients outside optimal range", colors::PAUSED_RUN) }
-                else { ("Healthy - Gradients in good range", colors::PREDICT) };
-            lines.push(Line::from(vec![Span::raw("   Health: "), Span::styled(health.0, Style::default().fg(health.1))]));
+            let health = if max > 10.0 || min < 0.0001 {
+                ("Critical - Gradient problems detected", colors::FAILED_RUN)
+            } else if max > 1.0 || min < 0.001 {
+                (
+                    "Warning - Gradients outside optimal range",
+                    colors::PAUSED_RUN,
+                )
+            } else {
+                ("Healthy - Gradients in good range", colors::PREDICT)
+            };
+            lines.push(Line::from(vec![
+                Span::raw("   Health: "),
+                Span::styled(health.0, Style::default().fg(health.1)),
+            ]));
         }
 
         lines.push(Line::from(""));
-        lines.push(Line::from(Span::styled(" Loss Statistics:", Style::default().fg(colors::TAB_ACTIVE))));
+        lines.push(Line::from(Span::styled(
+            " Loss Statistics:",
+            Style::default().fg(colors::TAB_ACTIVE),
+        )));
 
         let losses: Vec<f32> = metrics.iter().map(|m| m.loss).collect();
         if losses.len() >= 2 {
             let first_loss = losses.first().copied().unwrap_or(0.0);
             let last_loss = losses.last().copied().unwrap_or(0.0);
-            let reduction = if first_loss > 0.0 { (1.0 - last_loss / first_loss) * 100.0 } else { 0.0 };
+            let reduction = if first_loss > 0.0 {
+                (1.0 - last_loss / first_loss) * 100.0
+            } else {
+                0.0
+            };
 
             lines.push(Line::from(vec![
                 Span::raw("   Initial: "),
-                Span::styled(format!("{:.4}", first_loss), Style::default().fg(colors::LOSS_LINE)),
+                Span::styled(
+                    format!("{:.4}", first_loss),
+                    Style::default().fg(colors::LOSS_LINE),
+                ),
                 Span::raw("  ->  Current: "),
-                Span::styled(format!("{:.4}", last_loss), Style::default().fg(colors::LOSS_LINE)),
+                Span::styled(
+                    format!("{:.4}", last_loss),
+                    Style::default().fg(colors::LOSS_LINE),
+                ),
             ]));
             lines.push(Line::from(vec![
                 Span::raw("   Reduction: "),
-                Span::styled(format!("{:.1}%", reduction), Style::default().fg(if reduction > 0.0 { colors::PREDICT } else { colors::FAILED_RUN })),
+                Span::styled(
+                    format!("{:.1}%", reduction),
+                    Style::default().fg(if reduction > 0.0 {
+                        colors::PREDICT
+                    } else {
+                        colors::FAILED_RUN
+                    }),
+                ),
             ]));
         }
 
         lines.push(Line::from(""));
-        lines.push(Line::from(Span::styled(" Tip: Use [/] to switch views, 'p' to change projection mode", Style::default().fg(Color::DarkGray))));
+        lines.push(Line::from(Span::styled(
+            " Tip: Use [/] to switch views, 'p' to change projection mode",
+            Style::default().fg(Color::DarkGray),
+        )));
 
         let para = Paragraph::new(lines).block(
             Block::default()
@@ -3752,19 +4899,31 @@ impl LiveMonitor {
     }
 
     fn loss_to_char(&self, loss: f32) -> char {
-        if loss < 2.0 { 'X' }
-        else if loss < 5.0 { '#' }
-        else if loss < 10.0 { '%' }
-        else { '@' }
+        if loss < 2.0 {
+            'X'
+        } else if loss < 5.0 {
+            '#'
+        } else if loss < 10.0 {
+            '%'
+        } else {
+            '@'
+        }
     }
 
     fn gradient_to_color(&self, grad_norm: f32) -> Color {
-        if grad_norm < 0.001 { Color::Rgb(50, 50, 200) }
-        else if grad_norm < 0.01 { Color::Rgb(50, 150, 200) }
-        else if grad_norm < 0.1 { Color::Rgb(50, 200, 100) }
-        else if grad_norm < 1.0 { Color::Rgb(100, 255, 100) }
-        else if grad_norm < 10.0 { Color::Rgb(255, 200, 50) }
-        else { Color::Rgb(255, 50, 50) }
+        if grad_norm < 0.001 {
+            Color::Rgb(50, 50, 200)
+        } else if grad_norm < 0.01 {
+            Color::Rgb(50, 150, 200)
+        } else if grad_norm < 0.1 {
+            Color::Rgb(50, 200, 100)
+        } else if grad_norm < 1.0 {
+            Color::Rgb(100, 255, 100)
+        } else if grad_norm < 10.0 {
+            Color::Rgb(255, 200, 50)
+        } else {
+            Color::Rgb(255, 50, 50)
+        }
     }
 }
 

@@ -148,7 +148,8 @@ fn main() {
         .warmup_steps(5)
         .full_steps(3)
         .max_predict_steps(10)
-        .confidence_threshold(0.85)
+        .confidence_threshold(0.60)  // Lowered to achievable threshold after bugfixes
+        .collect_metrics(true)  // Enable metrics collection for speedup tracking
         .build();
     println!("✓ HybridTrainer config: warmup=5, full=3, predict≤10");
 

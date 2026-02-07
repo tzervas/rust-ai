@@ -493,7 +493,6 @@ impl<M, O> HybridTrainer<M, O> {
     /// Returns a read lock on the model.
     ///
     /// Use this to access model state for checkpointing or inspection.
-    #[must_use]
     pub fn model(&self) -> parking_lot::RwLockReadGuard<'_, M> {
         self.model.read()
     }
@@ -501,7 +500,6 @@ impl<M, O> HybridTrainer<M, O> {
     /// Returns a write lock on the model.
     ///
     /// Use this for operations that need to modify the model directly.
-    #[must_use]
     pub fn model_mut(&self) -> parking_lot::RwLockWriteGuard<'_, M> {
         self.model.write()
     }

@@ -362,7 +362,7 @@ where
 /// let config = HybridTrainerConfig::builder()
 ///     .warmup_steps(100)
 ///     .full_steps(20)
-///     .max_predict_steps(80)
+///     .max_predict_steps(50)  // Can be higher with more VRAM
 ///     .confidence_threshold(0.85)
 ///     .build();
 ///
@@ -1089,7 +1089,7 @@ mod tests {
         let config = HybridTrainerConfig::default();
         assert_eq!(config.warmup_steps, 100);
         assert_eq!(config.full_steps, 20);
-        assert_eq!(config.max_predict_steps, 80);
+        assert_eq!(config.max_predict_steps, 15);  // Updated: default reduced for VRAM optimization
         assert!((config.confidence_threshold - 0.85).abs() < f32::EPSILON);
     }
 

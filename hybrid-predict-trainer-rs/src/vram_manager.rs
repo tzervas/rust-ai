@@ -172,7 +172,11 @@ fn measure_vram_mb() -> usize {
 ///
 /// This is a best-effort attempt to free unused GPU memory.
 /// The exact behavior depends on the CUDA runtime and Burn's internals.
+///
+/// **Note**: Called conditionally via `#[cfg(feature = "cuda")]` in `force_cleanup()`.
+/// The `#[cfg(not(feature = "cuda"))]` version below is used in non-CUDA builds.
 #[cfg(feature = "cuda")]
+#[allow(dead_code)]  // Called in force_cleanup() when feature = "cuda" is enabled
 fn sync_cuda_memory() {
     // Burn uses cudarc internally, but doesn't expose sync APIs
     // We'll try to trigger cleanup through standard Rust mechanisms

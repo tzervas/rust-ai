@@ -51,7 +51,7 @@ use crate::error::HybridResult;
 /// |-----------|---------|-------------|
 /// | `warmup_steps` | 100 | Steps before prediction begins |
 /// | `full_steps` | 20 | Full-compute steps per cycle |
-/// | `max_predict_steps` | 80 | Maximum prediction phase length |
+/// | `max_predict_steps` | 15 | Maximum prediction phase length (VRAM-optimized) |
 /// | `confidence_threshold` | 0.85 | Minimum confidence for predictions |
 /// | `divergence_threshold` | 3.0 | Loss deviation threshold (σ) |
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -137,6 +137,7 @@ pub mod state;
 
 // Training phase implementations
 pub mod corrector;
+pub mod delta_accumulator;
 pub mod full_train;
 pub mod predictive;
 pub mod residuals;
@@ -450,6 +451,9 @@ pub struct HybridTrainer<M, O> {
 
     /// Checkpoint manager for automatic checkpointing (optional).
     checkpoint_manager: Option<checkpoint::CheckpointManager>,
+
+    /// Delta accumulator for batched weight updates (VRAM optimization).
+    delta_accumulator: delta_accumulator::DeltaAccumulator,
 }
 
 impl<M, O> HybridTrainer<M, O> {
@@ -516,6 +520,7 @@ impl<M, O> HybridTrainer<M, O> {
             auto_tuning,
             last_auto_tuning_update: None,
             checkpoint_manager,
+            delta_accumulator: delta_accumulator::DeltaAccumulator::new(),
         })
     }
 
@@ -747,6 +752,14 @@ impl<M, O> HybridTrainer<M, O> {
         if phase != previous_phase {
             self.state.steps_in_current_phase = 0;
             self.state.current_phase = phase;
+
+            // Flush accumulated weight deltas at phase transitions (VRAM optimization)
+            // This applies all accumulated deltas from the previous phase in one batch,
+            // minimizing model copies from Burn's .map() API
+            if let Some(merged_delta) = self.delta_accumulator.flush() {
+                let mut model = self.model.lock();
+                model.apply_weight_delta(&merged_delta)?;
+            }
         }
 
         // Execute the appropriate phase
@@ -991,7 +1004,8 @@ impl<M, O> HybridTrainer<M, O> {
         let (prediction, _uncertainty) = self.dynamics_model.predict_y_steps(&self.state, y_steps);
         let predicted_loss = prediction.predicted_final_loss;
 
-        // Apply predicted weight delta (already scaled for y_steps by the dynamics model)
+        // Apply predicted weight delta immediately (Burn limitation - can't defer)
+        // TODO: Accumulation strategy doesn't work due to forward pass dependency
         model.apply_weight_delta(&prediction.weight_delta)?;
 
         // Forward pass to get actual loss (for validation)
@@ -1085,7 +1099,7 @@ impl<M, O> HybridTrainer<M, O> {
             )
         };
 
-        // Apply weight delta correction if one was computed and significant
+        // Apply weight delta correction immediately (Burn limitation - can't defer)
         if let Some(ref delta) = correction.weight_correction {
             model.apply_weight_delta(delta)?;
         } else if correction.is_significant(0.01) {
@@ -1280,6 +1294,7 @@ impl<M, O> HybridTrainer<M, O> {
             auto_tuning,
             last_auto_tuning_update: None,
             checkpoint_manager,
+            delta_accumulator: delta_accumulator::DeltaAccumulator::new(),
         })
     }
 

@@ -182,6 +182,7 @@ pub mod vram_manager;
 // Memory optimization modules (v0.3.0)
 pub mod gradient_checkpointing;
 pub mod cpu_offloading;
+pub mod quantization;
 
 // Reference model implementations for validation
 #[cfg(feature = "autodiff")]

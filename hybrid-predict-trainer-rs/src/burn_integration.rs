@@ -259,79 +259,22 @@ where
         }
     }
 
-    /// Extracts parameter count from the model.
-    ///
-    /// This walks the model's parameters and sums their element counts.
-    #[allow(dead_code)]
-    fn count_parameters(&self) -> usize {
-        // TODO: Implement parameter counting via Burn's module introspection
-        // For now, return a placeholder value
-        // This will be implemented when we integrate with real Burn models
-        0
-    }
-
-    /// Converts a Burn tensor to Vec<f32>.
-    ///
-    /// This is used when extracting gradients or parameters. The tensor is
-    /// flattened to a 1D vector regardless of its original dimensionality.
-    ///
-    /// # Arguments
-    ///
-    /// * `tensor` - The tensor to convert
-    ///
-    /// # Returns
-    ///
-    /// A flattened vector of f32 values.
-    #[allow(dead_code)]
-    fn tensor_to_vec<const D: usize>(tensor: &Tensor<B, D>) -> Vec<f32> {
-        // Extract tensor data and convert to Vec<f32>
-        // Note: to_data() creates a copy without consuming the tensor
-        tensor.to_data().to_vec::<f32>().unwrap()
-    }
-
-    /// Converts Vec<f32> to a Burn tensor.
-    ///
-    /// This is used when applying weight deltas. The vector is reshaped
-    /// to match the provided shape.
-    ///
-    /// # Arguments
-    ///
-    /// * `vec` - The vector to convert
-    /// * `shape` - The desired tensor shape
-    /// * `device` - Device for tensor allocation
-    ///
-    /// # Returns
-    ///
-    /// A tensor with the specified shape.
-    #[allow(dead_code)]
-    fn vec_to_tensor<const D: usize>(
-        vec: Vec<f32>,
-        shape: Shape,
-        device: &burn::tensor::Device<B>,
-    ) -> Tensor<B, D> {
-        // Create TensorData from vector and shape
-        let data = TensorData::new(vec, shape);
-
-        // Create tensor on device with f32 element type
-        Tensor::from_data(data.convert::<f32>(), device)
-    }
-
-    /// Computes the L2 norm of gradients across all parameters.
-    ///
-    /// # Arguments
-    ///
-    /// * `_model` - The model with computed gradients
-    ///
-    /// # Returns
-    ///
-    /// The global gradient norm.
-    #[allow(dead_code)]
-    fn compute_gradient_norm(_model: &M::InnerModule) -> f32 {
-        // TODO: Implement gradient norm computation via Burn's grad introspection
-        // For now, return a placeholder
-        // This will be implemented when we integrate with real Burn models
-        1.0
-    }
+    // Phase 3 Burn Integration Methods (Deferred):
+    //
+    // The following methods were removed as dead code but represent future
+    // integration points with Burn's advanced features:
+    //
+    // - count_parameters(): Requires Burn's module introspection API
+    // - tensor_to_vec()/vec_to_tensor(): For gradient/parameter conversion
+    // - compute_gradient_norm(): For per-layer gradient monitoring
+    //
+    // These will be implemented when we add:
+    // 1. Per-layer gradient tracking for detailed monitoring
+    // 2. Parameter-level weight delta application
+    // 3. Advanced Burn model introspection capabilities
+    //
+    // Until then, current implementation uses high-level Burn APIs that don't
+    // require tensor-level manipulation.
 
     /// Clears the last loss tensor and its autodiff graph.
     ///

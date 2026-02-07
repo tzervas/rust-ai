@@ -760,6 +760,16 @@ impl<M, O> HybridTrainer<M, O> {
             self.state.steps_in_current_phase = 0;
             self.state.current_phase = phase;
 
+            // Log VRAM usage at phase transitions
+            let vram_mb = self.vram_manager.last_vram_mb();
+            println!(
+                "Phase transition: {:?} → {:?} | VRAM: {} MB | Copies: {}",
+                previous_phase,
+                phase,
+                vram_mb,
+                crate::vram_manager::VramManager::total_copies()
+            );
+
             // Flush accumulated weight deltas at phase transitions (VRAM optimization)
             // This applies all accumulated deltas from the previous phase in one batch,
             // minimizing model copies from Burn's .map() API
@@ -845,13 +855,23 @@ impl<M, O> HybridTrainer<M, O> {
             None
         };
 
-        // Auto-checkpoint if enabled and interval reached
+        // Auto-checkpoint if enabled and interval reached OR VRAM critical
         // Compute checkpoint state before taking mutable borrow
+        const VRAM_CHECKPOINT_THRESHOLD_MB: usize = 14_000; // 14 GB triggers emergency checkpoint
+        let vram_critical = self.vram_manager.last_vram_mb() > VRAM_CHECKPOINT_THRESHOLD_MB;
+
         let checkpoint_to_save = if self
             .checkpoint_manager
             .as_ref()
-            .map_or(false, |mgr| mgr.should_save(self.state.step))
+            .map_or(false, |mgr| mgr.should_save(self.state.step) || vram_critical)
         {
+            if vram_critical {
+                eprintln!(
+                    "🚨 Emergency checkpoint triggered by high VRAM ({} MB > {} MB)",
+                    self.vram_manager.last_vram_mb(),
+                    VRAM_CHECKPOINT_THRESHOLD_MB
+                );
+            }
             use crate::checkpoint::*;
 
             Some(TrainingCheckpoint::new(
@@ -883,6 +903,11 @@ impl<M, O> HybridTrainer<M, O> {
                     );
                 }
             }
+        }
+
+        // Check if VRAM cleanup is needed (workaround for Burn's model.map() leak)
+        if self.vram_manager.should_cleanup() {
+            self.vram_manager.force_cleanup();
         }
 
         let elapsed_ms = start_time.elapsed().as_secs_f64() * 1000.0;

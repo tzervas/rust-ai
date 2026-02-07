@@ -85,6 +85,17 @@ Correction { loss_correction, weight_correction, confidence }
 - [ ] Benchmarks with real models
 - [ ] Integration tests
 
+### TODO (Predict+Correct Phase Gaps - February 2026 Analysis)
+
+- [ ] Implement BPTT-lite for GRU weight training in dynamics model
+- [ ] Train weight delta head alongside loss head during observe_gradient()
+- [ ] Add stochastic path sampling during RSSM rollout
+- [ ] Implement per-layer weight corrections in corrector (currently None)
+- [ ] Track gradient directions during full training for correction phase
+- [ ] Fix feature dimension mismatch (64 features vs 32 in corrector)
+- [ ] Enable multi-step phase prediction (currently 1-step-at-a-time)
+- [ ] Cache prediction confidence to avoid redundant computation
+
 ## Dependencies
 
 | Crate | Version | Purpose |

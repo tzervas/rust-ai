@@ -419,6 +419,81 @@ concerns of large-scale training.
 
 ---
 
+## 10. Implementation Gap Analysis
+
+This section documents the gap between the theoretical framework described above
+and the current state of the implementation as of February 2026. The theory is
+sound, but several critical implementation paths remain incomplete.
+
+### 10.1 RSSM Architecture: Correct Design, Incomplete Training Loop
+
+The RSSM-lite architecture (Section 3) is correctly implemented structurally: the
+GRU cell, stochastic sampler, loss head, and weight delta head all exist with
+proper dimensions and connectivity. However, the training loop for the RSSM's own
+internal weights is incomplete.
+
+Specifically, `observe_gradient()` in `dynamics.rs` only updates the loss head via
+simple SGD. The GRU cell weights (`W_z`, `W_r`, `W_h` and their recurrent
+counterparts) are initialized but never receive gradient updates. This means the
+deterministic path -- the core of the RSSM that captures gradient descent trends
+(Section 3.1) -- operates with random weights throughout training. The latent
+states it produces carry no learned information about training dynamics.
+
+**Required fix**: Implement truncated BPTT to propagate loss prediction error back
+through the GRU cell, updating all GRU weight matrices. This is the single most
+critical gap in the implementation.
+
+### 10.2 Weight Delta Prediction: Heuristic-Dominated
+
+Section 3.3 specifies that weight deltas are predicted as:
+
+```
+delta_theta = base_magnitude x (1 + learned_scale) x (1 + loss_improvement) x Y
+```
+
+In the current implementation, `learned_scale` comes from `tanh(MLP(hidden_state))`,
+but since the MLP weights (the weight delta head) are never trained, this term is
+effectively a random constant. The prediction degenerates to a simple heuristic:
+
+```
+delta_theta ~ learning_rate x gradient_norm x random_constant x Y
+```
+
+This cannot capture the layer-wise scaling patterns, momentum effects, or
+curvature-dependent dynamics that the theory relies on for accurate phase
+prediction.
+
+### 10.3 Residual Correction: Loss-Only vs. Weight-Level
+
+Section 2.5 defines the residual as a tuple over both weight and loss space:
+
+```
+r_t = (delta_theta_actual - delta_theta_predicted, L_actual - L_predicted)
+```
+
+and specifies a correction function that produces weight-level corrections:
+
+```
+C: (theta_t, H_t, R) -> delta_theta_correction
+```
+
+The current implementation computes loss residuals correctly but produces
+`weight_correction: None` in all cases. The correction phase therefore only
+adjusts the loss estimate without repairing accumulated weight drift from the
+predict phase. Over multiple predict-correct cycles, this allows weight-level
+errors to compound unchecked, eventually forcing more frequent fallback to full
+training and reducing the theoretical speedup.
+
+### 10.4 Implications for Validation
+
+The experiments specified in Section 7 (and in HYPOTHESIS_VALIDATION.md) depend
+on a functioning dynamics model that can learn from training data. With the
+current gaps, validation experiments will produce near-random predictions and
+cannot meaningfully test the theoretical framework. The gaps identified above
+must be resolved before experimental validation can proceed.
+
+---
+
 ## References
 
 1. Jacot, A., Gabriel, F., & Hongler, C. (2018). Neural Tangent Kernel.

@@ -424,4 +424,71 @@ All experiments will use:
 
 ---
 
-*This document follows the scientific method: hypothesis → prediction → experiment → conclusion.*
+## 9. Implementation Readiness Assessment
+
+### 9.1 Current State
+
+As of February 2026, the validation experiments defined in Sections 2-5 cannot
+produce meaningful results due to critical gaps in the predict and correct phase
+implementations. This section documents the specific blockers and provides a
+pre-validation checklist.
+
+### 9.2 Blockers for Validation
+
+**Experiments 2 and 3 (Loss and Weight Delta Prediction)** require a functioning
+RSSM dynamics model that can learn from training data. The current implementation
+has two critical defects:
+
+1. **GRU weights are never trained**: The RSSM GRU cell weights are initialized
+   randomly and never updated during `observe_gradient()`. Only the loss head
+   receives SGD updates. As a result, the latent states produced by the GRU carry
+   no learned information, and loss predictions will have near-zero R-squared
+   regardless of training duration.
+
+2. **Weight delta head is never trained**: The weight delta prediction head has no
+   gradient computation or update path. Weight delta predictions are dominated by
+   the `lr * grad_norm` heuristic with a random scaling factor, producing
+   predictions that will show near-zero cosine similarity with actual weight
+   changes.
+
+**Experiment 4 (Prediction Phase Training)** additionally requires:
+
+3. **Multi-step phase prediction**: The predict phase currently executes
+   one-step-at-a-time rather than predicting aggregate Y-step outcomes. This
+   provides no computational savings and introduces compounding single-step errors.
+
+**Experiment 5 (Residual Correction Effectiveness)** additionally requires:
+
+4. **Weight-level corrections**: The corrector always returns `None` for weight
+   corrections. Correction effectiveness measurements will show only loss-level
+   adjustments, which cannot compensate for accumulated weight drift from the
+   predict phase.
+
+### 9.3 Pre-validation Checklist
+
+All items must be completed before running validation experiments:
+
+- [ ] RSSM GRU weights update during observe_gradient()
+- [ ] Weight delta head weights update during observe_gradient()
+- [ ] Stochastic path samples during prediction rollout
+- [ ] Corrector produces per-layer weight corrections
+- [ ] Multi-step prediction used in predict phase
+- [ ] Gradient directions stored during full training
+
+### 9.4 Recommended Validation Order
+
+Once the pre-validation checklist is satisfied:
+
+1. **First**: Re-run Experiment 2 (loss prediction) with the trained RSSM. If
+   R-squared < 0.7, stop and investigate dynamics model capacity before
+   proceeding.
+2. **Second**: Run Experiment 3 (weight delta prediction) to confirm learned
+   dynamics transfer to weight space.
+3. **Third**: Run Experiment 5 (correction effectiveness) in isolation before
+   attempting full hybrid training.
+4. **Last**: Run Experiment 4 (full prediction phase training) only after
+   individual components are validated.
+
+---
+
+*This document follows the scientific method: hypothesis -> prediction -> experiment -> conclusion.*

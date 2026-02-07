@@ -575,10 +575,13 @@ Each module must have:
 - [ ] Confidence calibration
 
 ### Phase 3: Prediction Integration (Week 5-6)
-- [x] Predict phase execution
+- [x] Predict phase execution (scaffolded)
 - [x] Residual extraction
 - [x] Residual store
-- [ ] Correction phase execution
+- [ ] Weight-level correction (corrector produces None for weight corrections)
+- [ ] RSSM dynamics training (GRU weights frozen, only loss head trained)
+- [ ] Multi-step phase prediction (currently 1-step only)
+- [ ] Confidence calibration with caching
 
 ### Phase 4: Validation (Week 7-8)
 - [ ] Integration tests with real models
@@ -590,3 +593,75 @@ Each module must have:
 - [ ] Version 1.0.0 release
 - [ ] crates.io publication
 - [ ] Research paper draft
+
+---
+
+## 9. Gap Analysis (February 2026)
+
+A thorough code analysis of the predict and correct phases identified eight critical
+gaps between the specification and the current implementation. These must be resolved
+before validation experiments can produce meaningful results.
+
+### 9.1 Critical Gaps
+
+**Gap 1: RSSM GRU weights never trained after initialization**
+- **Severity**: Critical
+- **Location**: `dynamics.rs` -- `observe_gradient()` only performs SGD on the loss head weights; the GRU cell weights (`W_z`, `W_r`, `W_h`, `U_z`, `U_r`, `U_h`) are initialized and then frozen.
+- **Impact**: The deterministic path of the RSSM cannot learn training dynamics. All predictions rely on the randomly initialized GRU, producing effectively random latent states.
+- **Fix**: Implement truncated backpropagation through time (BPTT-lite) in `observe_gradient()`. Accumulate GRU gradients over a short window (e.g., 5-10 steps), then apply a single SGD update to all GRU weight matrices.
+
+**Gap 2: Weight delta head weights never trained**
+- **Severity**: Critical
+- **Location**: `dynamics.rs` -- the weight delta head (`delta_weights`, `delta_bias`) has no gradient computation or update logic in `observe_gradient()`.
+- **Impact**: Weight delta predictions are entirely heuristic (lr * grad_norm * learned_scale), where `learned_scale` is never actually learned.
+- **Fix**: Compute weight delta prediction error against observed weight changes during full training, then apply SGD updates to the delta head alongside the loss head.
+
+**Gap 3: Stochastic path is passive during rollout**
+- **Severity**: High
+- **Location**: `dynamics.rs` -- the stochastic sampler `z` exists in the architecture but is never sampled during `predict_y_steps()`. Only the deterministic GRU path is used.
+- **Impact**: The model has no way to represent uncertainty from batch sampling variance, producing overconfident predictions.
+- **Fix**: Sample from the stochastic posterior during rollout and combine with the deterministic state before feeding into the loss and weight delta heads.
+
+**Gap 4: Corrector never produces weight corrections**
+- **Severity**: Critical
+- **Location**: `corrector.rs` -- `compute_correction()` always returns `weight_correction: None`. The correction is loss-only.
+- **Impact**: The correction phase cannot repair accumulated weight drift from the predict phase, violating Section 2.5 of the theory (residual correction over both loss and weights).
+- **Fix**: Implement per-layer weight corrections using stored gradient directions from the full training phase, scaled by the loss residual magnitude.
+
+### 9.2 High-Priority Gaps
+
+**Gap 5: No gradient direction tracking during full training**
+- **Severity**: High
+- **Location**: `full_train.rs` -- gradient observations record norms and loss but do not store gradient direction vectors (or compressed representations thereof).
+- **Impact**: The correction phase has no gradient direction information to construct weight corrections, even if the corrector were implemented.
+- **Fix**: Store per-layer gradient direction vectors (or low-rank approximations via PowerSGD) during the full training phase, making them available to the corrector.
+
+**Gap 6: Feature dimension mismatch**
+- **Severity**: High
+- **Location**: `state.rs` `compute_features()` returns a 64-dimensional feature vector; `corrector.rs` initializes its linear model with input dimension 32.
+- **Impact**: Runtime dimension mismatch between the state encoder output and the corrector input. This would cause index-out-of-bounds or silent truncation depending on the execution path.
+- **Fix**: Align dimensions -- either reduce `compute_features()` to 32 dimensions or increase the corrector linear model to 64. The corrector should derive its input dimension from the state encoder configuration.
+
+**Gap 7: Predict phase uses 1-step predictions instead of multi-step phase prediction**
+- **Severity**: High
+- **Location**: `predictive.rs` -- the predict phase executor calls the dynamics model once per step rather than predicting an aggregate Y-step phase outcome as specified in Section 2.4 of the theory.
+- **Impact**: No computational savings from the predict phase; each step still requires a full dynamics model forward pass, and prediction errors compound without the stabilizing effect of aggregate prediction.
+- **Fix**: Implement Y-step aggregate prediction: call `predict_y_steps(state, Y)` once at the start of the predict phase, then apply the predicted weight delta incrementally (or all at once) over Y steps.
+
+### 9.3 Medium-Priority Gaps
+
+**Gap 8: prediction_confidence() redundantly recomputes ensemble predictions**
+- **Severity**: Medium
+- **Location**: `dynamics.rs` -- `prediction_confidence()` calls `predict_y_steps(state, 10)` internally, performing a full ensemble forward pass each time it is queried. This is called at every step to evaluate phase transitions.
+- **Impact**: Significant computational overhead. Each confidence check runs 10 GRU steps across the ensemble, which is wasteful when the underlying state has not changed since the last prediction.
+- **Fix**: Cache the confidence value and invalidate only when `observe_gradient()` is called or the training state changes materially (e.g., new step observed).
+
+### 9.4 Updated Success Criteria
+
+| Metric | Current | Target | Priority |
+|--------|---------|--------|----------|
+| RSSM loss prediction R-squared | ~0 (untrained) | > 0.85 | Critical |
+| Weight delta cosine similarity | ~random | > 0.8 | Critical |
+| Correction loss improvement | 0% (no weight corrections) | > 5% per correction | High |
+| Confidence computation overhead | O(ensemble x 10 GRU steps) per step | O(1) cached | Medium |
+| Predict phase granularity | 1-step | Y-step aggregate | High |

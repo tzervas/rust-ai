@@ -19,6 +19,9 @@ use burn::{
     optim::AdamConfig,
     tensor::{backend::Backend, Int, Tensor, TensorData},
 };
+
+#[cfg(feature = "cuda")]
+use burn::backend::Cuda;
 use hybrid_predict_trainer_rs::{
     burn_integration::{BurnBatch, BurnForwardFn, BurnModelWrapper, BurnOptimizerWrapper},
     models::gpt2::{Gpt2Batch, Gpt2Config, Gpt2Model},
@@ -26,8 +29,11 @@ use hybrid_predict_trainer_rs::{
 };
 use std::time::Instant;
 
-// Use NdArray backend (CPU) by default
-// For GPU: change to Cuda
+// Use CUDA backend when available, otherwise NdArray (CPU)
+#[cfg(feature = "cuda")]
+type MyBackend = Autodiff<Cuda>;
+
+#[cfg(not(feature = "cuda"))]
 type MyBackend = Autodiff<NdArray>;
 
 /// Generate a synthetic batch of random tokens.
@@ -105,9 +111,9 @@ fn main() {
 
     // Configuration
     let config = Gpt2Config::gpt2_small();
-    let batch_size = 4; // Start small for CPU
-    let seq_len = 64; // Start with short sequences
-    let steps = 100; // Quick test
+    let batch_size = 4;
+    let seq_len = 64;
+    let steps = 50; // Quick validation
     let log_interval = 10;
 
     println!("Configuration:");

@@ -23,6 +23,9 @@ use burn::{
     optim::AdamConfig,
     tensor::{backend::Backend, Int, Tensor, TensorData},
 };
+
+#[cfg(feature = "cuda")]
+use burn::backend::Cuda;
 use hybrid_predict_trainer_rs::{
     burn_integration::{BurnBatch, BurnForwardFn, BurnModelWrapper, BurnOptimizerWrapper},
     config::HybridTrainerConfig,
@@ -34,8 +37,11 @@ use hybrid_predict_trainer_rs::{
 };
 use std::time::Instant;
 
-// Use NdArray backend (CPU) by default
-// For GPU: change to Cuda
+// Use CUDA backend when available, otherwise NdArray (CPU)
+#[cfg(feature = "cuda")]
+type MyBackend = Autodiff<Cuda>;
+
+#[cfg(not(feature = "cuda"))]
 type MyBackend = Autodiff<NdArray>;
 
 /// Generate a synthetic batch of random tokens.
@@ -113,11 +119,11 @@ fn main() {
 
     // Configuration
     let config = Gpt2Config::gpt2_small();
-    let physical_batch = 2; // Small physical batch for memory savings
-    let virtual_batch = 8;  // Larger effective batch via gradient accumulation
+    let physical_batch = 2;
+    let virtual_batch = 8;
     let seq_len = 64;
-    let steps = 100;
-    let log_interval = 10;
+    let steps = 50; // Quick validation
+    let log_interval = 5;
 
     println!("Model Configuration:");
     println!("  Model: GPT-2 Small (124M params)");
@@ -154,14 +160,14 @@ fn main() {
         gradient_checkpointing: false,  // No checkpointing (simplicity)
     };
 
-    // HybridTrainer configuration
+    // HybridTrainer configuration (tuned for quick validation)
     let hybrid_config = HybridTrainerConfig::builder()
-        .warmup_steps(10)
-        .full_steps(20)
+        .warmup_steps(5)
+        .full_steps(10)
         .max_predict_steps(5)
         .correction_interval(2)
         .divergence_threshold(2.5)
-        .confidence_threshold(0.6)
+        .confidence_threshold(0.3)  // Lower to trigger Predict phase
         .mixed_precision_config(mixed_precision)
         .gradient_accumulation_config(grad_accumulation)
         .predict_aware_memory_config(predict_memory)

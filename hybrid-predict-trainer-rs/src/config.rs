@@ -51,7 +51,7 @@ use crate::error::HybridResult;
 /// |-----------|---------|-------------|
 /// | `warmup_steps` | 100 | Steps before prediction begins |
 /// | `full_steps` | 20 | Full-compute steps per cycle |
-/// | `max_predict_steps` | 80 | Maximum prediction phase length |
+/// | `max_predict_steps` | 15 | Maximum prediction phase length (VRAM-optimized) |
 /// | `confidence_threshold` | 0.85 | Minimum confidence for predictions |
 /// | `divergence_threshold` | 3.0 | Loss deviation threshold (σ) |
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -178,7 +178,7 @@ fn default_full_steps() -> usize {
     20
 }
 fn default_max_predict_steps() -> usize {
-    80
+    15  // Reduced from 80 to minimize VRAM pressure from Burn's model.map() copies
 }
 fn default_confidence_threshold() -> f32 {
     0.85
@@ -700,7 +700,7 @@ pub struct CheckpointConfig {
 }
 
 fn default_save_interval() -> usize {
-    1000
+    50  // Reduced from 1000 to enable VRAM recovery through checkpoint save/reload
 }
 fn default_keep_last_n() -> usize {
     3

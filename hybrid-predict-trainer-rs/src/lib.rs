@@ -176,6 +176,9 @@ pub mod vram_budget;
 // Checkpoint save/restore
 pub mod checkpoint;
 
+// VRAM manager for tracking and cleaning up GPU memory
+pub mod vram_manager;
+
 // Reference model implementations for validation
 #[cfg(feature = "autodiff")]
 pub mod models;
@@ -397,7 +400,7 @@ where
 /// let config = HybridTrainerConfig::builder()
 ///     .warmup_steps(100)
 ///     .full_steps(20)
-///     .max_predict_steps(80)
+///     .max_predict_steps(50)  // Can be higher with more VRAM
 ///     .confidence_threshold(0.85)
 ///     .build();
 ///
@@ -454,6 +457,9 @@ pub struct HybridTrainer<M, O> {
 
     /// Delta accumulator for batched weight updates (VRAM optimization).
     delta_accumulator: delta_accumulator::DeltaAccumulator,
+
+    /// VRAM manager for tracking and cleaning up GPU memory.
+    vram_manager: vram_manager::VramManager,
 }
 
 impl<M, O> HybridTrainer<M, O> {
@@ -521,6 +527,7 @@ impl<M, O> HybridTrainer<M, O> {
             last_auto_tuning_update: None,
             checkpoint_manager,
             delta_accumulator: delta_accumulator::DeltaAccumulator::new(),
+            vram_manager: vram_manager::VramManager::new(),
         })
     }
 
@@ -1295,6 +1302,7 @@ impl<M, O> HybridTrainer<M, O> {
             last_auto_tuning_update: None,
             checkpoint_manager,
             delta_accumulator: delta_accumulator::DeltaAccumulator::new(),
+            vram_manager: vram_manager::VramManager::new(),
         })
     }
 
@@ -1354,7 +1362,7 @@ mod tests {
         let config = HybridTrainerConfig::default();
         assert_eq!(config.warmup_steps, 100);
         assert_eq!(config.full_steps, 20);
-        assert_eq!(config.max_predict_steps, 80);
+        assert_eq!(config.max_predict_steps, 15);  // Updated: default reduced for VRAM optimization
         assert!((config.confidence_threshold - 0.85).abs() < f32::EPSILON);
     }
 

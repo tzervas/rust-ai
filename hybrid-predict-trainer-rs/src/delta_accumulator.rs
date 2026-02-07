@@ -174,6 +174,7 @@ mod tests {
         let delta = WeightDelta {
             deltas,
             scale: 1.0,
+            metadata: crate::state::WeightDeltaMetadata::default(),
         };
 
         accumulator.add(&delta);
@@ -191,6 +192,7 @@ mod tests {
         let delta1 = WeightDelta {
             deltas: deltas1,
             scale: 1.0,
+            metadata: crate::state::WeightDeltaMetadata::default(),
         };
 
         // Second delta (same parameter)
@@ -199,6 +201,7 @@ mod tests {
         let delta2 = WeightDelta {
             deltas: deltas2,
             scale: 1.0,
+            metadata: crate::state::WeightDeltaMetadata::default(),
         };
 
         accumulator.add(&delta1);
@@ -223,6 +226,7 @@ mod tests {
         let delta = WeightDelta {
             deltas,
             scale: 1.0,
+            metadata: crate::state::WeightDeltaMetadata::default(),
         };
 
         accumulator.add(&delta);
@@ -245,6 +249,7 @@ mod tests {
         let delta = WeightDelta {
             deltas,
             scale: 0.5,
+            metadata: crate::state::WeightDeltaMetadata::default(),
         };
 
         accumulator.add(&delta);
@@ -270,6 +275,7 @@ mod tests {
         let delta = WeightDelta {
             deltas,
             scale: 1.0,
+            metadata: crate::state::WeightDeltaMetadata::default(),
         };
 
         accumulator.add(&delta);
@@ -286,7 +292,11 @@ mod tests {
 
         let mut deltas = HashMap::new();
         deltas.insert("param1".to_string(), vec![1.0, 2.0]);
-        let delta = WeightDelta { deltas, scale: 1.0 };
+        let delta = WeightDelta {
+            deltas,
+            scale: 1.0,
+            metadata: crate::state::WeightDeltaMetadata::default(),
+        };
 
         accumulator.add(&delta);
         assert!(!accumulator.is_empty());

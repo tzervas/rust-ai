@@ -80,6 +80,66 @@ By learning the training dynamics during full training phases, we can predict mu
 - **GPU acceleration**: CubeCL + Burn for CUDA support
 - **Comprehensive metrics**: JSON export, console summaries
 
+## Memory Management
+
+### Current Status
+
+The hybrid trainer implements automatic VRAM management to handle Burn's functional API model copy behavior:
+
+**Short runs (0-200 steps)**: Stable memory usage (~3 GB for GPT-2 Small)
+
+**Medium runs (200-1000 steps)**: Automatic cleanup every 10 steps maintains ~3-6 GB
+
+**Long runs (1000+ steps)**: Gradual accumulation to ~10-14 GB over 1000+ steps
+
+### Automatic Mitigations
+
+The trainer includes multiple layers of VRAM protection:
+
+1. **Periodic cleanup**: Forces CUDA synchronization every 10 steps
+2. **Phase transition logging**: Monitors VRAM usage at Warmup→Full→Predict→Correct transitions
+3. **Emergency checkpoints**: Automatically saves when VRAM exceeds 14 GB
+4. **Adaptive defaults**: Reduced `max_predict_steps` from 80→15 to minimize copies
+5. **Checkpoint-based recovery**: Frequent saves (every 50 steps) enable reload for cleanup
+
+### Recommended Configurations
+
+For different GPU memory sizes:
+
+```rust
+// 8 GB GPU (aggressive cleanup)
+HybridTrainerConfig::builder()
+    .max_predict_steps(10)
+    .checkpoint_config(CheckpointConfig {
+        save_interval: 25,
+        ..Default::default()
+    })
+    .build()
+
+// 16 GB GPU (balanced, default)
+HybridTrainerConfig::default() // max_predict_steps=15, save_interval=50
+
+// 24+ GB GPU (relaxed)
+HybridTrainerConfig::builder()
+    .max_predict_steps(30)
+    .checkpoint_config(CheckpointConfig {
+        save_interval: 100,
+        ..Default::default()
+    })
+    .build()
+```
+
+### Future Improvements
+
+Planned optimizations for long training runs:
+
+1. **In-place parameter updates**: Eliminate model.map() copies entirely
+2. **Burn PR upstream**: Contribute mutable ModuleMapper to Burn framework
+3. **Explicit CUDA memory management**: Direct cudarc integration for aggressive cleanup
+4. **Gradient checkpointing**: Trade compute for memory on forward passes
+
+For detailed technical analysis, see `docs/PHASE_2B_FINAL_SUMMARY.md`.
+
 ## Installation
 
 Add to your `Cargo.toml`:

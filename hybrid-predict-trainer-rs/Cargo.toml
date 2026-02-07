@@ -143,3 +143,7 @@ unused_self = "allow"
 struct_excessive_bools = "allow"
 too_many_lines = "allow"
 cognitive_complexity = "allow"
+
+[[bench]]
+name = "hybrid_trainer_benchmarks"
+harness = false

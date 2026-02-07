@@ -502,7 +502,7 @@ impl<M, O> HybridTrainer<M, O> {
     ///
     /// A [`metrics::TrainingStatistics`] struct containing aggregate metrics.
     #[must_use]
-    pub fn statistics(&self) -> metrics::TrainingStatistics {
+    pub fn statistics(&mut self) -> metrics::TrainingStatistics {
         self.metrics.statistics()
     }
 

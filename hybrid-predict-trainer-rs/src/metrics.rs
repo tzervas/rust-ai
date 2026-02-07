@@ -681,8 +681,13 @@ impl MetricsCollector {
     }
 
     /// Returns the current statistics.
+    ///
+    /// This method automatically finalizes the statistics before returning them,
+    /// ensuring all derived metrics (backward_reduction_pct, avg_confidence, etc.)
+    /// are up-to-date.
     #[must_use]
-    pub fn statistics(&self) -> TrainingStatistics {
+    pub fn statistics(&mut self) -> TrainingStatistics {
+        self.finalize();
         self.statistics.clone()
     }
 

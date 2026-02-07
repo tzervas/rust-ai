@@ -24,13 +24,13 @@ fn make_step(step: u64, phase: Phase, time_ms: f64, prediction_error: Option<f32
 
 #[test]
 fn test_metrics_collector_disabled() {
-    let collector = MetricsCollector::new(false);
+    let mut collector = MetricsCollector::new(false);
     assert_eq!(collector.statistics().total_steps, 0);
 }
 
 #[test]
 fn test_metrics_collector_enabled() {
-    let collector = MetricsCollector::new(true);
+    let mut collector = MetricsCollector::new(true);
 
     // When enabled, collector should be ready
     let stats = collector.statistics();
@@ -97,6 +97,76 @@ fn test_metrics_finalization() {
     assert_eq!(stats.warmup_steps, 10);
     assert_eq!(stats.predict_steps, 20);
     assert!(stats.backward_reduction_pct > 0.0);
+}
+
+/// Regression test for bug where statistics() didn't auto-finalize
+///
+/// Previously, calling statistics() without manually calling finalize() first
+/// would return TrainingStatistics with all derived fields set to zero
+/// (backward_reduction_pct, avg_confidence, etc.) even when training had progressed.
+///
+/// This test ensures that statistics() automatically finalizes before returning.
+#[test]
+fn test_statistics_auto_finalizes() {
+    let mut collector = MetricsCollector::new(true);
+
+    // Record a mix of phases to exercise derived metrics
+    // 5 warmup steps (backward pass)
+    for i in 0..5 {
+        collector.record_step(make_step(i, Phase::Warmup, 10.0, None));
+    }
+
+    // 5 full training steps (backward pass)
+    for i in 5..10 {
+        collector.record_step(make_step(i, Phase::Full, 10.0, None));
+    }
+
+    // 10 predict steps (NO backward pass - should increase reduction pct)
+    for i in 10..20 {
+        collector.record_step(make_step(i, Phase::Predict, 5.0, Some(0.1)));
+    }
+
+    // Call statistics() WITHOUT manually calling finalize() first
+    // This is the key test - statistics() should auto-finalize
+    let stats = collector.statistics();
+
+    // Verify derived fields are computed (not zero)
+    // This assertion would have FAILED before the fix
+    assert!(
+        stats.backward_reduction_pct > 0.0,
+        "backward_reduction_pct should be computed automatically by statistics(), got {}",
+        stats.backward_reduction_pct
+    );
+
+    // Verify total_steps matches last step number (0-indexed, so 0..20 = 19)
+    assert_eq!(
+        stats.total_steps, 19,
+        "total_steps should be 19 (last step number), got {}",
+        stats.total_steps
+    );
+
+    // Verify phase counts are correct
+    assert_eq!(stats.warmup_steps, 5, "warmup_steps should be 5");
+    assert_eq!(stats.full_steps, 5, "full_steps should be 5");
+    assert_eq!(stats.predict_steps, 10, "predict_steps should be 10");
+
+    // Verify backward reduction is calculated correctly
+    // 10 backward steps (5 warmup + 5 full) out of 19 total steps (0-indexed)
+    // Note: total_steps uses step numbers, so we need to account for this
+    // in the calculation: backward_steps / (total_steps + 1)
+    // Expected: (1 - 10/20) * 100 = 50%
+    assert!(
+        stats.backward_reduction_pct > 45.0 && stats.backward_reduction_pct < 55.0,
+        "backward_reduction_pct should be ~50% (found {}), this is the KEY regression test - \
+         before the fix, this would have been 0.0 because statistics() didn't call finalize()",
+        stats.backward_reduction_pct
+    );
+
+    // Verify prediction accuracy is tracked
+    assert!(
+        stats.prediction_accuracy.loss_mae > 0.0,
+        "prediction MAE should be computed (we recorded prediction errors)"
+    );
 }
 
 #[test]

@@ -14,10 +14,11 @@ keywords = ["machine-learning", "deep-learning", "training", "predictive", "gpu"
 categories = ["science", "mathematics", "algorithms"]
 
 [dependencies]
-# Core tensor operations and deep learning
+# Core tensor operations and deep learning (consolidated)
 burn = { version = "0.20", default-features = false }
-burn-core = { version = "0.20", default-features = false }
-burn-tensor = { version = "0.20", default-features = false }
+
+# Backend support (optional)
+ndarray = { version = "0.16", optional = true }
 
 # GPU compute acceleration (burn provides CUDA via burn-cuda internally)
 # NOTE: Direct cubecl dependency removed to avoid uuid/js-sys conflict
@@ -62,13 +63,16 @@ tempfile = "3.19"
 approx = "0.5"
 
 [features]
-default = ["std"]
-std = ["burn/std", "burn-core/std", "burn-tensor/std"]
+default = ["std", "ndarray"]
+std = ["burn/std"]
 
-# GPU acceleration backends (use burn's CUDA support directly)
-cuda = [
-    "burn/cuda",
-]
+# Backend selection (choose one or more)
+ndarray = ["burn/ndarray", "dep:ndarray"]
+wgpu = ["burn/wgpu"]
+cuda = ["burn/cuda"]
+
+# Burn autodiff support (required for training)
+autodiff = ["burn/autodiff"]
 
 # Candle integration for model compatibility
 candle = ["candle-core", "candle-nn"]
@@ -77,7 +81,7 @@ candle = ["candle-core", "candle-nn"]
 async = ["tokio"]
 
 # Full feature set
-full = ["std", "cuda", "candle", "async"]
+full = ["std", "autodiff", "ndarray", "cuda", "candle", "async"]
 
 [[bench]]
 name = "phase_transitions"

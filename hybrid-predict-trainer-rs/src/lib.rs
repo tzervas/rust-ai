@@ -157,6 +157,12 @@ pub mod timing;
 // Automatic tuning and optimization
 pub mod auto_tuning;
 
+// Burn framework integration
+pub mod burn_integration;
+
+// VRAM budget management
+pub mod vram_budget;
+
 // GPU acceleration (feature-gated)
 #[cfg(feature = "cuda")]
 #[cfg_attr(docsrs, doc(cfg(feature = "cuda")))]

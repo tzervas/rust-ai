@@ -175,6 +175,10 @@ pub mod vram_budget;
 // Checkpoint save/restore
 pub mod checkpoint;
 
+// Reference model implementations for validation
+#[cfg(feature = "autodiff")]
+pub mod models;
+
 // GPU acceleration (feature-gated)
 #[cfg(feature = "cuda")]
 #[cfg_attr(docsrs, doc(cfg(feature = "cuda")))]

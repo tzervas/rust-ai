@@ -148,8 +148,8 @@ fn run_experiment(config: ExperimentConfig, steps: usize) -> CorrectionStats {
         config.max_predict_steps, config.confidence_threshold,
         config.correction_interval, config.sigma);
 
-    let device = Default::default();
-    let model = QuadraticModel::new(&device);
+    let device = <NdArray as Backend>::Device::default();
+    let _model = QuadraticModel::new(&device);
 
     // Create dummy model and optimizer (simplified for this example)
     // In real usage, this would integrate with actual Burn model/optimizer

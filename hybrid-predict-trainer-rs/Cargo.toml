@@ -108,6 +108,18 @@ required-features = ["cuda"]
 [[example]]
 name = "custom_predictor"
 
+[[example]]
+name = "gpt2_small_baseline"
+required-features = ["autodiff"]
+
+[[example]]
+name = "gpt2_small_hybrid"
+required-features = ["autodiff"]
+
+[[example]]
+name = "gpt2_small_memory_optimized"
+required-features = ["autodiff"]
+
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]

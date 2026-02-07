@@ -473,4 +473,222 @@ mod tests {
         let reconstructed = compressed.reconstruct();
         assert_eq!(reconstructed.len(), 4);
     }
+
+    /// Helper: create a Residual with given step, loss_residual, confidence, and state features.
+    fn make_residual(
+        step: u64,
+        loss_residual: f32,
+        confidence: f32,
+        state_features: Vec<f32>,
+    ) -> Residual {
+        Residual {
+            step,
+            phase: crate::Phase::Predict,
+            prediction_horizon: 10,
+            loss_residual,
+            gradient_residuals: Vec::new(),
+            state_features,
+            prediction_confidence: confidence,
+        }
+    }
+
+    /// Helper: create a TrainingState with recorded steps for realistic features.
+    fn make_state(step: u64, loss: f32, grad_norm: f32) -> TrainingState {
+        let mut state = TrainingState::new();
+        for i in 0..step {
+            state.record_step(loss + 0.01 * i as f32, grad_norm);
+        }
+        state
+    }
+
+    #[test]
+    fn test_find_similar_returns_most_similar() {
+        let mut store = ResidualStore::new(100);
+
+        // Create a query state and get its features
+        let query_state = make_state(10, 2.0, 1.0);
+        let query_features = query_state.compute_features();
+
+        // Add a residual with features identical to the query (most similar)
+        store.add(make_residual(1, 0.1, 0.9, query_features.clone()));
+
+        // Add a residual with a very different feature vector (least similar)
+        let mut far_features = vec![0.0; 64];
+        far_features[0] = -100.0;
+        far_features[1] = 50.0;
+        far_features[2] = -200.0;
+        store.add(make_residual(2, 0.2, 0.9, far_features));
+
+        // Add a residual with partially similar features (medium similarity)
+        let mut medium_features = query_features.clone();
+        for f in medium_features.iter_mut().take(32) {
+            *f *= 0.5; // Modify half the features
+        }
+        store.add(make_residual(3, 0.3, 0.9, medium_features));
+
+        let similar = store.find_similar(&query_state, 3);
+
+        assert_eq!(similar.len(), 3);
+        // The first result should be the most similar (identical features at step 1)
+        assert_eq!(
+            similar[0].step, 1,
+            "Most similar residual should be the one with identical features (step 1)"
+        );
+        // The last result should be the least similar (far features at step 2)
+        assert_eq!(
+            similar[2].step, 2,
+            "Least similar residual should be the one with far features (step 2)"
+        );
+    }
+
+    #[test]
+    fn test_find_similar_empty_store() {
+        let store = ResidualStore::new(100);
+        let state = make_state(10, 2.0, 1.0);
+
+        let similar = store.find_similar(&state, 5);
+
+        assert!(
+            similar.is_empty(),
+            "find_similar on empty store should return empty vec"
+        );
+    }
+
+    #[test]
+    fn test_statistics_update_correctness() {
+        let mut store = ResidualStore::new(100);
+
+        // Add residuals with known values
+        let loss_residuals = [0.1_f32, 0.2, 0.3, 0.4, 0.5];
+        let confidences = [0.8_f32, 0.85, 0.9, 0.95, 1.0];
+
+        for (i, (&lr, &conf)) in loss_residuals.iter().zip(confidences.iter()).enumerate() {
+            store.add(make_residual(
+                i as u64,
+                lr,
+                conf,
+                vec![0.0; 64],
+            ));
+        }
+
+        let stats = store.statistics();
+
+        // Verify total_collected
+        assert_eq!(stats.total_collected, 5);
+
+        // Verify mean_loss_residual (mean of absolute values)
+        // |0.1| + |0.2| + |0.3| + |0.4| + |0.5| = 1.5, mean = 0.3
+        // But the mean is computed incrementally: (running_mean * n + new) / (n+1)
+        // After 5 additions: mean of [0.1, 0.2, 0.3, 0.4, 0.5] = 0.3
+        assert!(
+            (stats.mean_loss_residual - 0.3).abs() < 1e-6,
+            "Mean loss residual should be 0.3, got {}",
+            stats.mean_loss_residual
+        );
+
+        // Verify mean_confidence
+        // (0.8 + 0.85 + 0.9 + 0.95 + 1.0) / 5 = 4.5 / 5 = 0.9
+        assert!(
+            (stats.mean_confidence - 0.9).abs() < 1e-6,
+            "Mean confidence should be 0.9, got {}",
+            stats.mean_confidence
+        );
+    }
+
+    #[test]
+    fn test_compressed_residual_memory_size() {
+        // left: 4 elements, right: 6 elements, singular_values: 2 elements
+        // Total = (4 + 6 + 2) * 4 bytes = 48 bytes
+        let compressed = CompressedResidual::new(
+            vec![1.0, 2.0, 3.0, 4.0],             // left: 4 elements
+            vec![5.0, 6.0, 7.0, 8.0, 9.0, 10.0],  // right: 6 elements
+            vec![1.5, 0.5],                        // singular_values: 2 elements
+            (2, 3),
+        );
+
+        let expected_size = (4 + 6 + 2) * std::mem::size_of::<f32>();
+        assert_eq!(
+            compressed.memory_size(),
+            expected_size,
+            "Memory size should be {} bytes, got {}",
+            expected_size,
+            compressed.memory_size()
+        );
+        assert_eq!(compressed.memory_size(), 48);
+    }
+
+    #[test]
+    fn test_compressed_residual_rank1_exact() {
+        // Create a rank-1 matrix: M = sigma * u * v^T
+        // where u = [1, 2], v = [3, 4, 5], sigma = 2.0
+        // M = 2.0 * [1, 2]^T * [3, 4, 5]
+        //   = [[6, 8, 10],
+        //      [12, 16, 20]]
+        let rows = 2;
+        let cols = 3;
+        let rank = 1;
+
+        // Left factor: u stored as rows x rank = 2x1, so [1.0, 2.0]
+        let left = vec![1.0, 2.0];
+        // Right factor: v stored as rank x cols = 1x3, so [3.0, 4.0, 5.0]
+        let right = vec![3.0, 4.0, 5.0];
+        let singular_values = vec![2.0];
+
+        let compressed = CompressedResidual::new(left, right, singular_values, (rows, cols));
+
+        assert_eq!(compressed.rank, rank);
+
+        let reconstructed = compressed.reconstruct();
+        assert_eq!(reconstructed.len(), rows * cols);
+
+        // Expected matrix in row-major: [6, 8, 10, 12, 16, 20]
+        let expected = vec![6.0, 8.0, 10.0, 12.0, 16.0, 20.0];
+
+        for (i, (&actual, &exp)) in reconstructed.iter().zip(expected.iter()).enumerate() {
+            assert!(
+                (actual - exp).abs() < 1e-5,
+                "Element [{i}] mismatch: expected {exp}, got {actual}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_store_eviction_preserves_recent() {
+        let capacity = 5;
+        let mut store = ResidualStore::new(capacity);
+
+        // Add 10 residuals (more than capacity)
+        for i in 0..10 {
+            store.add(make_residual(
+                i as u64,
+                i as f32 * 0.1,
+                0.9,
+                vec![i as f32; 64],
+            ));
+        }
+
+        // Store should only have `capacity` residuals
+        assert_eq!(store.len(), capacity);
+
+        // All stored residuals should be from the most recent additions (steps 5-9)
+        let all_steps: Vec<u64> = store.all().map(|r| r.step).collect();
+        for &step in &all_steps {
+            assert!(
+                step >= 5,
+                "Eviction should remove old residuals. Found step {step}, expected >= 5"
+            );
+        }
+
+        // Verify that the most recent residuals are specifically steps 5, 6, 7, 8, 9
+        let mut sorted_steps = all_steps.clone();
+        sorted_steps.sort();
+        assert_eq!(
+            sorted_steps,
+            vec![5, 6, 7, 8, 9],
+            "After eviction, expected steps [5, 6, 7, 8, 9], got {sorted_steps:?}"
+        );
+
+        // Verify total_collected tracks all additions (not just stored)
+        assert_eq!(store.statistics().total_collected, 10);
+    }
 }

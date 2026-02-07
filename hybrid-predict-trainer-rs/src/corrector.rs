@@ -171,7 +171,7 @@ impl ResidualCorrector {
     /// Creates a corrector with custom configuration.
     #[must_use]
     pub fn with_config(config: CorrectorConfig) -> Self {
-        let feature_dim = 64;
+        let feature_dim = 64; // From TrainingState::compute_features (64-dim)
         Self {
             config,
             statistics: CorrectionStatistics::default(),
@@ -260,13 +260,90 @@ impl ResidualCorrector {
         let max_correction = predicted_loss.abs() * self.config.max_correction_factor;
         let final_correction = blended_correction.clamp(-max_correction, max_correction);
 
+        // Build weight-level corrections from per-layer gradient residuals
+        let weight_correction = self.compute_weight_correction(&similar, &weights);
+
         Correction {
             loss_correction: final_correction,
-            weight_correction: None, // Would include weight delta corrections
+            weight_correction,
             confidence: if similar.len() >= 5 { 0.9 } else { 0.5 },
             num_residuals_used: similar.len(),
             residual_weights: weights,
         }
+    }
+
+    /// Computes weight-level corrections from residuals with per-layer information.
+    ///
+    /// Builds a weighted average of per-layer residual magnitudes across similar
+    /// past residuals, producing a `WeightDelta` that corrects the prediction's
+    /// per-layer scaling errors.
+    fn compute_weight_correction(
+        &self,
+        similar: &[&Residual],
+        weights: &[f32],
+    ) -> Option<WeightDelta> {
+        // Only produce weight corrections if residuals have gradient info
+        let has_layer_info = similar
+            .iter()
+            .any(|r| !r.gradient_residuals.is_empty());
+
+        if !has_layer_info {
+            return None;
+        }
+
+        // Accumulate weighted per-layer correction magnitudes
+        let mut layer_corrections: std::collections::HashMap<String, f32> =
+            std::collections::HashMap::new();
+        let mut layer_counts: std::collections::HashMap<String, f32> =
+            std::collections::HashMap::new();
+
+        for (residual, &w) in similar.iter().zip(weights.iter()) {
+            for layer_res in &residual.gradient_residuals {
+                // The correction direction is derived from cosine similarity:
+                // if cosine_similarity < 1, the prediction direction was off
+                let direction_error = 1.0 - layer_res.cosine_similarity;
+                let correction_mag = layer_res.magnitude * direction_error * w;
+
+                *layer_corrections
+                    .entry(layer_res.layer_name.clone())
+                    .or_insert(0.0) += correction_mag;
+                *layer_counts
+                    .entry(layer_res.layer_name.clone())
+                    .or_insert(0.0) += w;
+            }
+        }
+
+        if layer_corrections.is_empty() {
+            return None;
+        }
+
+        // Normalize by total weight per layer
+        let mut deltas = std::collections::HashMap::new();
+        let mut total_scale = 0.0_f32;
+
+        for (layer_name, correction_sum) in &layer_corrections {
+            let count = layer_counts.get(layer_name).copied().unwrap_or(1.0);
+            let avg_correction = correction_sum / count.max(1e-8);
+
+            // Clamp correction magnitude
+            let clamped = avg_correction.clamp(
+                -self.config.max_correction_factor,
+                self.config.max_correction_factor,
+            );
+            deltas.insert(layer_name.clone(), vec![clamped]);
+            total_scale += clamped.abs();
+        }
+
+        Some(WeightDelta {
+            deltas,
+            scale: total_scale / layer_corrections.len().max(1) as f32,
+            metadata: crate::state::WeightDeltaMetadata {
+                is_predicted: false,
+                confidence: Some(if similar.len() >= 5 { 0.8 } else { 0.4 }),
+                source_phase: Some(crate::Phase::Correct),
+                num_steps: 0,
+            },
+        })
     }
 
     /// Updates the corrector from a new residual observation.
@@ -345,9 +422,35 @@ impl ResidualCorrector {
             return None;
         }
 
-        // Create a small weight delta in the gradient direction
-        // This is a placeholder - real implementation would store gradient directions
-        Some(WeightDelta::scaled_identity(correction_magnitude * 0.01))
+        // Create a weight delta with per-layer corrections
+        // The linear model's prediction magnitude drives uniform layer-level correction
+        let layer_names = [
+            "embed",
+            "attention.q",
+            "attention.k",
+            "attention.v",
+            "attention.out",
+            "mlp.up",
+            "mlp.down",
+            "lm_head",
+        ];
+
+        let per_layer_correction = correction_magnitude * 0.01;
+        let mut deltas = std::collections::HashMap::new();
+        for layer_name in &layer_names {
+            deltas.insert((*layer_name).to_string(), vec![per_layer_correction]);
+        }
+
+        Some(WeightDelta {
+            deltas,
+            scale: per_layer_correction.abs(),
+            metadata: crate::state::WeightDeltaMetadata {
+                is_predicted: false,
+                confidence: Some(0.5),
+                source_phase: Some(crate::Phase::Correct),
+                num_steps: 0,
+            },
+        })
     }
 
     /// Returns the current residual magnitude EMA.
@@ -500,5 +603,375 @@ mod tests {
         }
 
         assert!(executor.is_complete());
+    }
+
+    /// Helper: create a TrainingState with some recorded steps for realistic features.
+    fn make_state(step: u64, loss: f32, grad_norm: f32) -> TrainingState {
+        let mut state = TrainingState::new();
+        // Record enough steps so that compute_features() produces meaningful values
+        for i in 0..step {
+            state.record_step(loss + 0.01 * i as f32, grad_norm);
+        }
+        state
+    }
+
+    /// Helper: create a Residual with optional gradient residuals.
+    fn make_residual(
+        step: u64,
+        loss_residual: f32,
+        confidence: f32,
+        state_features: Vec<f32>,
+        gradient_residuals: Vec<crate::residuals::LayerResidual>,
+    ) -> crate::residuals::Residual {
+        crate::residuals::Residual {
+            step,
+            phase: crate::Phase::Predict,
+            prediction_horizon: 10,
+            loss_residual,
+            gradient_residuals,
+            state_features,
+            prediction_confidence: confidence,
+        }
+    }
+
+    #[test]
+    fn test_weight_correction_from_gradient_residuals() {
+        let config = HybridTrainerConfig::default();
+        let corrector = ResidualCorrector::new(&config);
+
+        let mut store = ResidualStore::new(100);
+        let state = make_state(50, 2.0, 1.0);
+        let features = state.compute_features();
+
+        // Add residuals with gradient_residuals populated for multiple layers
+        for i in 0..10 {
+            let layer_residuals = vec![
+                crate::residuals::LayerResidual {
+                    layer_name: "attention_qkv".to_string(),
+                    magnitude: 0.05 + 0.001 * i as f32,
+                    compressed: None,
+                    cosine_similarity: 0.8,
+                },
+                crate::residuals::LayerResidual {
+                    layer_name: "embedding".to_string(),
+                    magnitude: 0.03 + 0.001 * i as f32,
+                    compressed: None,
+                    cosine_similarity: 0.9,
+                },
+            ];
+            store.add(make_residual(
+                40 + i,
+                0.1,
+                0.9,
+                features.clone(),
+                layer_residuals,
+            ));
+        }
+
+        let correction = corrector.compute_correction(&state, &store, 2.0);
+
+        // weight_correction should be Some because residuals have gradient info
+        assert!(
+            correction.weight_correction.is_some(),
+            "Expected weight_correction to be Some when gradient_residuals are populated"
+        );
+
+        let wd = correction.weight_correction.unwrap();
+        // Verify per-layer deltas exist for both layers
+        assert!(
+            wd.deltas.contains_key("attention_qkv"),
+            "Missing attention_qkv layer delta"
+        );
+        assert!(
+            wd.deltas.contains_key("embedding"),
+            "Missing embedding layer delta"
+        );
+        // Each layer should have a single correction value
+        assert_eq!(wd.deltas["attention_qkv"].len(), 1);
+        assert_eq!(wd.deltas["embedding"].len(), 1);
+    }
+
+    #[test]
+    fn test_linear_model_learning() {
+        let config = HybridTrainerConfig::default();
+        let mut corrector = ResidualCorrector::new(&config);
+
+        let initial_weights: Vec<f32> = corrector.linear_model.clone();
+
+        // Feed multiple residuals to drive online learning updates
+        for i in 0..20 {
+            let state = make_state(10 + i, 2.0 - 0.01 * i as f32, 1.0);
+            let residual = make_residual(
+                10 + i,
+                0.05 * (i as f32 + 1.0), // Increasing residuals
+                0.9,
+                state.compute_features(),
+                Vec::new(),
+            );
+            corrector.update_from_residual(&residual, &state);
+        }
+
+        // Verify the linear model weights have changed from their initial values
+        let changed = corrector
+            .linear_model
+            .iter()
+            .zip(initial_weights.iter())
+            .any(|(new, old)| (new - old).abs() > 1e-10);
+        assert!(changed, "Linear model weights should have changed after updates");
+
+        // Also verify the bias has changed
+        assert!(
+            corrector.loss_bias.abs() > 1e-10,
+            "Loss bias should be non-zero after updates"
+        );
+    }
+
+    #[test]
+    fn test_temporal_decay_weighting() {
+        let config = HybridTrainerConfig::default();
+        let corrector = ResidualCorrector::new(&config);
+
+        let mut store = ResidualStore::new(100);
+        let state = make_state(1000, 2.0, 1.0);
+        let features = state.compute_features();
+
+        // Add an old residual (step 100) with a large loss residual
+        store.add(make_residual(100, 1.0, 0.9, features.clone(), Vec::new()));
+
+        // Add a recent residual (step 990) with a small loss residual
+        store.add(make_residual(990, -0.1, 0.9, features.clone(), Vec::new()));
+
+        let correction = corrector.compute_correction(&state, &store, 2.0);
+
+        // The recent residual (loss_residual = -0.1) should dominate over the old one
+        // (loss_residual = 1.0) due to temporal decay, so the blended correction
+        // should lean toward the recent value's direction (negative)
+        // The old residual at step 100 vs current step 1000 has step_diff=900,
+        // temporal_weight = 0.95^(900/100) = 0.95^9 ~ 0.63
+        // The recent residual at step 990 vs current step 1000 has step_diff=10,
+        // temporal_weight = 0.95^(10/100) = 0.95^0.1 ~ 0.995
+        // So the recent residual's weight is substantially higher.
+        // The correction is a blend of historical and model-based (model is zero initially),
+        // so historical component = 0.7 * weighted_avg
+        assert!(
+            correction.num_residuals_used == 2,
+            "Both residuals should be used"
+        );
+        // The recent residual's weight should be larger
+        assert!(
+            correction.residual_weights[1] > correction.residual_weights[0],
+            "Recent residual (index 1) should have higher weight than old residual (index 0). \
+             Weights: {:?}",
+            correction.residual_weights
+        );
+    }
+
+    #[test]
+    fn test_simple_correction_produces_layer_deltas() {
+        let config = HybridTrainerConfig::default();
+        let mut corrector = ResidualCorrector::new(&config);
+
+        // We need at least 10 corrections_applied for compute_simple_correction to return Some
+        let state = make_state(50, 2.0, 1.0);
+        for i in 0..15 {
+            let residual = make_residual(
+                i,
+                0.5, // Consistent positive residual to build up bias
+                0.9,
+                state.compute_features(),
+                Vec::new(),
+            );
+            corrector.update_from_residual(&residual, &state);
+        }
+
+        let result = corrector.compute_simple_correction(&state);
+
+        // After 15 updates with consistent residuals, the model should produce
+        // a correction with sufficient magnitude
+        assert!(
+            result.is_some(),
+            "Simple correction should be Some after 15 updates with consistent residuals"
+        );
+
+        let wd = result.unwrap();
+        let expected_layers = [
+            "embed",
+            "attention.q",
+            "attention.k",
+            "attention.v",
+            "attention.out",
+            "mlp.up",
+            "mlp.down",
+            "lm_head",
+        ];
+        for layer in &expected_layers {
+            assert!(
+                wd.deltas.contains_key(*layer),
+                "Missing expected layer: {layer}"
+            );
+        }
+        // Verify metadata
+        assert!(!wd.metadata.is_predicted);
+        assert_eq!(wd.metadata.source_phase, Some(crate::Phase::Correct));
+    }
+
+    #[test]
+    fn test_correction_with_single_residual() {
+        let config = HybridTrainerConfig::default();
+        let corrector = ResidualCorrector::new(&config);
+
+        let mut store = ResidualStore::new(100);
+        let state = make_state(10, 2.0, 1.0);
+        let features = state.compute_features();
+
+        // Add just a single residual
+        store.add(make_residual(5, 0.3, 0.8, features.clone(), Vec::new()));
+
+        let correction = corrector.compute_correction(&state, &store, 2.0);
+
+        // Should still produce a correction (not panic or return zero)
+        assert_eq!(correction.num_residuals_used, 1);
+        assert_eq!(correction.residual_weights.len(), 1);
+        // Confidence should be low (< 5 residuals)
+        assert!(
+            (correction.confidence - 0.5).abs() < f32::EPSILON,
+            "Single-residual correction should have low confidence (0.5), got {}",
+            correction.confidence
+        );
+        // Loss correction should be derived from the single residual
+        // 0.7 * (weighted loss_residual) + 0.3 * (model_correction ≈ 0) = 0.7 * 0.3 = 0.21
+        // clamped by max_correction_factor (0.2 * |2.0| = 0.4), so should be ~0.21
+        assert!(
+            correction.loss_correction.abs() > 0.0,
+            "Loss correction should be non-zero with a non-zero residual"
+        );
+    }
+
+    #[test]
+    fn test_correction_executor_tracks_steps() {
+        let mut executor = CorrectionExecutor::new(10, 0.5);
+
+        // Record several correction steps with varying improvements
+        let corrections = vec![
+            (
+                Correction {
+                    loss_correction: 0.1,
+                    weight_correction: None,
+                    confidence: 0.9,
+                    num_residuals_used: 5,
+                    residual_weights: vec![0.2; 5],
+                },
+                0.05,
+            ),
+            (
+                Correction {
+                    loss_correction: -0.2,
+                    weight_correction: None,
+                    confidence: 0.8,
+                    num_residuals_used: 3,
+                    residual_weights: vec![0.33; 3],
+                },
+                0.1,
+            ),
+            (
+                Correction {
+                    loss_correction: 0.15,
+                    weight_correction: None,
+                    confidence: 0.85,
+                    num_residuals_used: 7,
+                    residual_weights: vec![0.14; 7],
+                },
+                0.08,
+            ),
+        ];
+
+        for (correction, improvement) in &corrections {
+            executor.record_step(correction, *improvement);
+        }
+
+        // Verify the executor tracked all steps
+        assert_eq!(executor.current_step, 3);
+        assert!(!executor.is_complete()); // 3 < 10
+
+        // Verify statistics
+        let stats = &executor.statistics;
+        assert_eq!(stats.corrections_applied, 3);
+        // Total residuals used = 5 + 3 + 7 = 15
+        assert_eq!(stats.residuals_used, 15);
+        // Max correction applied = 0.2 (absolute value of -0.2)
+        assert!(
+            (stats.max_correction_applied - 0.2).abs() < f32::EPSILON,
+            "Max correction should be 0.2, got {}",
+            stats.max_correction_applied
+        );
+        // Total correction magnitude = 0.1 + 0.2 + 0.15 = 0.45
+        assert!(
+            (stats.total_correction_magnitude - 0.45).abs() < 1e-6,
+            "Total correction magnitude should be 0.45, got {}",
+            stats.total_correction_magnitude
+        );
+        // Prediction improvement = 0.05 + 0.1 + 0.08 = 0.23
+        assert!(
+            (stats.prediction_improvement - 0.23).abs() < 1e-6,
+            "Prediction improvement should be 0.23, got {}",
+            stats.prediction_improvement
+        );
+    }
+
+    #[test]
+    fn test_correction_blending() {
+        // Verify that the correction is properly blended from historical (0.7) and model (0.3)
+        let mut corrector = ResidualCorrector::with_config(CorrectorConfig {
+            max_correction_factor: 1.0, // Large to avoid clamping
+            temporal_decay: 1.0,        // No temporal decay for simplicity
+            learning_rate: 0.0,         // No model learning (keeps model at zero)
+            ..CorrectorConfig::default()
+        });
+
+        let mut store = ResidualStore::new(100);
+        let state = make_state(10, 2.0, 1.0);
+        let features = state.compute_features();
+
+        // Add identical residuals so the weighted average = the residual value
+        for i in 0..5 {
+            store.add(make_residual(
+                5 + i,
+                0.4, // Consistent loss residual
+                0.9, // Same confidence for uniform weighting
+                features.clone(),
+                Vec::new(),
+            ));
+        }
+
+        let correction = corrector.compute_correction(&state, &store, 2.0);
+
+        // Historical component: weighted avg of loss_residuals = 0.4
+        // Model component: linear_model is all zeros, bias is 0 => 0.0
+        // Blended = 0.7 * 0.4 + 0.3 * 0.0 = 0.28
+        // max_correction = |2.0| * 1.0 = 2.0 (no clamping)
+        let expected = 0.7 * 0.4 + 0.3 * 0.0;
+        assert!(
+            (correction.loss_correction - expected).abs() < 1e-4,
+            "Blended correction should be ~{expected}, got {}",
+            correction.loss_correction
+        );
+
+        // Now train the model to have non-zero weights, and verify blending changes
+        for i in 0..50 {
+            let s = make_state(10 + i, 2.0, 1.0);
+            let r = make_residual(10 + i, 0.4, 0.9, s.compute_features(), Vec::new());
+            corrector.update_from_residual(&r, &s);
+        }
+
+        // Recompute - now model component should be non-zero
+        let correction2 = corrector.compute_correction(&state, &store, 2.0);
+
+        // The model-based component should now contribute, changing the blend
+        // We don't know the exact value, but it should differ from the pure historical blend
+        // (unless the model learned exactly 0, which is unlikely with 50 updates)
+        assert!(
+            correction2.loss_correction.abs() > 0.0,
+            "Correction should still be non-zero after model learning"
+        );
     }
 }

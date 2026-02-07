@@ -564,4 +564,326 @@ mod tests {
         let score = monitor.compute_oscillation_score();
         assert!(score > 0.5); // Should detect oscillation
     }
+
+    // ─── New comprehensive tests ─────────────────────────────────────────
+
+    #[test]
+    fn test_gradient_vanishing_detection() {
+        let mut monitor = DivergenceMonitor::default_config();
+
+        // Establish a baseline with normal gradient norms
+        // The first 50 observations set the baseline_gradient_norm
+        for _ in 0..50 {
+            monitor.observe(2.5, 1.0);
+        }
+
+        // Verify baseline is established around 1.0
+        assert!(
+            (monitor.gradient_norm_ema() - 1.0).abs() < 0.1,
+            "baseline gradient norm should be ~1.0, got {}",
+            monitor.gradient_norm_ema()
+        );
+
+        // Now check with a very small gradient (vanishing)
+        // vanishing_gradient_threshold default is 0.01, baseline ~1.0
+        // So gradient < 0.01 * 1.0 = 0.01 should trigger
+        let mut state = TrainingState::new();
+        state.loss = 2.5;
+        state.gradient_norm = 0.001; // Way below 0.01 * baseline
+
+        let result = monitor.check(&state, None);
+
+        // Find the gradient_vanishing signal
+        let vanish_signal = result
+            .signals
+            .iter()
+            .find(|s| s.name == "gradient_vanishing");
+
+        assert!(
+            vanish_signal.is_some(),
+            "should have a gradient_vanishing signal"
+        );
+
+        let vanish = vanish_signal.unwrap();
+        assert!(
+            vanish.triggered,
+            "gradient_vanishing should be triggered with gradient_norm=0.001"
+        );
+        assert!(
+            vanish.severity >= DivergenceLevel::Warning,
+            "vanishing gradient should be at least Warning level, got {:?}",
+            vanish.severity
+        );
+    }
+
+    #[test]
+    fn test_prediction_error_signal() {
+        let mut monitor = DivergenceMonitor::default_config();
+
+        // Establish baseline
+        for _ in 0..50 {
+            monitor.observe(2.5, 1.0);
+        }
+
+        // Check with a predicted loss that is way off
+        let mut state = TrainingState::new();
+        state.loss = 5.0; // Actual loss
+        state.gradient_norm = 1.0;
+
+        // Predicted was 2.0, but actual is 5.0 => relative error = 3/5 = 0.6
+        let result = monitor.check(&state, Some(2.0));
+
+        // Find prediction_error signal
+        let pred_signal = result
+            .signals
+            .iter()
+            .find(|s| s.name == "prediction_error");
+
+        assert!(
+            pred_signal.is_some(),
+            "should have a prediction_error signal"
+        );
+
+        let pred = pred_signal.unwrap();
+        assert!(
+            pred.triggered,
+            "prediction_error should be triggered with 60% relative error"
+        );
+        assert!(
+            pred.severity >= DivergenceLevel::Warning,
+            "large prediction error (>50%) should be Warning, got {:?}",
+            pred.severity
+        );
+
+        // Check with a smaller but still notable error
+        state.loss = 2.6; // Actual
+        let result_small = monitor.check(&state, Some(2.0));
+        let pred_small = result_small
+            .signals
+            .iter()
+            .find(|s| s.name == "prediction_error")
+            .unwrap();
+
+        // relative error = 0.6/2.6 ~= 0.23, which is > 0.2 threshold
+        assert!(
+            pred_small.triggered,
+            "should trigger with ~23% relative error"
+        );
+        assert_eq!(
+            pred_small.severity,
+            DivergenceLevel::Caution,
+            "moderate prediction error (20-50%) should be Caution, got {:?}",
+            pred_small.severity
+        );
+    }
+
+    #[test]
+    fn test_consecutive_warning_escalation() {
+        let mut monitor = DivergenceMonitor::default_config();
+
+        // Establish baseline
+        for _ in 0..50 {
+            monitor.observe(2.5, 1.0);
+        }
+
+        // Create a state that triggers exactly Warning level
+        // Use gradient explosion (beyond baseline * gradient_norm_multiplier)
+        // default gradient_norm_multiplier = 100.0, baseline ~1.0
+        // So gradient > 100 triggers Warning
+        let mut state = TrainingState::new();
+        state.loss = 2.5; // Normal loss (no loss spike)
+        state.gradient_norm = 150.0; // Gradient explosion => Warning
+
+        // First warning
+        let result1 = monitor.check(&state, None);
+        assert!(
+            result1.level >= DivergenceLevel::Warning,
+            "first check with exploded gradient should be Warning, got {:?}",
+            result1.level
+        );
+
+        // Second warning
+        let result2 = monitor.check(&state, None);
+        assert!(
+            result2.level >= DivergenceLevel::Warning,
+            "second check should still be Warning"
+        );
+
+        // Third consecutive warning should escalate to Critical
+        let result3 = monitor.check(&state, None);
+        assert_eq!(
+            result3.level,
+            DivergenceLevel::Critical,
+            "third consecutive warning should escalate to Critical, got {:?}",
+            result3.level
+        );
+    }
+
+    #[test]
+    fn test_multi_signal_combination() {
+        let mut monitor = DivergenceMonitor::default_config();
+
+        // Establish baseline
+        for _ in 0..50 {
+            monitor.observe(2.5, 1.0);
+        }
+
+        // Create a state with both a loss spike and gradient explosion
+        let mut state = TrainingState::new();
+        state.loss = 100.0; // Massive loss spike
+        state.gradient_norm = 5000.0; // Massive gradient explosion (>10x threshold => Critical)
+
+        let result = monitor.check(&state, None);
+
+        // Multiple signals should be triggered
+        let triggered_names: Vec<&str> = result
+            .signals
+            .iter()
+            .filter(|s| s.triggered)
+            .map(|s| s.name.as_str())
+            .collect();
+
+        assert!(
+            triggered_names.len() >= 2,
+            "at least 2 signals should trigger (loss + gradient), got: {:?}",
+            triggered_names
+        );
+
+        // The overall level should be the maximum severity
+        // Gradient explosion at 5000x (> 10x threshold) => Critical
+        assert_eq!(
+            result.level,
+            DivergenceLevel::Critical,
+            "combined signals with extreme gradient should be Critical, got {:?}",
+            result.level
+        );
+
+        // Should have a recommendation
+        assert!(
+            result.recommended_action.is_some(),
+            "Critical divergence should have a recommended action"
+        );
+    }
+
+    #[test]
+    fn test_ema_variance_tracking() {
+        let mut monitor = DivergenceMonitor::default_config();
+
+        // Feed a known sequence of losses: constant at 2.5
+        // Note: The EMA variance has a "warm-up artifact" because the first
+        // observation sees a large delta from the initial EMA of 0.0.
+        // With ema_decay=0.99, this initial spike decays slowly.
+        // We run enough iterations to mostly decay the artifact.
+        for _ in 0..500 {
+            monitor.observe(2.5, 1.0);
+        }
+
+        // With constant loss, EMA should converge to 2.5
+        assert!(
+            (monitor.loss_ema() - 2.5).abs() < 0.01,
+            "loss EMA should be ~2.5 with constant input, got {}",
+            monitor.loss_ema()
+        );
+
+        // After 500 steps, the initial variance artifact has decayed
+        // by 0.99^499 ~= 0.007, so loss_var_ema should be small
+        let loss_std_constant = monitor.loss_std();
+        assert!(
+            loss_std_constant < 0.5,
+            "loss std should be relatively small with constant input after 500 steps, got {}",
+            loss_std_constant
+        );
+
+        // Now create a monitor with genuinely variable loss
+        let mut monitor2 = DivergenceMonitor::default_config();
+        for i in 0..500 {
+            let loss = 2.5 + (i as f32 * 0.5).sin() * 2.0; // Larger oscillation
+            monitor2.observe(loss, 1.0);
+        }
+
+        let loss_std_variable = monitor2.loss_std();
+
+        // Variable loss should produce higher variance than constant loss
+        assert!(
+            loss_std_variable > loss_std_constant,
+            "variable loss should have higher std ({}) than constant loss ({})",
+            loss_std_variable,
+            loss_std_constant
+        );
+
+        // EMA of variable loss should still be approximately centered at 2.5
+        assert!(
+            (monitor2.loss_ema() - 2.5).abs() < 1.0,
+            "loss EMA with oscillation should be near 2.5, got {}",
+            monitor2.loss_ema()
+        );
+    }
+
+    #[test]
+    fn test_all_clear_after_recovery() {
+        let mut monitor = DivergenceMonitor::default_config();
+
+        // Establish baseline with normal training
+        for _ in 0..50 {
+            monitor.observe(2.5, 1.0);
+        }
+
+        // Trigger divergence with a loss spike
+        let mut spike_state = TrainingState::new();
+        spike_state.loss = 50.0; // Major spike
+        spike_state.gradient_norm = 1.0;
+
+        let spike_result = monitor.check(&spike_state, None);
+        assert!(
+            spike_result.level >= DivergenceLevel::Warning,
+            "loss spike should trigger at least Warning, got {:?}",
+            spike_result.level
+        );
+        assert!(
+            spike_result.is_concerning(),
+            "spike should be concerning"
+        );
+
+        // Now "recover" by sending normal signals
+        // First, observe many normal loss values to bring the EMA back
+        for _ in 0..100 {
+            monitor.observe(2.5, 1.0);
+        }
+
+        // Check with normal values - should be clear
+        let mut normal_state = TrainingState::new();
+        normal_state.loss = 2.5;
+        normal_state.gradient_norm = 1.0;
+
+        let recovery_result = monitor.check(&normal_state, None);
+
+        assert_eq!(
+            recovery_result.level,
+            DivergenceLevel::Normal,
+            "after recovery with normal signals, level should be Normal, got {:?}",
+            recovery_result.level
+        );
+        assert!(
+            !recovery_result.is_concerning(),
+            "should not be concerning after recovery"
+        );
+        assert!(
+            !recovery_result.needs_immediate_action(),
+            "should not need immediate action after recovery"
+        );
+
+        // Consecutive warnings counter should have been reset
+        // (we can verify this indirectly: a single Warning should not escalate)
+        let mut mild_spike_state = TrainingState::new();
+        mild_spike_state.loss = 2.5;
+        mild_spike_state.gradient_norm = 150.0; // Warning level
+        let after_recovery_warn = monitor.check(&mild_spike_state, None);
+
+        // Should be Warning but NOT Critical (consecutive_warnings was reset)
+        assert!(
+            after_recovery_warn.level <= DivergenceLevel::Warning,
+            "single warning after recovery should not escalate to Critical, got {:?}",
+            after_recovery_warn.level
+        );
+    }
 }

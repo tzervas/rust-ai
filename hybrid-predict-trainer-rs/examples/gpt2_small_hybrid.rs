@@ -133,7 +133,7 @@ fn main() {
         .warmup_steps(5)  // Reduced for quick test
         .full_steps(10)   // Reduced for quick test
         .max_predict_steps(5)
-        .correction_interval(2)
+        .correction_interval(0)  // DISABLED: Fixes VRAM leak from model.map() copies
         .divergence_threshold(2.5)
         .confidence_threshold(0.3)  // Lower to trigger Predict phase
         .build();

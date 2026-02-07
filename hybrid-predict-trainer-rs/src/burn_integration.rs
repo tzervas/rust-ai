@@ -332,6 +332,34 @@ where
         // This will be implemented when we integrate with real Burn models
         1.0
     }
+
+    /// Clears the last loss tensor and its autodiff graph.
+    ///
+    /// This method should be called during the Predict phase after forward()
+    /// when backward() won't be called. This prevents memory accumulation from
+    /// unused autodiff graphs that would otherwise persist.
+    ///
+    /// # Memory Management
+    ///
+    /// During normal training (Full phase):
+    /// - forward() stores loss + autodiff graph (~2-4 GB for GPT-2 Small)
+    /// - backward() releases the autodiff graph after computing gradients
+    ///
+    /// During Predict phase:
+    /// - forward() stores loss + autodiff graph
+    /// - backward() is NEVER called (that's the speedup!)
+    /// - Without clearing, autodiff graphs accumulate (+500 MB/step)
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// // In execute_predict_step()
+    /// let loss = model.forward(batch)?;
+    /// model.clear_loss(); // Prevent memory leak
+    /// ```
+    pub fn clear_loss(&mut self) {
+        *self.last_loss.write() = None;
+    }
 }
 
 /// Implementation of Model trait for BurnModelWrapper
@@ -438,6 +466,12 @@ where
             gradient_norm: grad_norm,
             per_param_norms: Some(per_param_norms),
         })
+    }
+
+    fn clear_forward_state(&mut self) {
+        // Clear the last loss tensor to free autodiff graph
+        // This is critical during Predict phase when backward() won't be called
+        self.clear_loss();
     }
 
     fn parameter_count(&self) -> usize {

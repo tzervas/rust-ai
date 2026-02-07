@@ -289,6 +289,27 @@ pub trait Model<B: Batch>: Send {
     /// Gradient information including loss and gradient norms.
     fn backward(&mut self) -> HybridResult<GradientInfo>;
 
+    /// Clears forward pass state when backward() won't be called.
+    ///
+    /// This method should be called during Predict phase after forward()
+    /// when backward() will be skipped. It allows implementations to free
+    /// resources associated with the forward pass (e.g., autodiff graphs,
+    /// cached activations) to prevent memory accumulation.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// // During Predict phase
+    /// let loss = model.forward(batch)?;
+    /// model.clear_forward_state(); // Won't call backward()
+    /// ```
+    ///
+    /// Default implementation does nothing (for implementations that don't
+    /// need cleanup).
+    fn clear_forward_state(&mut self) {
+        // Default: no-op
+    }
+
     /// Returns the total number of trainable parameters.
     fn parameter_count(&self) -> usize;
 
@@ -976,6 +997,10 @@ impl<M, O> HybridTrainer<M, O> {
         // Forward pass to get actual loss (for validation)
         let actual_loss = model.forward(batch)?;
 
+        // Clear forward state immediately (no backward in Predict phase)
+        // This prevents memory accumulation from unused autodiff graphs
+        model.clear_forward_state();
+
         // Compute prediction error (absolute difference)
         let prediction_error = (actual_loss - predicted_loss).abs();
 
@@ -1076,6 +1101,9 @@ impl<M, O> HybridTrainer<M, O> {
 
         // Forward pass to validate correction
         let loss = model.forward(batch)?;
+
+        // Clear forward state immediately (no backward in Correct phase)
+        model.clear_forward_state();
 
         // Compute how much the correction changed the loss (for metrics)
         let correction_effect = if correction.loss_correction.abs() > 0.001 {

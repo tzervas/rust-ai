@@ -392,4 +392,280 @@ mod tests {
 
         assert_eq!(stats.gradient_clip_count, 2);
     }
+
+    #[test]
+    fn test_average_gradient_norm() {
+        let mut stats = FullTrainStatistics::new();
+
+        // Record steps with known gradient norms: 1.0, 2.0, 3.0, 4.0
+        stats.record_step(1.0, 1.0, false);
+        stats.record_step(1.0, 2.0, false);
+        stats.record_step(1.0, 3.0, false);
+        stats.record_step(1.0, 4.0, false);
+
+        // Average = (1 + 2 + 3 + 4) / 4 = 2.5
+        let avg = stats.average_gradient_norm();
+        assert!(
+            (avg - 2.5).abs() < 1e-6,
+            "Expected average gradient norm 2.5, got {}",
+            avg
+        );
+
+        // Edge case: no steps recorded
+        let empty_stats = FullTrainStatistics::new();
+        assert!((empty_stats.average_gradient_norm()).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_loss_std_computation() {
+        let mut stats = FullTrainStatistics::new();
+
+        // Record steps with known loss values: all the same = 0 std
+        stats.record_step(5.0, 1.0, false);
+        stats.record_step(5.0, 1.0, false);
+        stats.record_step(5.0, 1.0, false);
+
+        assert!(
+            stats.loss_std().abs() < 1e-6,
+            "Std of constant values should be ~0, got {}",
+            stats.loss_std()
+        );
+
+        // Now test with varying values: 1.0, 3.0
+        // Mean = 2.0, population variance = ((1-2)^2 + (3-2)^2)/2 = 1.0, std = 1.0
+        let mut stats2 = FullTrainStatistics::new();
+        stats2.record_step(1.0, 1.0, false);
+        stats2.record_step(3.0, 1.0, false);
+
+        let std = stats2.loss_std();
+        // loss_std uses population variance: (loss_sq_sum/n) - (mean*mean)
+        // loss_sum = 4.0, loss_sq_sum = 1 + 9 = 10, n = 2
+        // variance = 10/2 - (4/2)^2 = 5 - 4 = 1.0
+        // std = 1.0
+        assert!(
+            (std - 1.0).abs() < 1e-5,
+            "Expected loss std ~1.0, got {}",
+            std
+        );
+
+        // Edge case: fewer than 2 steps
+        let mut stats_one = FullTrainStatistics::new();
+        stats_one.record_step(3.0, 1.0, false);
+        assert!(
+            (stats_one.loss_std()).abs() < 1e-6,
+            "Std with 1 sample should be 0"
+        );
+    }
+
+    #[test]
+    fn test_gradient_observation_collection() {
+        let config = HybridTrainerConfig::default();
+        let mut executor = FullTrainExecutor::new(&config, 10);
+
+        // Record steps without observations
+        executor.record_step(2.5, 1.0, None);
+        executor.record_step(2.4, 0.9, None);
+        assert_eq!(executor.gradient_observations().len(), 0);
+
+        // Record steps with observations
+        let obs1 = GradientObservation {
+            step: 3,
+            loss_before: 2.3,
+            loss_after: Some(2.2),
+            gradient_norm: 0.85,
+            layer_norms: vec![("layer1".to_string(), 0.5), ("layer2".to_string(), 0.35)],
+            gradient_cosine: Some(0.95),
+            learning_rate: 0.001,
+        };
+        let obs2 = GradientObservation {
+            step: 4,
+            loss_before: 2.2,
+            loss_after: None,
+            gradient_norm: 0.7,
+            layer_norms: vec![],
+            gradient_cosine: None,
+            learning_rate: 0.001,
+        };
+
+        executor.record_step(2.3, 0.85, Some(obs1));
+        executor.record_step(2.2, 0.7, Some(obs2));
+
+        let observations = executor.gradient_observations();
+        assert_eq!(observations.len(), 2);
+        assert_eq!(observations[0].step, 3);
+        assert_eq!(observations[1].step, 4);
+        assert!((observations[0].gradient_norm - 0.85).abs() < 1e-6);
+        assert!(observations[0].loss_after.is_some());
+        assert!(observations[1].loss_after.is_none());
+    }
+
+    #[test]
+    fn test_max_gradient_norm_tracking() {
+        let mut stats = FullTrainStatistics::new();
+
+        stats.record_step(2.0, 0.5, false);
+        stats.record_step(2.0, 3.2, false);
+        stats.record_step(2.0, 1.8, false);
+        stats.record_step(2.0, 2.9, false);
+        stats.record_step(2.0, 0.1, false);
+
+        assert!(
+            (stats.max_gradient_norm - 3.2).abs() < 1e-6,
+            "Max gradient norm should be 3.2, got {}",
+            stats.max_gradient_norm
+        );
+
+        // Adding a new max should update
+        stats.record_step(2.0, 5.0, false);
+        assert!(
+            (stats.max_gradient_norm - 5.0).abs() < 1e-6,
+            "Max gradient norm should update to 5.0, got {}",
+            stats.max_gradient_norm
+        );
+    }
+
+    #[test]
+    fn test_loss_trajectory_min_max() {
+        let mut stats = FullTrainStatistics::new();
+
+        // Record decreasing losses
+        stats.record_step(5.0, 1.0, false);
+        stats.record_step(4.0, 1.0, false);
+        stats.record_step(3.0, 1.0, false);
+        stats.record_step(2.0, 1.0, false);
+        stats.record_step(1.0, 1.0, false);
+
+        assert!(
+            (stats.min_loss - 1.0).abs() < 1e-6,
+            "Min loss should be 1.0, got {}",
+            stats.min_loss
+        );
+        assert!(
+            (stats.final_loss - 1.0).abs() < 1e-6,
+            "Final loss should be last recorded (1.0), got {}",
+            stats.final_loss
+        );
+
+        // Average should be (5+4+3+2+1)/5 = 3.0
+        assert!(
+            (stats.average_loss() - 3.0).abs() < 1e-5,
+            "Average loss should be 3.0, got {}",
+            stats.average_loss()
+        );
+
+        // Now record a lower loss
+        stats.record_step(0.5, 1.0, false);
+        assert!(
+            (stats.min_loss - 0.5).abs() < 1e-6,
+            "Min loss should update to 0.5"
+        );
+
+        // Record a higher loss -- min should NOT change
+        stats.record_step(2.5, 1.0, false);
+        assert!(
+            (stats.min_loss - 0.5).abs() < 1e-6,
+            "Min loss should remain 0.5 after recording higher loss"
+        );
+        assert!(
+            (stats.final_loss - 2.5).abs() < 1e-6,
+            "Final loss should update to 2.5"
+        );
+    }
+
+    #[test]
+    fn test_zero_target_steps_edge_case() {
+        let config = HybridTrainerConfig::default();
+        let executor = FullTrainExecutor::new(&config, 0);
+
+        // With 0 target steps, executor should be immediately complete
+        assert!(executor.is_complete());
+
+        // Progress should be 1.0 (not divide-by-zero)
+        assert!(
+            (executor.progress() - 1.0).abs() < 1e-6,
+            "Progress with 0 target steps should be 1.0, got {}",
+            executor.progress()
+        );
+
+        // Steps remaining should be 0
+        assert_eq!(executor.steps_remaining(), 0);
+
+        // Finalize should produce a valid outcome
+        let outcome = executor.finalize();
+        assert_eq!(outcome.phase, Phase::Full);
+        assert_eq!(outcome.steps_executed, 0);
+        assert!(outcome.completed_normally);
+        assert!(outcome.early_termination_reason.is_none());
+    }
+
+    #[test]
+    fn test_finalize_phase_outcome() {
+        let config = HybridTrainerConfig::default();
+        let mut executor = FullTrainExecutor::new(&config, 5);
+
+        // Record all 5 steps with known values
+        executor.record_step(3.0, 1.5, None);
+        executor.record_step(2.8, 1.3, None);
+        executor.record_step(2.6, 1.1, None);
+        executor.record_step(2.4, 0.9, None);
+        executor.record_step(2.2, 0.7, None);
+
+        assert!(executor.is_complete());
+
+        let outcome = executor.finalize();
+
+        // Phase should be Full
+        assert_eq!(outcome.phase, Phase::Full);
+
+        // Steps executed should match
+        assert_eq!(outcome.steps_executed, 5);
+
+        // Average loss = (3.0 + 2.8 + 2.6 + 2.4 + 2.2) / 5 = 2.6
+        assert!(
+            (outcome.average_loss - 2.6).abs() < 1e-5,
+            "Average loss should be 2.6, got {}",
+            outcome.average_loss
+        );
+
+        // Final loss should be the last recorded
+        assert!(
+            (outcome.final_loss - 2.2).abs() < 1e-6,
+            "Final loss should be 2.2, got {}",
+            outcome.final_loss
+        );
+
+        // Should have completed normally
+        assert!(outcome.completed_normally);
+        assert!(outcome.early_termination_reason.is_none());
+
+        // Prediction error should be None (this is Full phase, not Predict)
+        assert!(outcome.prediction_error.is_none());
+
+        // Duration should be non-negative (could be very small in tests)
+        assert!(outcome.duration_ms >= 0.0);
+    }
+
+    #[test]
+    fn test_finalize_early_termination() {
+        let config = HybridTrainerConfig::default();
+        let mut executor = FullTrainExecutor::new(&config, 10);
+
+        // Only record 3 out of 10 steps
+        executor.record_step(3.0, 1.5, None);
+        executor.record_step(2.8, 1.3, None);
+        executor.record_step(2.6, 1.1, None);
+
+        assert!(!executor.is_complete());
+        assert_eq!(executor.steps_remaining(), 7);
+
+        let outcome = executor.finalize();
+
+        assert_eq!(outcome.steps_executed, 3);
+        assert!(!outcome.completed_normally);
+        assert!(outcome.early_termination_reason.is_some());
+        assert_eq!(
+            outcome.early_termination_reason.as_deref(),
+            Some("Full training terminated early")
+        );
+    }
 }

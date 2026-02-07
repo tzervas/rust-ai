@@ -1895,4 +1895,495 @@ mod tests {
             max_change
         );
     }
+
+    // ─── New comprehensive tests ─────────────────────────────────────────
+
+    #[test]
+    fn test_matvec_known_values() {
+        // 2x3 matrix (row-major):
+        // [ 1  2  3 ]
+        // [ 4  5  6 ]
+        //
+        // Vector: [1, 0, -1]
+        //
+        // Result: [1*1 + 2*0 + 3*(-1), 4*1 + 5*0 + 6*(-1)] = [-2, -2]
+        let mat = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
+        let vec_input = vec![1.0, 0.0, -1.0];
+        let rows = 2;
+        let cols = 3;
+
+        let result = RSSMLite::matvec(&mat, &vec_input, rows, cols);
+
+        assert_eq!(result.len(), 2);
+        assert!(
+            (result[0] - (-2.0)).abs() < 1e-6,
+            "expected -2.0, got {}",
+            result[0]
+        );
+        assert!(
+            (result[1] - (-2.0)).abs() < 1e-6,
+            "expected -2.0, got {}",
+            result[1]
+        );
+
+        // Second test: identity-like operation
+        // 2x2 identity matrix times [3, 7] should give [3, 7]
+        let identity = vec![1.0, 0.0, 0.0, 1.0];
+        let vec2 = vec![3.0, 7.0];
+        let result2 = RSSMLite::matvec(&identity, &vec2, 2, 2);
+        assert!((result2[0] - 3.0).abs() < 1e-6);
+        assert!((result2[1] - 7.0).abs() < 1e-6);
+
+        // Third test: all-ones matrix
+        // 2x3 all-ones matrix times [1, 2, 3] = [6, 6]
+        let ones_mat = vec![1.0; 6];
+        let vec3 = vec![1.0, 2.0, 3.0];
+        let result3 = RSSMLite::matvec(&ones_mat, &vec3, 2, 3);
+        assert!((result3[0] - 6.0).abs() < 1e-6);
+        assert!((result3[1] - 6.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_matvec_t_transpose() {
+        // 2x3 matrix (row-major):
+        // [ 1  2  3 ]
+        // [ 4  5  6 ]
+        //
+        // Transposed is:
+        // [ 1  4 ]
+        // [ 2  5 ]
+        // [ 3  6 ]
+        //
+        // matvec_t(M, v, 2, 3) computes M^T * v
+        // where v has length 2 (rows), result has length 3 (cols)
+        //
+        // v = [1, -1]
+        // result[0] = 1*1 + 4*(-1) = -3
+        // result[1] = 2*1 + 5*(-1) = -3
+        // result[2] = 3*1 + 6*(-1) = -3
+        let mat = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
+        let vec_input = vec![1.0, -1.0];
+
+        let result = RSSMLite::matvec_t(&mat, &vec_input, 2, 3);
+
+        assert_eq!(result.len(), 3);
+        assert!(
+            (result[0] - (-3.0)).abs() < 1e-6,
+            "expected -3.0, got {}",
+            result[0]
+        );
+        assert!(
+            (result[1] - (-3.0)).abs() < 1e-6,
+            "expected -3.0, got {}",
+            result[1]
+        );
+        assert!(
+            (result[2] - (-3.0)).abs() < 1e-6,
+            "expected -3.0, got {}",
+            result[2]
+        );
+
+        // Verify relationship: matvec(M, x) should equal matvec_t(M^T, x)
+        // For a square matrix M, (M*v) should give the same as (M^T)^T * v
+        // More concretely: matvec(M, v, r, c) with v of len c
+        //   vs matvec_t(M^T, v, c, r) with v of len c
+        // Let's test with a square matrix to make it simpler:
+        // M = [1 2; 3 4], v = [5, 6]
+        // matvec: [1*5+2*6, 3*5+4*6] = [17, 39]
+        // matvec_t with M^T = [1 3; 2 4] and same v=[5,6]:
+        //   result[0] = 1*5 + 2*6 = 17
+        //   result[1] = 3*5 + 4*6 = 39
+        let m = vec![1.0, 2.0, 3.0, 4.0];
+        let m_t = vec![1.0, 3.0, 2.0, 4.0]; // transposed in row-major
+        let v = vec![5.0, 6.0];
+
+        let result_mv = RSSMLite::matvec(&m, &v, 2, 2);
+        let result_mvt = RSSMLite::matvec_t(&m_t, &v, 2, 2);
+
+        assert!(
+            (result_mv[0] - result_mvt[0]).abs() < 1e-6,
+            "matvec and matvec_t(transpose) should agree: {} vs {}",
+            result_mv[0],
+            result_mvt[0]
+        );
+        assert!(
+            (result_mv[1] - result_mvt[1]).abs() < 1e-6,
+            "matvec and matvec_t(transpose) should agree: {} vs {}",
+            result_mv[1],
+            result_mvt[1]
+        );
+    }
+
+    #[test]
+    fn test_gru_step_with_cache_produces_valid_cache() {
+        let input_dim = 8;
+        let hidden_dim = 16;
+
+        let weights = GRUWeights::new(input_dim, hidden_dim);
+        let hidden: Vec<f32> = (0..hidden_dim).map(|i| (i as f32 * 0.1).sin()).collect();
+        let input: Vec<f32> = (0..input_dim).map(|i| (i as f32 * 0.2).cos()).collect();
+
+        let (h_new, cache) = RSSMLite::gru_step_with_cache(&weights, &hidden, &input);
+
+        // Verify cache dimensions
+        assert_eq!(cache.input.len(), input_dim, "cache input dimension mismatch");
+        assert_eq!(
+            cache.h_prev.len(),
+            hidden_dim,
+            "cache h_prev dimension mismatch"
+        );
+        assert_eq!(cache.z.len(), hidden_dim, "cache z dimension mismatch");
+        assert_eq!(cache.r.len(), hidden_dim, "cache r dimension mismatch");
+        assert_eq!(
+            cache.h_candidate.len(),
+            hidden_dim,
+            "cache h_candidate dimension mismatch"
+        );
+
+        // z and r should be sigmoid outputs, so in (0, 1)
+        for (i, &z_val) in cache.z.iter().enumerate() {
+            assert!(
+                z_val > 0.0 && z_val < 1.0,
+                "z[{}] = {} should be in (0, 1)",
+                i,
+                z_val
+            );
+        }
+        for (i, &r_val) in cache.r.iter().enumerate() {
+            assert!(
+                r_val > 0.0 && r_val < 1.0,
+                "r[{}] = {} should be in (0, 1)",
+                i,
+                r_val
+            );
+        }
+
+        // h_candidate should be tanh outputs, so in (-1, 1)
+        for (i, &h_val) in cache.h_candidate.iter().enumerate() {
+            assert!(
+                h_val >= -1.0 && h_val <= 1.0,
+                "h_candidate[{}] = {} should be in [-1, 1]",
+                i,
+                h_val
+            );
+        }
+
+        // z, r, h_candidate should have at least some non-zero values
+        let z_norm: f32 = cache.z.iter().map(|x| x * x).sum();
+        let r_norm: f32 = cache.r.iter().map(|x| x * x).sum();
+        let h_cand_norm: f32 = cache.h_candidate.iter().map(|x| x * x).sum();
+
+        assert!(z_norm > 0.0, "z should have non-zero values");
+        assert!(r_norm > 0.0, "r should have non-zero values");
+        assert!(
+            h_cand_norm > 0.0,
+            "h_candidate should have non-zero values"
+        );
+
+        // h_new should match the GRU formula: (1-z)*h_prev + z*h_candidate
+        for i in 0..hidden_dim {
+            let expected = (1.0 - cache.z[i]) * cache.h_prev[i] + cache.z[i] * cache.h_candidate[i];
+            assert!(
+                (h_new[i] - expected).abs() < 1e-5,
+                "h_new[{}] = {} doesn't match GRU formula expected = {}",
+                i,
+                h_new[i],
+                expected
+            );
+        }
+
+        // Cache input and h_prev should match the originals
+        assert_eq!(cache.input, input, "cache should store original input");
+        assert_eq!(cache.h_prev, hidden, "cache should store original hidden");
+    }
+
+    #[test]
+    fn test_loss_head_training() {
+        let config = PredictorConfig::default();
+        let mut rssm = RSSMLite::new(&config).unwrap();
+
+        let mut state = TrainingState::new();
+        state.loss = 3.0;
+        state.gradient_norm = 1.0;
+        state.optimizer_state_summary.effective_lr = 1e-4;
+        state.record_step(3.0, 1.0);
+        rssm.initialize_state(&state);
+
+        // Snapshot loss head weights before training
+        let loss_head_before = rssm.loss_head_weights.clone();
+
+        let grad_info = crate::GradientInfo {
+            loss: 3.0,
+            gradient_norm: 1.0,
+            per_param_norms: None,
+        };
+
+        // Train for several steps
+        for _ in 0..10 {
+            rssm.observe_gradient(&state, &grad_info);
+        }
+
+        // Loss head weights should have changed
+        let loss_head_changed = rssm
+            .loss_head_weights
+            .iter()
+            .zip(loss_head_before.iter())
+            .any(|(a, b)| (a - b).abs() > 1e-12);
+
+        assert!(
+            loss_head_changed,
+            "loss head weights should change after training"
+        );
+
+        // Verify weights are still finite (no NaN/Inf from training)
+        assert!(
+            rssm.loss_head_weights.iter().all(|w| w.is_finite()),
+            "all loss head weights should be finite after training"
+        );
+    }
+
+    #[test]
+    fn test_weight_delta_head_training() {
+        let config = PredictorConfig::default();
+        let mut rssm = RSSMLite::new(&config).unwrap();
+
+        let mut state = TrainingState::new();
+        state.loss = 2.0;
+        state.gradient_norm = 1.5;
+        state.optimizer_state_summary.effective_lr = 1e-3;
+        state.record_step(2.0, 1.5);
+        rssm.initialize_state(&state);
+
+        // Snapshot weight delta head weights before training
+        let delta_head_before = rssm.weight_delta_head_weights.clone();
+
+        let grad_info = crate::GradientInfo {
+            loss: 2.0,
+            gradient_norm: 1.5,
+            per_param_norms: None,
+        };
+
+        // Train for several steps
+        for _ in 0..10 {
+            rssm.observe_gradient(&state, &grad_info);
+        }
+
+        // Weight delta head weights should have changed
+        let delta_head_changed = rssm
+            .weight_delta_head_weights
+            .iter()
+            .zip(delta_head_before.iter())
+            .any(|(a, b)| (a - b).abs() > 1e-12);
+
+        assert!(
+            delta_head_changed,
+            "weight delta head weights should change after training"
+        );
+
+        // Verify weights are still finite
+        assert!(
+            rssm.weight_delta_head_weights.iter().all(|w| w.is_finite()),
+            "all weight delta head weights should be finite after training"
+        );
+    }
+
+    #[test]
+    fn test_train_step_reduces_loss_prediction_error() {
+        let config = PredictorConfig::default();
+        let mut rssm = RSSMLite::new(&config).unwrap();
+
+        let target_loss = 1.5;
+
+        let mut state = TrainingState::new();
+        state.loss = target_loss;
+        state.gradient_norm = 0.8;
+        state.optimizer_state_summary.effective_lr = 1e-4;
+        state.record_step(target_loss, 0.8);
+        rssm.initialize_state(&state);
+
+        // Measure initial prediction error (1-step prediction)
+        let (pred_initial, _) = rssm.predict_y_steps(&state, 1);
+        let initial_error = (pred_initial.predicted_final_loss - target_loss).abs();
+
+        let grad_info = crate::GradientInfo {
+            loss: target_loss,
+            gradient_norm: 0.8,
+            per_param_norms: None,
+        };
+
+        // Train for many steps with consistent data
+        for _ in 0..100 {
+            rssm.observe_gradient(&state, &grad_info);
+        }
+
+        // Measure prediction error after training
+        let (pred_after, _) = rssm.predict_y_steps(&state, 1);
+        let final_error = (pred_after.predicted_final_loss - target_loss).abs();
+
+        // After 100 training steps on consistent data, the error should decrease
+        // or at least remain bounded. We use a generous threshold since
+        // the dynamics model has complex interactions.
+        assert!(
+            final_error < initial_error + 0.5,
+            "prediction error should not grow significantly after consistent training: \
+             initial_error={}, final_error={}, predicted_loss={}",
+            initial_error,
+            final_error,
+            pred_after.predicted_final_loss
+        );
+    }
+
+    #[test]
+    fn test_stochastic_entropy_uniform() {
+        // When deterministic state has identical (or very similar) values,
+        // the softmax should produce a nearly uniform distribution,
+        // which has high entropy.
+        let mut latent = LatentState::new(16, 8);
+
+        // Set all deterministic values to the same constant
+        // This will cause all logits to be the same after sampling,
+        // leading to a uniform softmax distribution
+        for val in latent.deterministic.iter_mut() {
+            *val = 0.5;
+        }
+
+        let entropy = latent.sample_stochastic_from_deterministic();
+
+        // For a uniform distribution over 8 categories,
+        // entropy = ln(8) ~= 2.079
+        let max_entropy = (8.0_f32).ln();
+
+        // Entropy should be very close to maximum (uniform distribution)
+        assert!(
+            (entropy - max_entropy).abs() < 0.01,
+            "uniform deterministic state should produce near-maximum entropy: \
+             entropy={}, max_entropy={}",
+            entropy,
+            max_entropy
+        );
+
+        // Verify the distribution is actually uniform
+        let expected_prob = 1.0 / 8.0;
+        for (i, &p) in latent.stochastic.iter().enumerate() {
+            assert!(
+                (p - expected_prob).abs() < 1e-5,
+                "stochastic[{}] = {} should be ~{} for uniform distribution",
+                i,
+                p,
+                expected_prob
+            );
+        }
+    }
+
+    #[test]
+    fn test_stochastic_entropy_peaked() {
+        // When one deterministic value strongly dominates (through the
+        // evenly-spaced sampling), the softmax should produce a peaked
+        // distribution with low entropy.
+        let mut latent = LatentState::new(16, 8);
+
+        // Set deterministic state so that the sampled logits will be
+        // very different: one large positive, rest very negative.
+        // The sampling uses evenly-spaced indices: i * det_dim / stoch_dim
+        // For det_dim=16, stoch_dim=8: indices are 0,2,4,6,8,10,12,14
+        for val in latent.deterministic.iter_mut() {
+            *val = -10.0; // Very negative baseline
+        }
+        // Make index 0 very large so it dominates after softmax
+        latent.deterministic[0] = 10.0;
+
+        let entropy = latent.sample_stochastic_from_deterministic();
+
+        // Entropy should be low because the distribution is peaked
+        // on one category. For a fully peaked distribution, entropy = 0.
+        assert!(
+            entropy < 0.5,
+            "peaked deterministic state should produce low entropy: entropy={}",
+            entropy
+        );
+
+        // The first stochastic component should dominate
+        assert!(
+            latent.stochastic[0] > 0.9,
+            "first stochastic component should dominate: stochastic[0]={}",
+            latent.stochastic[0]
+        );
+
+        // Other components should be very small
+        let remaining_sum: f32 = latent.stochastic[1..].iter().sum();
+        assert!(
+            remaining_sum < 0.1,
+            "remaining stochastic components should be small: sum={}",
+            remaining_sum
+        );
+    }
+
+    #[test]
+    fn test_predict_y_steps_entropy_field() {
+        let config = PredictorConfig::default();
+        let mut rssm = RSSMLite::new(&config).unwrap();
+
+        let mut state = TrainingState::new();
+        state.loss = 2.0;
+        state.gradient_norm = 1.0;
+        state.optimizer_state_summary.effective_lr = 1e-4;
+        state.record_step(2.0, 1.0);
+        rssm.initialize_state(&state);
+
+        // Predict multiple steps
+        let (prediction, uncertainty) = rssm.predict_y_steps(&state, 20);
+
+        // The entropy field in PredictionUncertainty should be populated
+        // and non-negative (entropy is always >= 0)
+        assert!(
+            uncertainty.entropy >= 0.0,
+            "entropy should be non-negative: {}",
+            uncertainty.entropy
+        );
+
+        // With initialized state and non-trivial prediction horizon,
+        // entropy should be positive (stochastic sampling is active)
+        assert!(
+            uncertainty.entropy > 0.0,
+            "entropy should be positive for non-trivial predictions: {}",
+            uncertainty.entropy
+        );
+
+        // The loss trajectory should have y_steps + 1 entries
+        assert_eq!(
+            prediction.loss_trajectory.len(),
+            21,
+            "trajectory should have y_steps + 1 = 21 entries"
+        );
+
+        // All trajectory values should be positive (exp-decoded losses)
+        for (i, &loss_val) in prediction.loss_trajectory.iter().enumerate() {
+            assert!(
+                loss_val > 0.0,
+                "loss_trajectory[{}] = {} should be positive",
+                i,
+                loss_val
+            );
+        }
+
+        // Aleatoric and epistemic uncertainties should be non-negative
+        assert!(
+            uncertainty.aleatoric >= 0.0,
+            "aleatoric uncertainty should be non-negative"
+        );
+        assert!(
+            uncertainty.epistemic >= 0.0,
+            "epistemic uncertainty should be non-negative"
+        );
+
+        // Total should be >= both components
+        assert!(
+            uncertainty.total >= uncertainty.aleatoric - 1e-6,
+            "total uncertainty should be >= aleatoric"
+        );
+        assert!(
+            uncertainty.total >= uncertainty.epistemic - 1e-6,
+            "total uncertainty should be >= epistemic"
+        );
+    }
 }

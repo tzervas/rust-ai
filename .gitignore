@@ -18,6 +18,11 @@ Cargo.lock
 .idea/
 *.sublime-*
 
+# Claude Code local (settings.local.json and local memory are personal)
+.claude/settings.local.json
+.claude/agent-memory-local/
+CLAUDE.local.md
+
 # Local development
 *.local
 .env

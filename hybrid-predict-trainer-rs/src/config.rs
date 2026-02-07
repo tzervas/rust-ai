@@ -128,6 +128,17 @@ pub struct HybridTrainerConfig {
     /// Required if `auto_tuning_config` is `Some`. Used to calculate training progress percentage.
     #[serde(default)]
     pub max_steps: Option<u64>,
+
+    /// Apply micro-corrections every N steps within Predict phase.
+    ///
+    /// Set to 0 to disable intra-horizon corrections (default).
+    /// When enabled, micro-corrections are applied periodically during prediction
+    /// to prevent error accumulation. This theoretically enables 2-3× longer
+    /// effective horizons at the same quality.
+    ///
+    /// Recommended: 10-15 for horizons of 30-50 steps.
+    #[serde(default = "default_correction_interval")]
+    pub correction_interval: usize,
 }
 
 // Default value functions for serde
@@ -152,6 +163,9 @@ fn default_predictor_memory_budget() -> usize {
 fn default_collect_metrics() -> bool {
     true
 }
+fn default_correction_interval() -> usize {
+    0
+}
 
 impl Default for HybridTrainerConfig {
     fn default() -> Self {
@@ -168,6 +182,7 @@ impl Default for HybridTrainerConfig {
             checkpoint_config: CheckpointConfig::default(),
             auto_tuning_config: None,
             max_steps: None,
+            correction_interval: default_correction_interval(),
         }
     }
 }
@@ -306,6 +321,7 @@ pub struct HybridTrainerConfigBuilder {
     divergence_config: Option<DivergenceConfig>,
     auto_tuning_config: Option<crate::auto_tuning::AutoTuningConfig>,
     max_steps: Option<u64>,
+    correction_interval: Option<usize>,
 }
 
 impl HybridTrainerConfigBuilder {
@@ -386,6 +402,13 @@ impl HybridTrainerConfigBuilder {
         self
     }
 
+    /// Sets the correction interval for intra-horizon micro-corrections.
+    #[must_use]
+    pub fn correction_interval(mut self, interval: usize) -> Self {
+        self.correction_interval = Some(interval);
+        self
+    }
+
     /// Builds the configuration with defaults for unset values.
     pub fn build(self) -> HybridTrainerConfig {
         HybridTrainerConfig {
@@ -409,6 +432,9 @@ impl HybridTrainerConfigBuilder {
             checkpoint_config: CheckpointConfig::default(),
             auto_tuning_config: self.auto_tuning_config,
             max_steps: self.max_steps,
+            correction_interval: self
+                .correction_interval
+                .unwrap_or_else(default_correction_interval),
         }
     }
 }

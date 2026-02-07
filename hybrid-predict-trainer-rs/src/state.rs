@@ -419,6 +419,12 @@ pub struct TrainingState {
     /// Step within the current phase.
     pub phase_step: usize,
 
+    /// Steps completed in current prediction phase (reset on phase transition).
+    ///
+    /// Used to track when to apply intra-horizon micro-corrections during
+    /// long prediction phases.
+    pub steps_in_current_phase: usize,
+
     /// Random state for reproducibility.
     pub random_seed: u64,
 }
@@ -446,6 +452,7 @@ impl TrainingState {
             kfac_factors: None,
             current_phase: crate::Phase::Warmup,
             phase_step: 0,
+            steps_in_current_phase: 0,
             random_seed: 0,
         }
     }
@@ -474,6 +481,7 @@ impl TrainingState {
     pub fn enter_phase(&mut self, phase: crate::Phase) {
         self.current_phase = phase;
         self.phase_step = 0;
+        self.steps_in_current_phase = 0;
     }
 
     /// Returns statistics about recent loss values.

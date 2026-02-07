@@ -243,6 +243,9 @@ pub struct TrainingStatistics {
     /// Number of divergence events.
     pub divergence_events: usize,
 
+    /// Number of intra-horizon micro-corrections applied.
+    pub micro_corrections_applied: usize,
+
     /// Predictor overhead statistics.
     pub predictor_overhead: PredictorOverhead,
 }
@@ -727,6 +730,16 @@ impl MetricsCollector {
             stats.prediction_accuracy.loss_mae,
             stats.divergence_events
         )
+    }
+
+    /// Records a micro-correction event.
+    ///
+    /// Increments the count of intra-horizon micro-corrections applied
+    /// during prediction phases.
+    pub fn record_micro_correction(&mut self) {
+        if self.enabled {
+            self.statistics.micro_corrections_applied += 1;
+        }
     }
 
     /// Resets all collected metrics.

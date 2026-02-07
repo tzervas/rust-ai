@@ -662,6 +662,9 @@ impl<M, O> HybridTrainer<M, O> {
         let confidence = self.dynamics_model.prediction_confidence(&self.state);
         self.phase_controller.set_predictor_confidence(confidence);
 
+        // Track previous phase to detect transitions
+        let previous_phase = self.state.current_phase;
+
         // Get phase from budget or request new decision
         let phase = match &mut self.phase_budget {
             Some((current_phase, remaining)) if *remaining > 0 => {
@@ -685,6 +688,12 @@ impl<M, O> HybridTrainer<M, O> {
                 new_phase
             }
         };
+
+        // Reset steps_in_current_phase counter on phase transitions
+        if phase != previous_phase {
+            self.state.steps_in_current_phase = 0;
+            self.state.current_phase = phase;
+        }
 
         // Execute the appropriate phase
         let (loss, was_predicted, prediction_error) = match phase {
@@ -916,6 +925,40 @@ impl<M, O> HybridTrainer<M, O> {
         self.residual_corrector
             .update_from_residual(&residual, &self.state);
 
+        // Check if micro-correction is needed (intra-horizon correction)
+        self.state.steps_in_current_phase += 1;
+
+        if self.config.correction_interval > 0
+            && self.state.steps_in_current_phase % self.config.correction_interval == 0
+        {
+            // Apply micro-correction without transitioning to Correct phase
+            let correction = if self.residual_store.is_empty() {
+                corrector::Correction::zero()
+            } else {
+                self.residual_corrector.compute_correction(
+                    &self.state,
+                    &self.residual_store,
+                    actual_loss,
+                )
+            };
+
+            // Apply weight correction if available and significant
+            if let Some(ref weight_correction) = correction.weight_correction {
+                model.apply_weight_delta(weight_correction)?;
+            } else if correction.is_significant(0.01) {
+                // Apply simple correction if loss correction is significant but no weight delta
+                if let Some(simple_delta) = self
+                    .residual_corrector
+                    .compute_simple_correction(&self.state)
+                {
+                    model.apply_weight_delta(&simple_delta)?;
+                }
+            }
+
+            // Record that we applied a micro-correction
+            self.metrics.record_micro_correction();
+        }
+
         Ok((actual_loss, true, Some(prediction_error)))
     }
 
@@ -1041,5 +1084,36 @@ mod tests {
         assert_eq!(config.full_steps, 20);
         assert_eq!(config.max_predict_steps, 80);
         assert!((config.confidence_threshold - 0.85).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_correction_interval_config() {
+        // Test default (disabled)
+        let config = HybridTrainerConfig::default();
+        assert_eq!(config.correction_interval, 0);
+
+        // Test builder pattern
+        let config = HybridTrainerConfig::builder()
+            .correction_interval(10)
+            .build();
+        assert_eq!(config.correction_interval, 10);
+    }
+
+    #[test]
+    fn test_steps_in_current_phase_counter() {
+        let mut state = TrainingState::new();
+        assert_eq!(state.steps_in_current_phase, 0);
+
+        // Simulate phase transition
+        state.enter_phase(Phase::Predict);
+        assert_eq!(state.steps_in_current_phase, 0);
+
+        // Simulate steps within phase
+        state.steps_in_current_phase = 5;
+        assert_eq!(state.steps_in_current_phase, 5);
+
+        // Phase transition should reset
+        state.enter_phase(Phase::Correct);
+        assert_eq!(state.steps_in_current_phase, 0);
     }
 }

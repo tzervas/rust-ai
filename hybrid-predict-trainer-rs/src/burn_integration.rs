@@ -60,9 +60,10 @@
 //! ```
 
 use crate::state::WeightDelta;
-use crate::Batch;
+use crate::{Batch, GradientInfo, Model, Optimizer};
 
-use burn::module::{AutodiffModule, Module, ModuleMapper, ModuleVisitor, Param};
+use burn::module::{AutodiffModule, ModuleMapper, ModuleVisitor, Param};
+use burn::optim::GradientsParams;
 use burn::tensor::backend::{AutodiffBackend, Backend};
 use burn::tensor::{Shape, Tensor, TensorData};
 
@@ -201,42 +202,51 @@ where
 ///
 /// When applying predicted weight deltas during the Predict phase, the wrapper
 /// directly modifies parameter tensors while preserving the autodiff graph structure.
-pub struct BurnModelWrapper<B, M, T>
+pub struct BurnModelWrapper<B, M, T, F>
 where
     B: AutodiffBackend,
     M: AutodiffModule<B>,
+    F: BurnForwardFn<B, M, T>,
 {
-    /// The wrapped Burn model
-    model: Arc<RwLock<M>>,
+    /// The wrapped Burn model (Option for ownership dance)
+    model: Arc<RwLock<Option<M>>>,
+    /// User-provided forward function for loss computation
+    forward_fn: Arc<F>,
     /// Device for tensor operations
     device: burn::tensor::Device<B>,
     /// Last computed loss (for backward pass)
     last_loss: Arc<RwLock<Option<Tensor<B, 1>>>>,
+    /// Last computed gradients (for optimizer)
+    last_gradients: Arc<RwLock<Option<<B as AutodiffBackend>::Gradients>>>,
     /// Cache of parameter names and shapes
     param_metadata: Arc<RwLock<HashMap<String, Vec<usize>>>>,
     _phantom: PhantomData<T>,
 }
 
-impl<B, M, T> BurnModelWrapper<B, M, T>
+impl<B, M, T, F> BurnModelWrapper<B, M, T, F>
 where
     B: AutodiffBackend,
     M: AutodiffModule<B>,
+    F: BurnForwardFn<B, M, T>,
 {
     /// Creates a new Burn model wrapper.
     ///
     /// # Arguments
     ///
     /// * `model` - The Burn model to wrap
+    /// * `forward_fn` - User-provided function for forward pass and loss computation
     /// * `device` - Device for tensor operations
     ///
     /// # Returns
     ///
     /// A wrapped model ready for use with `HybridTrainer`.
-    pub fn new(model: M, device: burn::tensor::Device<B>) -> Self {
+    pub fn new(model: M, forward_fn: F, device: burn::tensor::Device<B>) -> Self {
         Self {
-            model: Arc::new(RwLock::new(model)),
+            model: Arc::new(RwLock::new(Some(model))),
+            forward_fn: Arc::new(forward_fn),
             device,
             last_loss: Arc::new(RwLock::new(None)),
+            last_gradients: Arc::new(RwLock::new(None)),
             param_metadata: Arc::new(RwLock::new(HashMap::new())),
             _phantom: PhantomData,
         }
@@ -313,40 +323,162 @@ where
     }
 }
 
-// Placeholder Model trait implementation
-// TODO: This needs to be properly implemented with real Burn autodiff integration
-// For now, we provide a skeleton that compiles but doesn't function
-//
-// impl<B, M, T> Model<BurnBatch<B, T>> for BurnModelWrapper<B, M, T>
-// where
-//     B: AutodiffBackend,
-//     M: AutodiffModule<B>,
-//     T: Send + Sync,
-// {
-//     fn forward(&mut self, batch: &BurnBatch<B, T>) -> HybridResult<f32> {
-//         // TODO: Call model.forward() with batch data
-//         // Store loss tensor in self.last_loss for backward pass
-//         Ok(0.0)
-//     }
-//
-//     fn backward(&mut self) -> HybridResult<GradientInfo> {
-//         // TODO: Call loss.backward() and extract gradients
-//         Ok(GradientInfo {
-//             loss: 0.0,
-//             gradient_norm: 0.0,
-//             per_param_norms: None,
-//         })
-//     }
-//
-//     fn parameter_count(&self) -> usize {
-//         self.count_parameters()
-//     }
-//
-//     fn apply_weight_delta(&mut self, delta: &WeightDelta) -> HybridResult<()> {
-//         let mut model = self.model.write();
-//         apply_deltas_to_model(&mut *model, delta, &self.device)
-//     }
-// }
+/// Implementation of Model trait for BurnModelWrapper
+impl<B, M, T, F> Model<BurnBatch<B, T>> for BurnModelWrapper<B, M, T, F>
+where
+    B: AutodiffBackend,
+    M: AutodiffModule<B> + Send + Sync,
+    F: BurnForwardFn<B, M, T>,
+    T: Send + Sync,
+    <B as AutodiffBackend>::Gradients: Send + Sync,
+{
+    fn forward(&mut self, batch: &BurnBatch<B, T>) -> crate::error::HybridResult<f32> {
+        // 1. Take model from Option (ownership dance)
+        let mut model_lock = self.model.write();
+        let model = model_lock.take().ok_or_else(|| {
+            (
+                crate::error::HybridTrainingError::IntegrationError {
+                    crate_name: "burn".to_string(),
+                    detail: "Model already taken during forward pass".to_string(),
+                },
+                None,
+            )
+        })?;
+
+        // 2. Call user-provided forward function (model consumed, returned with loss)
+        let (model_returned, loss_tensor) = self.forward_fn.forward(model, batch);
+
+        // 3. Extract scalar loss value
+        let loss_data = loss_tensor.to_data();
+        let loss_scalar = loss_data
+            .to_vec::<f32>()
+            .ok()
+            .and_then(|v| v.first().copied())
+            .ok_or_else(|| {
+                (
+                    crate::error::HybridTrainingError::IntegrationError {
+                        crate_name: "burn".to_string(),
+                        detail: "Failed to extract loss scalar from tensor".to_string(),
+                    },
+                    None,
+                )
+            })?;
+
+        // 4. Store loss tensor for backward pass (must keep autodiff graph alive)
+        *self.last_loss.write() = Some(loss_tensor);
+
+        // 5. Put model back
+        *model_lock = Some(model_returned);
+
+        Ok(loss_scalar)
+    }
+
+    fn backward(&mut self) -> crate::error::HybridResult<GradientInfo> {
+        // 1. Take loss tensor
+        let loss_tensor = self.last_loss.write().take().ok_or_else(|| {
+            (
+                crate::error::HybridTrainingError::IntegrationError {
+                    crate_name: "burn".to_string(),
+                    detail: "No loss tensor available for backward pass".to_string(),
+                },
+                None,
+            )
+        })?;
+
+        // 2. Call backward() to get gradients
+        let gradients = loss_tensor.backward();
+
+        // 3. Get model to extract gradients
+        let model_lock = self.model.read();
+        let model = model_lock.as_ref().ok_or_else(|| {
+            (
+                crate::error::HybridTrainingError::IntegrationError {
+                    crate_name: "burn".to_string(),
+                    detail: "Model not available during backward pass".to_string(),
+                },
+                None,
+            )
+        })?;
+
+        // 4. Extract per-parameter gradients
+        let per_param_grads = extract_gradients(model, &gradients);
+
+        // 5. Compute gradient norm (L2 norm across all parameters)
+        let grad_norm: f32 = per_param_grads
+            .values()
+            .flat_map(|v| v.iter())
+            .map(|x| x * x)
+            .sum::<f32>()
+            .sqrt();
+
+        // 6. Compute per-parameter norms
+        let per_param_norms: Vec<f32> = per_param_grads
+            .values()
+            .map(|vec| vec.iter().map(|x| x * x).sum::<f32>().sqrt())
+            .collect();
+
+        // 7. Store gradients for optimizer
+        *self.last_gradients.write() = Some(gradients);
+
+        // Note: loss is not available here (was consumed by backward())
+        // The caller (HybridTrainer) will fill in the loss from forward()
+        Ok(GradientInfo {
+            loss: 0.0, // Placeholder - will be filled by caller
+            gradient_norm: grad_norm,
+            per_param_norms: Some(per_param_norms),
+        })
+    }
+
+    fn parameter_count(&self) -> usize {
+        /// Visitor that counts parameters
+        struct ParamCounter {
+            count: usize,
+        }
+
+        impl<B: Backend> ModuleVisitor<B> for ParamCounter {
+            fn visit_float<const D: usize>(&mut self, param: &Param<Tensor<B, D>>) {
+                let tensor = param.val();
+                self.count += tensor.dims().iter().product::<usize>();
+            }
+
+            fn visit_int<const D: usize>(&mut self, param: &Param<Tensor<B, D, burn::tensor::Int>>) {
+                let tensor = param.val();
+                self.count += tensor.dims().iter().product::<usize>();
+            }
+        }
+
+        let model_lock = self.model.read();
+        if let Some(ref model) = *model_lock {
+            let mut counter = ParamCounter { count: 0 };
+            model.visit(&mut counter);
+            counter.count
+        } else {
+            0
+        }
+    }
+
+    fn apply_weight_delta(&mut self, delta: &WeightDelta) -> crate::error::HybridResult<()> {
+        // 1. Take model from Option
+        let mut model_lock = self.model.write();
+        let model = model_lock.take().ok_or_else(|| {
+            (
+                crate::error::HybridTrainingError::IntegrationError {
+                    crate_name: "burn".to_string(),
+                    detail: "Model not available for weight delta application".to_string(),
+                },
+                None,
+            )
+        })?;
+
+        // 2. Apply deltas using helper function
+        let updated_model = apply_deltas_to_model(model, delta, &self.device);
+
+        // 3. Put model back
+        *model_lock = Some(updated_model);
+
+        Ok(())
+    }
+}
 
 /// Wrapper for Burn optimizers that implements the `Optimizer` trait.
 ///
@@ -405,38 +537,74 @@ where
     }
 }
 
-// Placeholder Optimizer trait implementation
-// TODO: This needs to be properly implemented with real Burn optimizer integration
-//
-// impl<B, M, O, T> Optimizer<BurnModelWrapper<B, M, T>, BurnBatch<B, T>>
-//     for BurnOptimizerWrapper<B, M, O, T>
-// where
-//     B: AutodiffBackend,
-//     M: AutodiffModule<B>,
-//     O: burn::optim::Optimizer<M, B>,
-//     T: Send + Sync,
-// {
-//     fn step(
-//         &mut self,
-//         model: &mut BurnModelWrapper<B, M, T>,
-//         gradients: &GradientInfo,
-//     ) -> HybridResult<()> {
-//         // TODO: Apply optimizer step via Burn's optimizer.step()
-//         Ok(())
-//     }
-//
-//     fn learning_rate(&self) -> f32 {
-//         *self.learning_rate.read()
-//     }
-//
-//     fn set_learning_rate(&mut self, lr: f32) {
-//         *self.learning_rate.write() = lr;
-//     }
-//
-//     fn zero_grad(&mut self) {
-//         // TODO: Clear gradients via Burn's API
-//     }
-// }
+/// Implementation of Optimizer trait for BurnOptimizerWrapper
+impl<B, M, O, T, F> Optimizer<BurnModelWrapper<B, M, T, F>, BurnBatch<B, T>>
+    for BurnOptimizerWrapper<B, M, O, T>
+where
+    B: AutodiffBackend,
+    M: AutodiffModule<B> + Send + Sync,
+    O: burn::optim::Optimizer<M, B> + Send + Sync,
+    F: BurnForwardFn<B, M, T>,
+    T: Send + Sync,
+    <B as AutodiffBackend>::Gradients: Send + Sync,
+{
+    fn step(
+        &mut self,
+        model: &mut BurnModelWrapper<B, M, T, F>,
+        _gradients: &GradientInfo,
+    ) -> crate::error::HybridResult<()> {
+        // 1. Get current learning rate (convert f32 to f64 for Burn)
+        let lr = *self.learning_rate.read() as f64;
+
+        // 2. Take model from wrapper (ownership dance)
+        let mut model_lock = model.model.write();
+        let model_inner = model_lock.take().ok_or_else(|| {
+            (
+                crate::error::HybridTrainingError::IntegrationError {
+                    crate_name: "burn".to_string(),
+                    detail: "Model not available for optimizer step".to_string(),
+                },
+                None,
+            )
+        })?;
+
+        // 3. Take gradients from wrapper
+        let gradients = model.last_gradients.write().take().ok_or_else(|| {
+            (
+                crate::error::HybridTrainingError::IntegrationError {
+                    crate_name: "burn".to_string(),
+                    detail: "Gradients not available for optimizer step".to_string(),
+                },
+                None,
+            )
+        })?;
+
+        // 4. Convert gradients to GradientsParams
+        let grads_params = GradientsParams::from_grads(gradients, &model_inner);
+
+        // 5. Call Burn optimizer.step (consumes model, returns updated model)
+        let updated_model = self.optimizer.write().step(lr, model_inner, grads_params);
+
+        // 6. Put updated model back
+        *model_lock = Some(updated_model);
+
+        Ok(())
+    }
+
+    fn learning_rate(&self) -> f32 {
+        *self.learning_rate.read()
+    }
+
+    fn set_learning_rate(&mut self, lr: f32) {
+        *self.learning_rate.write() = lr;
+    }
+
+    fn zero_grad(&mut self) {
+        // Burn handles gradient zeroing via autodiff graph reset
+        // Gradients are automatically cleared when loss.backward() is called
+        // No explicit action needed here
+    }
+}
 
 /// Helper function to extract gradient information from a Burn model.
 ///

@@ -418,7 +418,8 @@ impl GradientRangeTuner {
             return 1.0; // Not enough history for stability computation
         }
 
-        let mean: f32 = self.grad_norm_history.iter().sum::<f32>() / self.grad_norm_history.len() as f32;
+        let mean: f32 =
+            self.grad_norm_history.iter().sum::<f32>() / self.grad_norm_history.len() as f32;
         if mean < 1e-6 {
             return 0.0; // Avoid division by zero
         }

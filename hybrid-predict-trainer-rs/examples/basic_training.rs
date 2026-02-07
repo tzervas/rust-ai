@@ -255,10 +255,15 @@ fn main() -> HybridResult<()> {
                     // Show auto-tuning recommendations every 50 steps
                     if step % 50 == 0 {
                         if let Some(update) = trainer.last_auto_tuning_update() {
-                            println!("│ 🔧 Auto-tuning: Health={:?}, Score={:.2}, Plateau={:?}",
-                                update.health, update.health_score, update.plateau_status);
+                            println!(
+                                "│ 🔧 Auto-tuning: Health={:?}, Score={:.2}, Plateau={:?}",
+                                update.health, update.health_score, update.plateau_status
+                            );
                             if update.should_restart() {
-                                println!("│    Warmup restart recommended (LR x{:.2})", update.warmup_restart.unwrap());
+                                println!(
+                                    "│    Warmup restart recommended (LR x{:.2})",
+                                    update.warmup_restart.unwrap()
+                                );
                             }
                             if !update.recommendations.is_empty() {
                                 println!("│    Recommendations: {:?}", update.recommendations);

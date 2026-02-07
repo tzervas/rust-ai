@@ -8,14 +8,14 @@ mod ndarray_tests {
     use burn::backend::ndarray::NdArray;
     use burn::backend::Autodiff;
     use burn::module::{AutodiffModule, Module, Param};
-    use burn::nn::{Linear, LinearConfig, loss::CrossEntropyLossConfig};
+    use burn::nn::{loss::CrossEntropyLossConfig, Linear, LinearConfig};
     use burn::optim::{Adam, AdamConfig};
-    use burn::tensor::{backend::Backend, activation, Device, Tensor};
+    use burn::tensor::{activation, backend::Backend, Device, Tensor};
     use hybrid_predict_trainer_rs::burn_integration::{
         BurnBatch, BurnForwardFn, BurnModelWrapper, BurnOptimizerWrapper,
     };
-    use hybrid_predict_trainer_rs::{Batch, GradientInfo, Model, Optimizer};
     use hybrid_predict_trainer_rs::state::WeightDelta;
+    use hybrid_predict_trainer_rs::{Batch, GradientInfo, Model, Optimizer};
     use std::collections::HashMap;
 
     type TestBackend = Autodiff<NdArray>;
@@ -29,7 +29,12 @@ mod ndarray_tests {
     }
 
     impl<B: Backend> SimpleMLP<B> {
-        pub fn new(input_size: usize, hidden_size: usize, output_size: usize, device: &Device<B>) -> Self {
+        pub fn new(
+            input_size: usize,
+            hidden_size: usize,
+            output_size: usize,
+            device: &Device<B>,
+        ) -> Self {
             let fc1 = LinearConfig::new(input_size, hidden_size).init(device);
             let fc2 = LinearConfig::new(hidden_size, output_size).init(device);
 
@@ -84,7 +89,14 @@ mod ndarray_tests {
         let mut wrapper = BurnModelWrapper::new(model, forward_fn, device.clone());
 
         // Create dummy batch: 3 samples, 4 features each, targets in [0, 1]
-        let inputs = Tensor::from_data([[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0], [9.0, 10.0, 11.0, 12.0]], &device);
+        let inputs = Tensor::from_data(
+            [
+                [1.0, 2.0, 3.0, 4.0],
+                [5.0, 6.0, 7.0, 8.0],
+                [9.0, 10.0, 11.0, 12.0],
+            ],
+            &device,
+        );
         let targets = Tensor::from_data([0i32, 1, 0], &device);
 
         let batch_data = MLPBatch { inputs, targets };
@@ -121,12 +133,24 @@ mod ndarray_tests {
         let grad_info = wrapper.backward().expect("Backward should succeed");
 
         // Verify gradient info
-        assert!(grad_info.gradient_norm > 0.0, "Gradient norm should be positive");
-        assert!(grad_info.gradient_norm.is_finite(), "Gradient norm should be finite");
-        assert!(grad_info.per_param_norms.is_some(), "Should have per-param norms");
+        assert!(
+            grad_info.gradient_norm > 0.0,
+            "Gradient norm should be positive"
+        );
+        assert!(
+            grad_info.gradient_norm.is_finite(),
+            "Gradient norm should be finite"
+        );
+        assert!(
+            grad_info.per_param_norms.is_some(),
+            "Should have per-param norms"
+        );
 
         let per_param = grad_info.per_param_norms.unwrap();
-        assert!(per_param.len() > 0, "Should have gradients for multiple parameters");
+        assert!(
+            per_param.len() > 0,
+            "Should have gradients for multiple parameters"
+        );
     }
 
     /// Test parameter counting
@@ -145,7 +169,10 @@ mod ndarray_tests {
         let param_count = wrapper.parameter_count();
 
         // Should have 67 parameters total
-        assert_eq!(param_count, 67, "SimpleMLP(10→5→2) should have 67 parameters");
+        assert_eq!(
+            param_count, 67,
+            "SimpleMLP(10→5→2) should have 67 parameters"
+        );
     }
 
     /// Test optimizer step
@@ -177,17 +204,15 @@ mod ndarray_tests {
         let grad_info = wrapper.backward().expect("Backward should succeed");
 
         // Optimizer step
-        optimizer_wrapper.step(&mut wrapper, &grad_info).expect("Optimizer step should succeed");
+        optimizer_wrapper
+            .step(&mut wrapper, &grad_info)
+            .expect("Optimizer step should succeed");
 
         // Get updated parameters
         let updated_params = get_model_params(&wrapper);
 
         // Parameters should have changed
-        assert_ne!(
-            initial_params.len(),
-            0,
-            "Should have initial parameters"
-        );
+        assert_ne!(initial_params.len(), 0, "Should have initial parameters");
 
         // At least some parameters should have changed
         let mut changed_count = 0;
@@ -199,7 +224,10 @@ mod ndarray_tests {
             }
         }
 
-        assert!(changed_count > 0, "Optimizer step should change some parameters");
+        assert!(
+            changed_count > 0,
+            "Optimizer step should change some parameters"
+        );
     }
 
     /// Test weight delta application
@@ -223,13 +251,12 @@ mod ndarray_tests {
             deltas.insert(name.clone(), delta);
         }
 
-        let weight_delta = WeightDelta {
-            deltas,
-            scale: 1.0,
-        };
+        let weight_delta = WeightDelta { deltas, scale: 1.0 };
 
         // Apply delta
-        wrapper.apply_weight_delta(&weight_delta).expect("Delta application should succeed");
+        wrapper
+            .apply_weight_delta(&weight_delta)
+            .expect("Delta application should succeed");
 
         // Get updated parameters
         let updated_params = get_model_params(&wrapper);
@@ -237,7 +264,9 @@ mod ndarray_tests {
         // Verify parameters changed by approximately 0.01
         for (name, initial_vals) in &initial_params {
             if let Some(updated_vals) = updated_params.get(name) {
-                for (i, (&initial, &updated)) in initial_vals.iter().zip(updated_vals.iter()).enumerate() {
+                for (i, (&initial, &updated)) in
+                    initial_vals.iter().zip(updated_vals.iter()).enumerate()
+                {
                     let diff = (updated - initial).abs();
                     assert!(
                         (diff - 0.01).abs() < 0.001,
@@ -290,7 +319,9 @@ mod ndarray_tests {
 
             let _loss = wrapper.forward(&batch).expect("Forward should succeed");
             let grad_info = wrapper.backward().expect("Backward should succeed");
-            optimizer_wrapper.step(&mut wrapper, &grad_info).expect("Step should succeed");
+            optimizer_wrapper
+                .step(&mut wrapper, &grad_info)
+                .expect("Step should succeed");
         }
 
         // Get final loss
@@ -320,7 +351,9 @@ mod ndarray_tests {
     }
 
     /// Helper function to extract model parameters as HashMap
-    fn get_model_params<B, M, T, F>(wrapper: &BurnModelWrapper<B, M, T, F>) -> HashMap<String, Vec<f32>>
+    fn get_model_params<B, M, T, F>(
+        wrapper: &BurnModelWrapper<B, M, T, F>,
+    ) -> HashMap<String, Vec<f32>>
     where
         B: burn::tensor::backend::AutodiffBackend,
         M: AutodiffModule<B> + Send + Sync,

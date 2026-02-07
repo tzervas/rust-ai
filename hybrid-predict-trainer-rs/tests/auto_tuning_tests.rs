@@ -6,9 +6,7 @@
 //! Note: Other modules (gradient_tuner, plateau_detector, health_scorer, phase_controller)
 //! are not currently exported due to pre-existing compilation errors that need fixing first.
 
-use hybrid_predict_trainer_rs::auto_tuning::{
-    BatchPredictionRecommendation, MultiStepPredictor,
-};
+use hybrid_predict_trainer_rs::auto_tuning::{BatchPredictionRecommendation, MultiStepPredictor};
 
 // =============================================================================
 // MULTI-STEP PREDICTOR TESTS
@@ -19,7 +17,11 @@ fn test_multi_step_predictor_initialization() {
     // Test that predictor initializes correctly
     let predictor = MultiStepPredictor::new(0.85, 0.3, true);
 
-    assert_eq!(predictor.accurate_streak(), 0, "Should start with 0 accurate streak");
+    assert_eq!(
+        predictor.accurate_streak(),
+        0,
+        "Should start with 0 accurate streak"
+    );
     let (skipped_batches, skipped_steps) = predictor.skip_stats();
     assert_eq!(skipped_batches, 0, "Should start with 0 skipped batches");
     assert_eq!(skipped_steps, 0, "Should start with 0 skipped steps");
@@ -41,13 +43,18 @@ fn test_multi_step_predictor_skip_batch_recommendation() {
     let prediction = predictor.predict_batch(0.95, 0.05, 4);
 
     // With very low errors, should recommend SkipBatch
-    assert!(prediction.overall_confidence >= 0.85,
+    assert!(
+        prediction.overall_confidence >= 0.85,
         "Very accurate predictions should have high confidence, got {}",
-        prediction.overall_confidence);
+        prediction.overall_confidence
+    );
 
     if prediction.overall_confidence >= 0.85 && prediction.final_loss < 0.5 {
-        assert_eq!(prediction.recommendation, BatchPredictionRecommendation::SkipBatch,
-            "High confidence and low error should recommend SkipBatch");
+        assert_eq!(
+            prediction.recommendation,
+            BatchPredictionRecommendation::SkipBatch,
+            "High confidence and low error should recommend SkipBatch"
+        );
     }
 }
 
@@ -58,7 +65,7 @@ fn test_multi_step_predictor_run_full_batch() {
 
     // Simulate poor predictions by recording high errors
     for _ in 0..20 {
-        predictor.record_observation(1, 1.0, 2.0);  // Large error
+        predictor.record_observation(1, 1.0, 2.0); // Large error
         predictor.record_observation(2, 1.0, 2.5);
         predictor.record_observation(4, 1.0, 3.0);
         predictor.record_observation(8, 1.0, 3.5);
@@ -67,11 +74,16 @@ fn test_multi_step_predictor_run_full_batch() {
     let prediction = predictor.predict_batch(0.3, 0.5, 4);
 
     // With poor accuracy, should recommend RunFullBatch
-    assert!(prediction.overall_confidence < 0.85,
+    assert!(
+        prediction.overall_confidence < 0.85,
         "Poor predictions should have low confidence, got {}",
-        prediction.overall_confidence);
-    assert_eq!(prediction.recommendation, BatchPredictionRecommendation::RunFullBatch,
-        "Low confidence should recommend RunFullBatch");
+        prediction.overall_confidence
+    );
+    assert_eq!(
+        prediction.recommendation,
+        BatchPredictionRecommendation::RunFullBatch,
+        "Low confidence should recommend RunFullBatch"
+    );
 }
 
 #[test]
@@ -91,9 +103,11 @@ fn test_multi_step_predictor_verification_mode() {
 
     // Should recommend either verification or skip (>= 0.7 confidence)
     assert!(
-        matches!(prediction.recommendation,
-            BatchPredictionRecommendation::ApplyWithVerification |
-            BatchPredictionRecommendation::SkipBatch),
+        matches!(
+            prediction.recommendation,
+            BatchPredictionRecommendation::ApplyWithVerification
+                | BatchPredictionRecommendation::SkipBatch
+        ),
         "Confidence >= 0.7 should recommend ApplyWithVerification or SkipBatch, got {:?}",
         prediction.recommendation
     );
@@ -116,7 +130,11 @@ fn test_multi_step_predictor_streak_tracking() {
 
     // Record inaccurate prediction (high error = inaccurate)
     predictor.record_observation(1, 1.0, 2.0); // Large error
-    assert_eq!(predictor.accurate_streak(), 0, "Streak should reset on inaccuracy");
+    assert_eq!(
+        predictor.accurate_streak(),
+        0,
+        "Streak should reset on inaccuracy"
+    );
 }
 
 #[test]
@@ -133,11 +151,16 @@ fn test_multi_step_predictor_disable_batch_skip() {
 
     let prediction = predictor.predict_batch(1.0, 0.0, 4);
 
-    assert_ne!(prediction.recommendation, BatchPredictionRecommendation::SkipBatch,
-        "With batch skip disabled, should never recommend SkipBatch");
+    assert_ne!(
+        prediction.recommendation,
+        BatchPredictionRecommendation::SkipBatch,
+        "With batch skip disabled, should never recommend SkipBatch"
+    );
     assert!(
-        matches!(prediction.recommendation,
-            BatchPredictionRecommendation::ApplyWithVerification),
+        matches!(
+            prediction.recommendation,
+            BatchPredictionRecommendation::ApplyWithVerification
+        ),
         "With batch skip disabled and high confidence, should recommend ApplyWithVerification"
     );
 }
@@ -157,15 +180,22 @@ fn test_multi_step_predictor_horizon_confidences() {
     let prediction = predictor.predict_batch(0.8, 0.2, 4);
 
     // Should have multiple horizon confidences
-    assert!(!prediction.horizon_confidences.is_empty(),
-        "Should have per-horizon confidences");
-    assert!(prediction.horizon_confidences.len() <= 4,
-        "Should have reasonable number of horizons");
+    assert!(
+        !prediction.horizon_confidences.is_empty(),
+        "Should have per-horizon confidences"
+    );
+    assert!(
+        prediction.horizon_confidences.len() <= 4,
+        "Should have reasonable number of horizons"
+    );
 
     // All confidences should be in valid range
     for conf in &prediction.horizon_confidences {
-        assert!(*conf >= 0.0 && *conf <= 1.0,
-            "Confidence should be in [0, 1], got {}", conf);
+        assert!(
+            *conf >= 0.0 && *conf <= 1.0,
+            "Confidence should be in [0, 1], got {}",
+            conf
+        );
     }
 }
 
@@ -184,17 +214,23 @@ fn test_multi_step_predictor_geometric_mean() {
     let prediction = predictor.predict_batch(0.8, 0.1, 4);
 
     // With good base confidence and perfect calibration, overall should be high
-    assert!(prediction.overall_confidence >= 0.75,
+    assert!(
+        prediction.overall_confidence >= 0.75,
         "Overall confidence should be high with good predictions, got {}",
-        prediction.overall_confidence);
+        prediction.overall_confidence
+    );
 
     // Geometric mean of confidences should be <= min(confidences)
     if !prediction.horizon_confidences.is_empty() {
-        let min_conf = prediction.horizon_confidences.iter()
+        let min_conf = prediction
+            .horizon_confidences
+            .iter()
             .copied()
             .fold(f32::INFINITY, f32::min);
-        assert!(prediction.overall_confidence <= min_conf + 0.01, // Small tolerance
-            "Geometric mean should be <= minimum horizon confidence");
+        assert!(
+            prediction.overall_confidence <= min_conf + 0.01, // Small tolerance
+            "Geometric mean should be <= minimum horizon confidence"
+        );
     }
 }
 
@@ -234,10 +270,17 @@ fn test_multi_step_predictor_accuracy_rate() {
     }
 
     let accuracy = predictor.accuracy_rate();
-    assert!(accuracy >= 0.0 && accuracy <= 1.0,
-        "Accuracy rate should be in [0, 1], got {}", accuracy);
+    assert!(
+        accuracy >= 0.0 && accuracy <= 1.0,
+        "Accuracy rate should be in [0, 1], got {}",
+        accuracy
+    );
     // After many accurate observations, should have reasonable accuracy
-    assert!(accuracy > 0.5, "After many accurate predictions, accuracy should be good, got {}", accuracy);
+    assert!(
+        accuracy > 0.5,
+        "After many accurate predictions, accuracy should be good, got {}",
+        accuracy
+    );
 }
 
 #[test]
@@ -257,7 +300,11 @@ fn test_multi_step_predictor_reset() {
     // Reset
     predictor.reset();
 
-    assert_eq!(predictor.accurate_streak(), 0, "After reset, accurate streak should be 0");
+    assert_eq!(
+        predictor.accurate_streak(),
+        0,
+        "After reset, accurate streak should be 0"
+    );
     // Note: reset() may not clear skip_stats - that depends on implementation
     // Just verify we can reset and continue using the predictor
 }
@@ -273,17 +320,25 @@ fn test_multi_step_predictor_edge_cases() {
 
     // Test with extreme confidence values
     let pred_high = predictor.predict_batch(2.0, 0.0, 4); // Over 1.0
-    assert!(pred_high.overall_confidence <= 1.0,
-        "Confidence should be clamped to [0, 1], got {}", pred_high.overall_confidence);
+    assert!(
+        pred_high.overall_confidence <= 1.0,
+        "Confidence should be clamped to [0, 1], got {}",
+        pred_high.overall_confidence
+    );
 
     let pred_low = predictor.predict_batch(-0.5, 0.5, 4); // Negative
-    assert!(pred_low.overall_confidence >= 0.0,
-        "Confidence should be clamped to [0, 1], got {}", pred_low.overall_confidence);
+    assert!(
+        pred_low.overall_confidence >= 0.0,
+        "Confidence should be clamped to [0, 1], got {}",
+        pred_low.overall_confidence
+    );
 
     // Test with extreme uncertainty
     let pred_high_unc = predictor.predict_batch(0.9, 2.0, 4); // Over 1.0
-    assert!(pred_high_unc.recommendation != BatchPredictionRecommendation::SkipBatch,
-        "High uncertainty should prevent SkipBatch");
+    assert!(
+        pred_high_unc.recommendation != BatchPredictionRecommendation::SkipBatch,
+        "High uncertainty should prevent SkipBatch"
+    );
 }
 
 #[test]
@@ -298,14 +353,19 @@ fn test_multi_step_predictor_mean_error_tracking() {
 
     let mean_error_h1 = predictor.mean_error_for_horizon(1);
     // Mean should be approximately (0.1 + 0.2 + 0.1) / 3 = 0.133
-    assert!(mean_error_h1 >= 0.1 && mean_error_h1 <= 0.2,
-        "Mean error for horizon 1 should be around 0.133, got {}", mean_error_h1);
+    assert!(
+        mean_error_h1 >= 0.1 && mean_error_h1 <= 0.2,
+        "Mean error for horizon 1 should be around 0.133, got {}",
+        mean_error_h1
+    );
 
     // Different horizon should have different error
     predictor.record_observation(2, 1.0, 1.5); // Error = 0.5
     let mean_error_h2 = predictor.mean_error_for_horizon(2);
-    assert!(mean_error_h2 > mean_error_h1,
-        "Horizon 2 should have higher error than horizon 1");
+    assert!(
+        mean_error_h2 > mean_error_h1,
+        "Horizon 2 should have higher error than horizon 1"
+    );
 }
 
 #[test]
@@ -320,7 +380,10 @@ fn test_multi_step_predictor_calibration_factors() {
 
     let calib_perfect = predictor.calibration_factor_for_horizon(1);
     // calibration = 1.0 / (1.0 + 0.0) = 1.0
-    assert!(calib_perfect > 0.99, "Perfect predictions should give calibration near 1.0");
+    assert!(
+        calib_perfect > 0.99,
+        "Perfect predictions should give calibration near 1.0"
+    );
 
     // Record poor observations (error = 1.0)
     for _ in 0..5 {
@@ -329,12 +392,17 @@ fn test_multi_step_predictor_calibration_factors() {
 
     let calib_poor = predictor.calibration_factor_for_horizon(2);
     // calibration = 1.0 / (1.0 + 1.0) = 0.5
-    assert!((calib_poor - 0.5).abs() < 0.01,
-        "Poor predictions should give calibration near 0.5, got {}", calib_poor);
+    assert!(
+        (calib_poor - 0.5).abs() < 0.01,
+        "Poor predictions should give calibration near 0.5, got {}",
+        calib_poor
+    );
 
     // Perfect should give higher calibration than poor
-    assert!(calib_perfect > calib_poor,
-        "Perfect predictions should give higher calibration");
+    assert!(
+        calib_perfect > calib_poor,
+        "Perfect predictions should give higher calibration"
+    );
 }
 
 #[test]
@@ -357,8 +425,11 @@ fn test_multi_step_predictor_concurrent_operations() {
             let uncertainty = 0.2 + (step as f32 % 20.0) / 100.0;
             let prediction = predictor.predict_batch(confidence, uncertainty, 4);
 
-            assert!(prediction.overall_confidence >= 0.0 && prediction.overall_confidence <= 1.0,
-                "Confidence should be in valid range at step {}", step);
+            assert!(
+                prediction.overall_confidence >= 0.0 && prediction.overall_confidence <= 1.0,
+                "Confidence should be in valid range at step {}",
+                step
+            );
         }
 
         // Record batch skips sometimes
@@ -399,10 +470,15 @@ fn test_multi_step_predictor_full_integration() {
 
     // Phase 4: Final prediction with high accuracy history
     let pred2 = predictor.predict_batch(0.85, 0.15, 4);
-    assert!(pred2.overall_confidence > pred1.overall_confidence,
-        "Confidence should improve with better history");
+    assert!(
+        pred2.overall_confidence > pred1.overall_confidence,
+        "Confidence should improve with better history"
+    );
 
     // Verify statistics
     let final_accuracy = predictor.accuracy_rate();
-    assert!(final_accuracy > 0.7, "Should have good accuracy after many correct predictions");
+    assert!(
+        final_accuracy > 0.7,
+        "Should have good accuracy after many correct predictions"
+    );
 }

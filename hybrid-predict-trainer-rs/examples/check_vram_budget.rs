@@ -43,7 +43,10 @@ fn main() {
             // Safety recommendations
             println!("⚠️  Safety Recommendations:");
             println!("   • Always monitor VRAM during first 100 training steps");
-            println!("   • Keep peak usage below {} MB", budget.available_for_training_mb);
+            println!(
+                "   • Keep peak usage below {} MB",
+                budget.available_for_training_mb
+            );
             println!("   • Use: nvidia-smi --loop=1 to watch in real-time");
             println!("   • If OOM occurs: reduce batch_size by 50%");
         }

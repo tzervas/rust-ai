@@ -634,10 +634,7 @@ mod tests {
         let result = monitor.check(&state, Some(2.0));
 
         // Find prediction_error signal
-        let pred_signal = result
-            .signals
-            .iter()
-            .find(|s| s.name == "prediction_error");
+        let pred_signal = result.signals.iter().find(|s| s.name == "prediction_error");
 
         assert!(
             pred_signal.is_some(),
@@ -839,10 +836,7 @@ mod tests {
             "loss spike should trigger at least Warning, got {:?}",
             spike_result.level
         );
-        assert!(
-            spike_result.is_concerning(),
-            "spike should be concerning"
-        );
+        assert!(spike_result.is_concerning(), "spike should be concerning");
 
         // Now "recover" by sending normal signals
         // First, observe many normal loss values to bring the EMA back

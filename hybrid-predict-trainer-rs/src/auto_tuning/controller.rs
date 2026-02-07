@@ -132,9 +132,7 @@ impl AutoTuningUpdate {
     /// Returns true if any gradient clipping is recommended.
     #[must_use]
     pub fn has_clipping(&self) -> bool {
-        self.layer_clip_factors
-            .values()
-            .any(|&coeff| coeff < 1.0)
+        self.layer_clip_factors.values().any(|&coeff| coeff < 1.0)
     }
 }
 
@@ -164,10 +162,8 @@ impl AutoTuningController {
     pub fn new(config: AutoTuningConfig, max_steps: u64) -> Self {
         let health_scorer = HealthScorer::new(config.health_window, max_steps as usize);
         let gradient_tuner = GradientRangeTuner::with_agc_lambda(config.agc_lambda);
-        let plateau_detector = PlateauDetector::new(
-            config.plateau_window,
-            config.plateau_velocity_threshold,
-        );
+        let plateau_detector =
+            PlateauDetector::new(config.plateau_window, config.plateau_velocity_threshold);
 
         Self {
             config,
@@ -238,8 +234,9 @@ impl AutoTuningController {
             layer_grads_map.insert(layer_name.clone(), (*grad_norm, *weight_norm));
         }
 
-        let clip_factors = self.gradient_tuner
-            .update(gradient_norm, &layer_grads_map, progress_pct);
+        let clip_factors =
+            self.gradient_tuner
+                .update(gradient_norm, &layer_grads_map, progress_pct);
 
         // Layer clip factors come from gradient tuner directly
         let layer_clip_factors = clip_factors;
@@ -252,9 +249,7 @@ impl AutoTuningController {
             // Check cooldown
             let can_restart = match self.last_restart_step {
                 None => true,
-                Some(last_step) => {
-                    step - last_step >= self.config.warmup_restart_cooldown
-                }
+                Some(last_step) => step - last_step >= self.config.warmup_restart_cooldown,
             };
 
             if can_restart {

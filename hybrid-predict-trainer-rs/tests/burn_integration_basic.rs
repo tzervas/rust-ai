@@ -21,7 +21,12 @@ mod basic_tests {
     }
 
     impl<B: Backend> SimpleMLP<B> {
-        pub fn new(input_size: usize, hidden_size: usize, output_size: usize, device: &Device<B>) -> Self {
+        pub fn new(
+            input_size: usize,
+            hidden_size: usize,
+            output_size: usize,
+            device: &Device<B>,
+        ) -> Self {
             let fc1 = LinearConfig::new(input_size, hidden_size).init(device);
             let fc2 = LinearConfig::new(hidden_size, output_size).init(device);
             Self { fc1, fc2 }
@@ -68,7 +73,11 @@ mod basic_tests {
 
         // Create input: 3 samples, 4 features
         let input = Tensor::from_data(
-            [[1.0f32, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0], [9.0, 10.0, 11.0, 12.0]],
+            [
+                [1.0f32, 2.0, 3.0, 4.0],
+                [5.0, 6.0, 7.0, 8.0],
+                [9.0, 10.0, 11.0, 12.0],
+            ],
             &device,
         );
 
@@ -173,7 +182,11 @@ mod basic_tests {
             assert_eq!(initial.len(), updated.len());
             for (&i, &u) in initial.iter().zip(updated.iter()) {
                 let diff = (u - i - 0.1).abs();
-                assert!(diff < 0.0001, "Parameter should change by 0.1, got diff={}", diff);
+                assert!(
+                    diff < 0.0001,
+                    "Parameter should change by 0.1, got diff={}",
+                    diff
+                );
             }
         }
     }

@@ -185,6 +185,9 @@ mod no_backend_tests {
     fn test_ndarray_feature_not_enabled() {
         // This test verifies that when ndarray feature is not enabled,
         // the crate still compiles but backend-specific tests are skipped
-        assert!(true, "Compile check: burn_integration module accessible without backend");
+        assert!(
+            true,
+            "Compile check: burn_integration module accessible without backend"
+        );
     }
 }

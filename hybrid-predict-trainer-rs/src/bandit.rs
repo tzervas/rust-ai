@@ -476,10 +476,7 @@ mod tests {
     #[test]
     fn test_linucb_score_computation() {
         // Create a bandit with two arms and update them with different context/reward patterns
-        let arms = vec![
-            ("arm_a".to_string(), 10.0),
-            ("arm_b".to_string(), 20.0),
-        ];
+        let arms = vec![("arm_a".to_string(), 10.0), ("arm_b".to_string(), 20.0)];
         let config = BanditConfig {
             use_context: true,
             exploration_factor: 1.0,
@@ -526,7 +523,10 @@ mod tests {
         let feature_dim = bandit.a_matrices[0].len();
         assert!(feature_dim > 0);
         for i in 0..feature_dim {
-            assert!((bandit.a_matrices[0][i] - 1.0).abs() < 1e-9, "A should start at l2_reg");
+            assert!(
+                (bandit.a_matrices[0][i] - 1.0).abs() < 1e-9,
+                "A should start at l2_reg"
+            );
             assert!((bandit.b_vectors[0][i]).abs() < 1e-9, "b should start at 0");
         }
 
@@ -621,10 +621,7 @@ mod tests {
 
     #[test]
     fn test_reset_clears_state() {
-        let arms = vec![
-            ("a".to_string(), 10.0),
-            ("b".to_string(), 20.0),
-        ];
+        let arms = vec![("a".to_string(), 10.0), ("b".to_string(), 20.0)];
         let config = BanditConfig {
             l2_regularization: 2.0,
             ..BanditConfig::default()
@@ -656,7 +653,10 @@ mod tests {
         // Verify A matrices reset to l2_regularization (2.0)
         for a_matrix in &bandit.a_matrices {
             for &v in a_matrix {
-                assert!((v - 2.0).abs() < 1e-9, "A matrix should reset to l2_reg=2.0");
+                assert!(
+                    (v - 2.0).abs() < 1e-9,
+                    "A matrix should reset to l2_reg=2.0"
+                );
             }
         }
 

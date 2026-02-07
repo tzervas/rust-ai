@@ -563,12 +563,7 @@ mod tests {
         let confidences = [0.8_f32, 0.85, 0.9, 0.95, 1.0];
 
         for (i, (&lr, &conf)) in loss_residuals.iter().zip(confidences.iter()).enumerate() {
-            store.add(make_residual(
-                i as u64,
-                lr,
-                conf,
-                vec![0.0; 64],
-            ));
+            store.add(make_residual(i as u64, lr, conf, vec![0.0; 64]));
         }
 
         let stats = store.statistics();
@@ -600,9 +595,9 @@ mod tests {
         // left: 4 elements, right: 6 elements, singular_values: 2 elements
         // Total = (4 + 6 + 2) * 4 bytes = 48 bytes
         let compressed = CompressedResidual::new(
-            vec![1.0, 2.0, 3.0, 4.0],             // left: 4 elements
-            vec![5.0, 6.0, 7.0, 8.0, 9.0, 10.0],  // right: 6 elements
-            vec![1.5, 0.5],                        // singular_values: 2 elements
+            vec![1.0, 2.0, 3.0, 4.0],            // left: 4 elements
+            vec![5.0, 6.0, 7.0, 8.0, 9.0, 10.0], // right: 6 elements
+            vec![1.5, 0.5],                      // singular_values: 2 elements
             (2, 3),
         );
 

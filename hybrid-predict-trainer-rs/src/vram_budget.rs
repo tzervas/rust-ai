@@ -204,11 +204,21 @@ impl VramBudget {
         println!("╔════════════════════════════════════════════╗");
         println!("║         VRAM Budget Summary                ║");
         println!("╠════════════════════════════════════════════╣");
-        println!("║ Total VRAM:        {:>8} MB          ║", self.total_vram_mb);
-        println!("║ Baseline Used:     {:>8} MB          ║", self.baseline_used_mb);
-        println!("║ Reserved Buffer:   {:>8} MB          ║", self.reserved_buffer_mb);
+        println!(
+            "║ Total VRAM:        {:>8} MB          ║",
+            self.total_vram_mb
+        );
+        println!(
+            "║ Baseline Used:     {:>8} MB          ║",
+            self.baseline_used_mb
+        );
+        println!(
+            "║ Reserved Buffer:   {:>8} MB          ║",
+            self.reserved_buffer_mb
+        );
         println!("║ ────────────────────────────────────────── ║");
-        println!("║ Available:         {:>8} MB ({:>5.1}%) ║",
+        println!(
+            "║ Available:         {:>8} MB ({:>5.1}%) ║",
             self.available_for_training_mb,
             (self.available_for_training_mb as f32 / self.total_vram_mb as f32) * 100.0
         );
@@ -269,18 +279,42 @@ impl VramConfig {
         println!("╔════════════════════════════════════════════╗");
         println!("║    Recommended Training Configuration      ║");
         println!("╠════════════════════════════════════════════╣");
-        println!("║ Max Batch Size:    {:>8}              ║", self.max_batch_size);
-        println!("║ Mixed Precision:   {:>8}              ║",
-            if self.use_mixed_precision { "Yes" } else { "No" }
+        println!(
+            "║ Max Batch Size:    {:>8}              ║",
+            self.max_batch_size
         );
-        println!("║ Grad Checkpoint:   {:>8}              ║",
-            if self.use_gradient_checkpointing { "Yes" } else { "No" }
+        println!(
+            "║ Mixed Precision:   {:>8}              ║",
+            if self.use_mixed_precision {
+                "Yes"
+            } else {
+                "No"
+            }
         );
-        println!("║ Grad Accumulation: {:>8}              ║", self.gradient_accumulation_steps);
+        println!(
+            "║ Grad Checkpoint:   {:>8}              ║",
+            if self.use_gradient_checkpointing {
+                "Yes"
+            } else {
+                "No"
+            }
+        );
+        println!(
+            "║ Grad Accumulation: {:>8}              ║",
+            self.gradient_accumulation_steps
+        );
         println!("║ ────────────────────────────────────────── ║");
-        println!("║ Est. VRAM Usage:   {:>8} MB          ║", self.estimated_vram_mb);
-        println!("║ Fits in Budget:    {:>8}              ║",
-            if self.fits_in_budget { "Yes ✓" } else { "No ✗" }
+        println!(
+            "║ Est. VRAM Usage:   {:>8} MB          ║",
+            self.estimated_vram_mb
+        );
+        println!(
+            "║ Fits in Budget:    {:>8}              ║",
+            if self.fits_in_budget {
+                "Yes ✓"
+            } else {
+                "No ✗"
+            }
         );
         println!("╚════════════════════════════════════════════╝");
     }

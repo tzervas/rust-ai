@@ -170,10 +170,9 @@ pub mod gpu;
 
 // Re-exports for convenient access
 pub use auto_tuning::{
-    AutoTuningConfig, AutoTuningController, AutoTuningUpdate,
-    BatchPrediction, BatchPredictionRecommendation, HealthClassification,
-    HealthRecommendation, HealthScorer, HealthWeights, MultiStepPredictor,
-    TrainingHealthScore,
+    AutoTuningConfig, AutoTuningController, AutoTuningUpdate, BatchPrediction,
+    BatchPredictionRecommendation, HealthClassification, HealthRecommendation, HealthScorer,
+    HealthWeights, MultiStepPredictor, TrainingHealthScore,
 };
 pub use config::HybridTrainerConfig;
 pub use error::{HybridResult, HybridTrainingError, RecoveryAction};
@@ -422,7 +421,10 @@ impl<M, O> HybridTrainer<M, O> {
         // Initialize auto-tuning controller if config provided
         let auto_tuning = if let Some(auto_config) = config.auto_tuning_config.clone() {
             let max_steps = config.max_steps.unwrap_or(10000); // Default if not provided
-            Some(auto_tuning::AutoTuningController::new(auto_config, max_steps))
+            Some(auto_tuning::AutoTuningController::new(
+                auto_config,
+                max_steps,
+            ))
         } else {
             None
         };
@@ -869,8 +871,11 @@ impl<M, O> HybridTrainer<M, O> {
         } else {
             // Use full correction with residual store for better estimates
             let predicted_loss = self.state.loss; // Use current loss as baseline
-            self.residual_corrector
-                .compute_correction(&self.state, &self.residual_store, predicted_loss)
+            self.residual_corrector.compute_correction(
+                &self.state,
+                &self.residual_store,
+                predicted_loss,
+            )
         };
 
         // Apply weight delta correction if one was computed and significant

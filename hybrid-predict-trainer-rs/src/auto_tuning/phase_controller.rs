@@ -75,7 +75,10 @@ use serde::{Deserialize, Serialize};
 /// # Returns
 ///
 /// The base prediction steps for this health level
-fn health_classification_base_factor(classification: HealthClassification, max_steps: usize) -> usize {
+fn health_classification_base_factor(
+    classification: HealthClassification,
+    max_steps: usize,
+) -> usize {
     match classification {
         HealthClassification::Excellent => max_steps,
         HealthClassification::Good => ((max_steps as f32) * 0.8) as usize,
@@ -200,7 +203,11 @@ impl AdaptivePhaseController {
             self.warmup_complete = true;
             self.last_transition_step = step;
             self.current_phase = Phase::Full;
-            let extension = if self.should_extend_full_phase() { 10 } else { 0 };
+            let extension = if self.should_extend_full_phase() {
+                10
+            } else {
+                0
+            };
             return (Phase::Full, 30 + extension);
         }
 
@@ -208,7 +215,11 @@ impl AdaptivePhaseController {
             Phase::Warmup => {
                 // This case is handled above
                 self.current_phase = Phase::Full;
-                let extension = if self.should_extend_full_phase() { 10 } else { 0 };
+                let extension = if self.should_extend_full_phase() {
+                    10
+                } else {
+                    0
+                };
                 (Phase::Full, 30 + extension)
             }
 
@@ -234,7 +245,11 @@ impl AdaptivePhaseController {
                     self.current_phase = Phase::Full;
                     self.last_transition_step = step;
 
-                    let extension = if self.should_extend_full_phase() { 10 } else { 0 };
+                    let extension = if self.should_extend_full_phase() {
+                        10
+                    } else {
+                        0
+                    };
                     (Phase::Full, 30 + extension)
                 }
             }
@@ -269,7 +284,8 @@ impl AdaptivePhaseController {
         let combined_confidence = prediction_confidence * gradient_stability;
 
         // Base steps depend on health
-        let base_steps = health_classification_base_factor(health_classification, self.max_predict_steps);
+        let base_steps =
+            health_classification_base_factor(health_classification, self.max_predict_steps);
 
         // Scale by combined confidence
         let adaptive_steps = (base_steps as f32 * combined_confidence) as usize;
@@ -425,14 +441,8 @@ mod tests {
     #[test]
     fn test_phase_transition_warmup_to_full() {
         let mut controller = AdaptivePhaseController::new(5, 100);
-        let (phase, steps) = controller.select_next_phase(
-            HealthClassification::Good,
-            0.8,
-            0.9,
-            0.9,
-            10,
-            true,
-        );
+        let (phase, steps) =
+            controller.select_next_phase(HealthClassification::Good, 0.8, 0.9, 0.9, 10, true);
         assert_eq!(phase, Phase::Full);
         assert!(steps > 0);
     }
@@ -462,14 +472,8 @@ mod tests {
         controller.warmup_complete = true;
         controller.current_phase = Phase::Full;
 
-        let (phase, _steps) = controller.select_next_phase(
-            HealthClassification::Poor,
-            0.3,
-            0.5,
-            0.9,
-            50,
-            true,
-        );
+        let (phase, _steps) =
+            controller.select_next_phase(HealthClassification::Poor, 0.3, 0.5, 0.9, 50, true);
         assert_eq!(phase, Phase::Full);
     }
 
@@ -496,14 +500,8 @@ mod tests {
         controller.warmup_complete = true;
         controller.current_phase = Phase::Predict;
 
-        let (phase, steps) = controller.select_next_phase(
-            HealthClassification::Good,
-            0.8,
-            0.9,
-            0.9,
-            50,
-            true,
-        );
+        let (phase, steps) =
+            controller.select_next_phase(HealthClassification::Good, 0.8, 0.9, 0.9, 50, true);
         assert_eq!(phase, Phase::Correct);
         assert_eq!(steps, 5);
     }
@@ -511,11 +509,8 @@ mod tests {
     #[test]
     fn test_compute_dynamic_predict_steps_excellent() {
         let controller = AdaptivePhaseController::new(5, 100);
-        let steps = controller.compute_dynamic_predict_steps(
-            0.9,
-            0.9,
-            HealthClassification::Excellent,
-        );
+        let steps =
+            controller.compute_dynamic_predict_steps(0.9, 0.9, HealthClassification::Excellent);
         assert!(steps >= 80); // 100 * 0.9 * 0.9 = 81
         assert!(steps <= 100);
     }
@@ -523,11 +518,8 @@ mod tests {
     #[test]
     fn test_compute_dynamic_predict_steps_moderate() {
         let controller = AdaptivePhaseController::new(5, 100);
-        let steps = controller.compute_dynamic_predict_steps(
-            0.9,
-            0.9,
-            HealthClassification::Moderate,
-        );
+        let steps =
+            controller.compute_dynamic_predict_steps(0.9, 0.9, HealthClassification::Moderate);
         assert!(steps >= 5); // 50 * 0.9 * 0.9 = 40.5, but clamped
         assert!(steps <= 50);
     }
@@ -535,11 +527,8 @@ mod tests {
     #[test]
     fn test_compute_dynamic_predict_steps_critical() {
         let controller = AdaptivePhaseController::new(5, 100);
-        let steps = controller.compute_dynamic_predict_steps(
-            0.9,
-            0.9,
-            HealthClassification::Critical,
-        );
+        let steps =
+            controller.compute_dynamic_predict_steps(0.9, 0.9, HealthClassification::Critical);
         assert_eq!(steps, 5); // Critical forces min_predict_steps
     }
 
@@ -549,8 +538,14 @@ mod tests {
             health_classification_base_factor(HealthClassification::Excellent, 100),
             100
         );
-        assert_eq!(health_classification_base_factor(HealthClassification::Good, 100), 80);
-        assert_eq!(health_classification_base_factor(HealthClassification::Moderate, 100), 50);
+        assert_eq!(
+            health_classification_base_factor(HealthClassification::Good, 100),
+            80
+        );
+        assert_eq!(
+            health_classification_base_factor(HealthClassification::Moderate, 100),
+            50
+        );
         assert!(health_classification_base_factor(HealthClassification::Poor, 100) <= 5);
         assert!(health_classification_base_factor(HealthClassification::Critical, 100) <= 5);
     }

@@ -334,9 +334,7 @@ impl GRUWeights {
         let scale = (2.0 / (input_dim + hidden_dim) as f32).sqrt();
 
         let mut random_vec = |size: usize| -> Vec<f32> {
-            (0..size)
-                .map(|_| rng.random_range(-scale..scale))
-                .collect()
+            (0..size).map(|_| rng.random_range(-scale..scale)).collect()
         };
 
         Self {
@@ -607,7 +605,11 @@ impl RSSMLite {
 
         // h_tilde = tanh(W_h·x + U_h·(r⊙h) + b_h)
         let mut h_candidate = Self::matvec(&weights.w_h, input, hidden_dim, input_dim);
-        let r_h_elem: Vec<f32> = r.iter().zip(hidden.iter()).map(|(&ri, &hi)| ri * hi).collect();
+        let r_h_elem: Vec<f32> = r
+            .iter()
+            .zip(hidden.iter())
+            .map(|(&ri, &hi)| ri * hi)
+            .collect();
         let h_rec = Self::matvec(&weights.u_h, &r_h_elem, hidden_dim, hidden_dim);
         for i in 0..hidden_dim {
             h_candidate[i] = (h_candidate[i] + h_rec[i] + weights.b_h[i]).tanh();
@@ -643,11 +645,7 @@ impl RSSMLite {
     /// h_cand = tanh(W_h·x + U_h·(r⊙h_prev) + b_h)
     /// h_new = (1-z)·h_prev + z·h_cand
     /// ```
-    fn gru_backward(
-        weights: &GRUWeights,
-        cache: &GRUStepCache,
-        dh_new: &[f32],
-    ) -> GRUGradients {
+    fn gru_backward(weights: &GRUWeights, cache: &GRUStepCache, dh_new: &[f32]) -> GRUGradients {
         let hidden_dim = cache.h_prev.len();
         let input_dim = cache.input.len();
 
@@ -660,9 +658,7 @@ impl RSSMLite {
             .collect();
 
         // dL/dh_cand = dL/dh_new ⊙ z
-        let dh_cand: Vec<f32> = (0..hidden_dim)
-            .map(|i| dh_new[i] * cache.z[i])
-            .collect();
+        let dh_cand: Vec<f32> = (0..hidden_dim).map(|i| dh_new[i] * cache.z[i]).collect();
 
         // ─── Backprop through h_cand = tanh(pre_h) ───
         // dL/d(pre_h) = dL/dh_cand ⊙ tanh'(h_cand)
@@ -696,9 +692,7 @@ impl RSSMLite {
         let d_rh = Self::matvec_t(&weights.u_h, &d_pre_h, hidden_dim, hidden_dim);
 
         // dL/dr = d_rh ⊙ h_prev
-        let dr: Vec<f32> = (0..hidden_dim)
-            .map(|i| d_rh[i] * cache.h_prev[i])
-            .collect();
+        let dr: Vec<f32> = (0..hidden_dim).map(|i| d_rh[i] * cache.h_prev[i]).collect();
 
         // ─── Backprop through z = sigmoid(pre_z) ───
         // dL/d(pre_z) = dL/dz ⊙ sigmoid'(z) = dL/dz ⊙ z ⊙ (1-z)
@@ -773,7 +767,9 @@ impl RSSMLite {
                 Self::gru_step_with_cache(&self.gru_weights[ensemble_idx], &hidden, &features);
 
             // ── 2. Sample stochastic state from new hidden ──
-            self.latent_states[ensemble_idx].deterministic.clone_from(&h_new);
+            self.latent_states[ensemble_idx]
+                .deterministic
+                .clone_from(&h_new);
             self.latent_states[ensemble_idx].sample_stochastic_from_deterministic();
             let combined = self.latent_states[ensemble_idx].combined.clone();
 
@@ -799,16 +795,13 @@ impl RSSMLite {
             }
 
             // ── 5. One-step BPTT through GRU ──
-            let grads = Self::gru_backward(
-                &self.gru_weights[ensemble_idx],
-                &cache,
-                &dh_from_loss,
-            );
+            let grads = Self::gru_backward(&self.gru_weights[ensemble_idx], &cache, &dh_from_loss);
             self.gru_weights[ensemble_idx].apply_gradients(&grads, lr, max_grad_norm);
 
             // ── 6. Train weight delta head (magnitude prediction) ──
             // Target: actual lr * grad_norm approximates the weight update magnitude
-            let actual_magnitude = state.optimizer_state_summary.effective_lr * grad_info.gradient_norm;
+            let actual_magnitude =
+                state.optimizer_state_summary.effective_lr * grad_info.gradient_norm;
 
             // Forward pass through weight delta head for magnitude (first output)
             let mut predicted_raw_magnitude = 0.0_f32;
@@ -1041,16 +1034,12 @@ impl RSSMLite {
             // Roll out Y steps with active stochastic sampling
             for _ in 0..y_steps {
                 // Update deterministic state via GRU
-                rollout_latent.deterministic = Self::gru_step(
-                    weights,
-                    &rollout_latent.deterministic,
-                    &features,
-                );
+                rollout_latent.deterministic =
+                    Self::gru_step(weights, &rollout_latent.deterministic, &features);
 
                 // Active stochastic sampling: re-derive stochastic state
                 // from the evolving deterministic state
-                let step_entropy =
-                    rollout_latent.sample_stochastic_from_deterministic();
+                let step_entropy = rollout_latent.sample_stochastic_from_deterministic();
                 total_entropy += step_entropy;
 
                 // Decode loss prediction from updated combined state
@@ -1689,11 +1678,7 @@ mod tests {
         );
 
         // Entropy should be positive (non-degenerate distribution)
-        assert!(
-            entropy > 0.0,
-            "entropy should be positive, got {}",
-            entropy
-        );
+        assert!(entropy > 0.0, "entropy should be positive, got {}", entropy);
 
         // Combined state should be updated
         assert_eq!(
@@ -2057,7 +2042,11 @@ mod tests {
         let (h_new, cache) = RSSMLite::gru_step_with_cache(&weights, &hidden, &input);
 
         // Verify cache dimensions
-        assert_eq!(cache.input.len(), input_dim, "cache input dimension mismatch");
+        assert_eq!(
+            cache.input.len(),
+            input_dim,
+            "cache input dimension mismatch"
+        );
         assert_eq!(
             cache.h_prev.len(),
             hidden_dim,
@@ -2106,10 +2095,7 @@ mod tests {
 
         assert!(z_norm > 0.0, "z should have non-zero values");
         assert!(r_norm > 0.0, "r should have non-zero values");
-        assert!(
-            h_cand_norm > 0.0,
-            "h_candidate should have non-zero values"
-        );
+        assert!(h_cand_norm > 0.0, "h_candidate should have non-zero values");
 
         // h_new should match the GRU formula: (1-z)*h_prev + z*h_candidate
         for i in 0..hidden_dim {

@@ -441,7 +441,10 @@ where
                 self.count += tensor.dims().iter().product::<usize>();
             }
 
-            fn visit_int<const D: usize>(&mut self, param: &Param<Tensor<B, D, burn::tensor::Int>>) {
+            fn visit_int<const D: usize>(
+                &mut self,
+                param: &Param<Tensor<B, D, burn::tensor::Int>>,
+            ) {
                 let tensor = param.val();
                 self.count += tensor.dims().iter().product::<usize>();
             }
@@ -692,11 +695,7 @@ where
 /// # Returns
 ///
 /// The updated model with deltas applied.
-fn apply_deltas_to_model<B, M>(
-    model: M,
-    delta: &WeightDelta,
-    device: &burn::tensor::Device<B>,
-) -> M
+fn apply_deltas_to_model<B, M>(model: M, delta: &WeightDelta, device: &burn::tensor::Device<B>) -> M
 where
     B: AutodiffBackend,
     M: AutodiffModule<B>,
@@ -713,10 +712,7 @@ where
     }
 
     impl<'a, B: Backend> ModuleMapper<B> for DeltaMapper<'a, B> {
-        fn map_float<const D: usize>(
-            &mut self,
-            param: Param<Tensor<B, D>>,
-        ) -> Param<Tensor<B, D>> {
+        fn map_float<const D: usize>(&mut self, param: Param<Tensor<B, D>>) -> Param<Tensor<B, D>> {
             // Consume parameter to get ID, tensor, and mapper
             let (id, tensor, mapper) = param.consume();
 
@@ -730,7 +726,8 @@ where
 
                 // Convert delta vector to tensor with same shape
                 let delta_data = TensorData::new(delta_vec.clone(), shape.clone());
-                let delta_tensor = Tensor::<B, D>::from_data(delta_data.convert::<f32>(), &self.device);
+                let delta_tensor =
+                    Tensor::<B, D>::from_data(delta_data.convert::<f32>(), &self.device);
 
                 // Apply: param = param + scale * delta
                 let updated_tensor = tensor.add(delta_tensor.mul_scalar(self.scale));

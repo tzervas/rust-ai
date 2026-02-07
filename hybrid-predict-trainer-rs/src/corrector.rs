@@ -283,9 +283,7 @@ impl ResidualCorrector {
         weights: &[f32],
     ) -> Option<WeightDelta> {
         // Only produce weight corrections if residuals have gradient info
-        let has_layer_info = similar
-            .iter()
-            .any(|r| !r.gradient_residuals.is_empty());
+        let has_layer_info = similar.iter().any(|r| !r.gradient_residuals.is_empty());
 
         if !has_layer_info {
             return None;
@@ -717,7 +715,10 @@ mod tests {
             .iter()
             .zip(initial_weights.iter())
             .any(|(new, old)| (new - old).abs() > 1e-10);
-        assert!(changed, "Linear model weights should have changed after updates");
+        assert!(
+            changed,
+            "Linear model weights should have changed after updates"
+        );
 
         // Also verify the bias has changed
         assert!(

@@ -533,11 +533,9 @@ impl HealthScorer {
                 // Training could improve - check individual components
                 if accuracy_score < 0.6 && self.current_predict_steps() > self.min_predict_steps {
                     // Poor prediction accuracy - reduce prediction steps
-                    let target =
-                        ((self.current_predict_steps() as f32) * 0.7).ceil() as usize;
+                    let target = ((self.current_predict_steps() as f32) * 0.7).ceil() as usize;
                     let target = target.max(self.min_predict_steps);
-                    recommendations
-                        .push(HealthRecommendation::DecreasePredictSteps { to: target });
+                    recommendations.push(HealthRecommendation::DecreasePredictSteps { to: target });
                 }
 
                 if entropy_score < 0.5 {
@@ -549,9 +547,8 @@ impl HealthScorer {
                     // Poor loss velocity - loss not improving well
                     if progress_pct < 50.0 {
                         // Early in training - might benefit from warmup restart
-                        recommendations.push(HealthRecommendation::WarmupRestart {
-                            lr_multiplier: 0.5,
-                        });
+                        recommendations
+                            .push(HealthRecommendation::WarmupRestart { lr_multiplier: 0.5 });
                     }
                 }
             }
@@ -560,9 +557,8 @@ impl HealthScorer {
                 if accuracy_score < 0.5 {
                     // Very poor predictions - force full phase
                     let full_steps = 50;
-                    recommendations.push(HealthRecommendation::ForceFullPhase {
-                        steps: full_steps,
-                    });
+                    recommendations
+                        .push(HealthRecommendation::ForceFullPhase { steps: full_steps });
                 }
 
                 if stability_score < 0.4 {
@@ -572,8 +568,7 @@ impl HealthScorer {
 
                 // Reduce prediction steps if using them
                 if self.current_predict_steps() > self.min_predict_steps {
-                    let target =
-                        ((self.current_predict_steps() as f32) * 0.5).ceil() as usize;
+                    let target = ((self.current_predict_steps() as f32) * 0.5).ceil() as usize;
                     let target = target.max(self.min_predict_steps);
                     recommendations.push(HealthRecommendation::DecreasePredictSteps { to: target });
                 }
@@ -587,15 +582,13 @@ impl HealthScorer {
                 recommendations.push(HealthRecommendation::ReduceLearningRate { factor: 0.3 });
 
                 // Reduce gradient clipping threshold to be more conservative
-                recommendations.push(HealthRecommendation::AdjustGradientClip {
-                    new_threshold: 0.5,
-                });
+                recommendations
+                    .push(HealthRecommendation::AdjustGradientClip { new_threshold: 0.5 });
 
                 // If early in training, restart warmup
                 if progress_pct < 20.0 {
-                    recommendations.push(HealthRecommendation::WarmupRestart {
-                        lr_multiplier: 0.1,
-                    });
+                    recommendations
+                        .push(HealthRecommendation::WarmupRestart { lr_multiplier: 0.1 });
                 }
             }
         }
@@ -635,12 +628,7 @@ impl HealthScorer {
         let recent_start = len.saturating_sub(5);
         let older_start = len.saturating_sub(10);
 
-        let recent_avg: f32 = self
-            .score_history
-            .iter()
-            .skip(recent_start)
-            .sum::<f32>()
-            / 5.0;
+        let recent_avg: f32 = self.score_history.iter().skip(recent_start).sum::<f32>() / 5.0;
         let older_avg: f32 = self
             .score_history
             .iter()
@@ -799,16 +787,19 @@ mod tests {
 
         // Compute score with good metrics
         let health = scorer.compute(
-            -0.5,  // velocity: improving
-            0.0,   // acceleration: stable
-            0.2,   // entropy: stable gradients
-            0.9,   // accuracy: high
-            0.85,  // stability: stable
-            50.0,  // progress: 50%
+            -0.5, // velocity: improving
+            0.0,  // acceleration: stable
+            0.2,  // entropy: stable gradients
+            0.9,  // accuracy: high
+            0.85, // stability: stable
+            50.0, // progress: 50%
         );
 
         assert!(health.overall > 0.7); // Should be Good or better
-        assert!(!health.recommendations.is_empty() || health.classification == HealthClassification::Excellent);
+        assert!(
+            !health.recommendations.is_empty()
+                || health.classification == HealthClassification::Excellent
+        );
     }
 
     #[test]
@@ -817,12 +808,12 @@ mod tests {
 
         // Compute score with poor metrics
         let health = scorer.compute(
-            1.0,   // velocity: worsening
-            0.5,   // acceleration: unstable
-            0.9,   // entropy: very random
-            0.1,   // accuracy: very poor
-            0.1,   // stability: unstable
-            10.0,  // progress: early
+            1.0,  // velocity: worsening
+            0.5,  // acceleration: unstable
+            0.9,  // entropy: very random
+            0.1,  // accuracy: very poor
+            0.1,  // stability: unstable
+            10.0, // progress: early
         );
 
         assert!(health.overall < 0.4); // Should be Poor or Critical
@@ -897,17 +888,21 @@ mod tests {
         let mut scorer = HealthScorer::new(5, 80);
 
         let health = scorer.compute(
-            -0.5,  // velocity: improving
+            -0.5,   // velocity: improving
             -0.001, // acceleration: stable/negative
-            0.05,  // entropy: very very stable (near 0)
-            0.95,  // accuracy: excellent
-            0.95,  // stability: excellent
-            50.0,  // progress: 50%
+            0.05,   // entropy: very very stable (near 0)
+            0.95,   // accuracy: excellent
+            0.95,   // stability: excellent
+            50.0,   // progress: 50%
         );
 
         // Score should be: 0.25*0.73 + 0.15*0.8 + 0.15*0.95 + 0.25*0.95 + 0.20*0.95 = 0.87+
-        assert!(health.classification == HealthClassification::Excellent || health.classification == HealthClassification::Good,
-                "Expected Excellent or Good, got {:?}", health.classification);
+        assert!(
+            health.classification == HealthClassification::Excellent
+                || health.classification == HealthClassification::Good,
+            "Expected Excellent or Good, got {:?}",
+            health.classification
+        );
         // Should have recommendation to increase predict steps if Excellent
         if health.classification == HealthClassification::Excellent {
             let has_increase = health
@@ -923,12 +918,12 @@ mod tests {
         let mut scorer = HealthScorer::new(5, 80);
 
         let health = scorer.compute(
-            1.5,   // velocity: very bad
-            0.8,   // acceleration: unstable
-            0.95,  // entropy: very random
-            0.05,  // accuracy: terrible
-            0.05,  // stability: terrible
-            5.0,   // progress: very early
+            1.5,  // velocity: very bad
+            0.8,  // acceleration: unstable
+            0.95, // entropy: very random
+            0.05, // accuracy: terrible
+            0.05, // stability: terrible
+            5.0,  // progress: very early
         );
 
         assert_eq!(health.classification, HealthClassification::Critical);
@@ -994,9 +989,7 @@ mod tests {
             HealthRecommendation::ReduceLearningRate { factor: 0.8 },
             HealthRecommendation::IncreaseLearningRate { factor: 1.2 },
             HealthRecommendation::ForceFullPhase { steps: 50 },
-            HealthRecommendation::AdjustGradientClip {
-                new_threshold: 1.0,
-            },
+            HealthRecommendation::AdjustGradientClip { new_threshold: 1.0 },
         ];
 
         assert_eq!(recommendations.len(), 7);

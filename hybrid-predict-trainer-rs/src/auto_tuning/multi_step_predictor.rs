@@ -148,11 +148,7 @@ impl MultiStepPredictor {
     /// # Returns
     ///
     /// A new `MultiStepPredictor` configured with the given thresholds.
-    pub fn new(
-        confidence_threshold: f32,
-        error_threshold: f32,
-        enable_skip: bool,
-    ) -> Self {
+    pub fn new(confidence_threshold: f32, error_threshold: f32, enable_skip: bool) -> Self {
         Self {
             horizon_errors: HashMap::new(),
             calibration_factors: HashMap::new(),
@@ -258,20 +254,12 @@ impl MultiStepPredictor {
     /// * `horizon` - The horizon (in steps) for this observation
     /// * `predicted_loss` - The predicted loss value
     /// * `actual_loss` - The actual observed loss value
-    pub fn record_observation(
-        &mut self,
-        horizon: usize,
-        predicted_loss: f32,
-        actual_loss: f32,
-    ) {
+    pub fn record_observation(&mut self, horizon: usize, predicted_loss: f32, actual_loss: f32) {
         let horizon = horizon.max(1);
         let error = (actual_loss - predicted_loss).abs();
 
         // Add to horizon errors
-        self.horizon_errors
-            .entry(horizon)
-            .or_default()
-            .push(error);
+        self.horizon_errors.entry(horizon).or_default().push(error);
 
         // Trim history if it exceeds capacity
         if let Some(errors) = self.horizon_errors.get_mut(&horizon) {
@@ -376,15 +364,13 @@ impl MultiStepPredictor {
     /// The mean absolute error for that horizon, or 0.0 if no observations exist.
     #[must_use]
     pub fn mean_error_for_horizon(&self, horizon: usize) -> f32 {
-        self.horizon_errors
-            .get(&horizon)
-            .map_or(0.0, |errors| {
-                if errors.is_empty() {
-                    0.0
-                } else {
-                    errors.iter().sum::<f32>() / errors.len() as f32
-                }
-            })
+        self.horizon_errors.get(&horizon).map_or(0.0, |errors| {
+            if errors.is_empty() {
+                0.0
+            } else {
+                errors.iter().sum::<f32>() / errors.len() as f32
+            }
+        })
     }
 
     /// Returns the calibration factor for a specific horizon.
@@ -398,7 +384,10 @@ impl MultiStepPredictor {
     /// The calibration factor, or 1.0 if no factor has been computed.
     #[must_use]
     pub fn calibration_factor_for_horizon(&self, horizon: usize) -> f32 {
-        self.calibration_factors.get(&horizon).copied().unwrap_or(1.0)
+        self.calibration_factors
+            .get(&horizon)
+            .copied()
+            .unwrap_or(1.0)
     }
 
     /// Resets all calibration and accuracy statistics.
@@ -471,7 +460,10 @@ mod tests {
         let batch = pred.predict_batch(0.6, 0.4, 4);
 
         assert!(batch.overall_confidence < 0.7);
-        assert_eq!(batch.recommendation, BatchPredictionRecommendation::RunFullBatch);
+        assert_eq!(
+            batch.recommendation,
+            BatchPredictionRecommendation::RunFullBatch
+        );
     }
 
     #[test]

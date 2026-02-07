@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Pre-commit hook: scan staged changes for secrets with gitleaks
+#
+# Install: git config core.hooksPath .githooks
+
+if ! command -v gitleaks &> /dev/null; then
+    echo "gitleaks not found — skipping secret scan"
+    echo "Install: https://github.com/gitleaks/gitleaks#installing"
+    exit 0
+fi
+
+gitleaks protect --staged --config .gitleaks.toml

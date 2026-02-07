@@ -22,6 +22,17 @@ jobs:
         # Continue even with informational warnings (unmaintained packages)
         continue-on-error: true
 
+  gitleaks:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   deny:
     name: Dependency Check
     runs-on: ubuntu-latest

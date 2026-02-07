@@ -156,7 +156,7 @@ impl ResidualCorrector {
     /// Creates a new residual corrector.
     #[must_use]
     pub fn new(_config: &HybridTrainerConfig) -> Self {
-        let feature_dim = 32; // From TrainingState::compute_features
+        let feature_dim = 64; // From TrainingState::compute_features (64-dim)
         Self {
             config: CorrectorConfig::default(),
             statistics: CorrectionStatistics::default(),
@@ -171,7 +171,7 @@ impl ResidualCorrector {
     /// Creates a corrector with custom configuration.
     #[must_use]
     pub fn with_config(config: CorrectorConfig) -> Self {
-        let feature_dim = 32;
+        let feature_dim = 64;
         Self {
             config,
             statistics: CorrectionStatistics::default(),
@@ -471,7 +471,7 @@ mod tests {
         let config = HybridTrainerConfig::default();
         let corrector = ResidualCorrector::new(&config);
 
-        assert_eq!(corrector.linear_model.len(), 32);
+        assert_eq!(corrector.linear_model.len(), 64);
         assert!((corrector.loss_bias).abs() < f32::EPSILON);
     }
 

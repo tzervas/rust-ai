@@ -220,6 +220,10 @@ pub struct RSSMLite {
     /// Temperature for stochastic sampling (reserved for future use).
     #[allow(dead_code)]
     temperature: f32,
+
+    /// Cached confidence to avoid redundant computation.
+    /// Tuple of (step, `confidence_value`).
+    cached_confidence: parking_lot::Mutex<Option<(u64, f32)>>,
 }
 
 /// Weights for a GRU cell.
@@ -318,6 +322,7 @@ impl RSSMLite {
             training_steps: 0,
             prediction_errors: Vec::with_capacity(1000),
             temperature: 1.0,
+            cached_confidence: parking_lot::Mutex::new(None),
         })
     }
 
@@ -689,8 +694,20 @@ impl RSSMLite {
     }
 
     /// Returns the prediction confidence for the current state.
+    ///
+    /// Uses an internal cache to avoid redundant computation when called
+    /// multiple times for the same training step. The cache is invalidated
+    /// whenever the model is updated via `observe_gradient()`,
+    /// `update_from_observation()`, or `reset()`.
     #[must_use]
     pub fn prediction_confidence(&self, state: &TrainingState) -> f32 {
+        // Return cached value if available for this step
+        if let Some((cached_step, cached_conf)) = *self.cached_confidence.lock() {
+            if cached_step == state.step {
+                return cached_conf;
+            }
+        }
+
         // Base confidence from ensemble agreement
         let (_, uncertainty) = self.predict_y_steps(state, 10);
         let agreement_confidence = 1.0 / (1.0 + uncertainty.total);
@@ -713,7 +730,12 @@ impl RSSMLite {
         };
 
         // Combine confidences
-        (agreement_confidence * 0.6 + historical_confidence * 0.4).clamp(0.0, 1.0)
+        let confidence = (agreement_confidence * 0.6 + historical_confidence * 0.4).clamp(0.0, 1.0);
+
+        // Cache the computed confidence for this step
+        *self.cached_confidence.lock() = Some((state.step, confidence));
+
+        confidence
     }
 
     /// Updates the model from observed training data.
@@ -733,6 +755,9 @@ impl RSSMLite {
         state_after: &TrainingState,
         loss_trajectory: &[f32],
     ) -> HybridResult<()> {
+        // Invalidate cached confidence since model state is changing
+        *self.cached_confidence.lock() = None;
+
         // Record prediction error
         let (prediction, _) = self.predict_y_steps(state_before, loss_trajectory.len());
         let actual_final_loss = state_after.loss;
@@ -775,6 +800,9 @@ impl RSSMLite {
     /// * `state` - Current training state
     /// * `grad_info` - Gradient information from the backward pass
     pub fn observe_gradient(&mut self, state: &TrainingState, grad_info: &crate::GradientInfo) {
+        // Invalidate cached confidence since model state is changing
+        *self.cached_confidence.lock() = None;
+
         // Record the prediction error if we have a recent prediction
         let (prediction, _) = self.predict_y_steps(state, 1);
         let actual_loss = state.loss;
@@ -812,6 +840,9 @@ impl RSSMLite {
 
     /// Resets the model to initial state.
     pub fn reset(&mut self) {
+        // Invalidate cached confidence
+        *self.cached_confidence.lock() = None;
+
         for latent in &mut self.latent_states {
             latent.deterministic.fill(0.0);
             latent

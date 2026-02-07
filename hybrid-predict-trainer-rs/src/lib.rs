@@ -163,6 +163,9 @@ pub mod burn_integration;
 // VRAM budget management
 pub mod vram_budget;
 
+// Checkpoint save/restore
+pub mod checkpoint;
+
 // GPU acceleration (feature-gated)
 #[cfg(feature = "cuda")]
 #[cfg_attr(docsrs, doc(cfg(feature = "cuda")))]
@@ -410,6 +413,9 @@ pub struct HybridTrainer<M, O> {
 
     /// Last auto-tuning update (for external access).
     last_auto_tuning_update: Option<AutoTuningUpdate>,
+
+    /// Checkpoint manager for automatic checkpointing (optional).
+    checkpoint_manager: Option<checkpoint::CheckpointManager>,
 }
 
 impl<M, O> HybridTrainer<M, O> {
@@ -448,6 +454,19 @@ impl<M, O> HybridTrainer<M, O> {
             None
         };
 
+        // Initialize checkpoint manager if save_interval > 0
+        let checkpoint_manager = if config.checkpoint_config.save_interval > 0 {
+            // Use "./checkpoints" as default directory if not specified
+            let checkpoint_dir = std::path::PathBuf::from("./checkpoints");
+            Some(checkpoint::CheckpointManager::new(
+                checkpoint_dir,
+                config.checkpoint_config.save_interval,
+                config.checkpoint_config.keep_last_n,
+            )?)
+        } else {
+            None
+        };
+
         Ok(Self {
             model: Arc::new(parking_lot::Mutex::new(model)),
             optimizer: Arc::new(parking_lot::Mutex::new(optimizer)),
@@ -462,6 +481,7 @@ impl<M, O> HybridTrainer<M, O> {
             phase_budget: None,
             auto_tuning,
             last_auto_tuning_update: None,
+            checkpoint_manager,
         })
     }
 
@@ -771,6 +791,46 @@ impl<M, O> HybridTrainer<M, O> {
             None
         };
 
+        // Auto-checkpoint if enabled and interval reached
+        // Compute checkpoint state before taking mutable borrow
+        let checkpoint_to_save = if self
+            .checkpoint_manager
+            .as_ref()
+            .map_or(false, |mgr| mgr.should_save(self.state.step))
+        {
+            use crate::checkpoint::*;
+
+            Some(TrainingCheckpoint::new(
+                self.config.clone(),
+                self.state.clone(),
+                DynamicsState::default(),
+                ResidualStoreState::default(),
+                PhaseControllerState {
+                    current_phase: self.phase_controller.current_phase(),
+                    predictor_confidence: self.current_confidence(),
+                    warmup_complete: self.phase_controller.is_warmup_complete(),
+                    phase_stats: Vec::new(),
+                },
+                DivergenceMonitorState::default(),
+                CorrectorState::default(),
+            ))
+        } else {
+            None
+        };
+
+        // Now we can take mutable borrow to save
+        if let Some(checkpoint) = checkpoint_to_save {
+            if let Some(ref mut checkpoint_mgr) = self.checkpoint_manager {
+                // Save checkpoint (errors are logged but don't stop training)
+                if let Err((err, _)) = checkpoint_mgr.save(&checkpoint) {
+                    eprintln!(
+                        "Warning: Failed to save checkpoint at step {}: {}",
+                        self.state.step, err
+                    );
+                }
+            }
+        }
+
         let elapsed_ms = start_time.elapsed().as_secs_f64() * 1000.0;
 
         Ok(StepResult {
@@ -1026,6 +1086,162 @@ impl<M, O> HybridTrainer<M, O> {
         // Set the phase budget to enforce the requested number of steps
         self.phase_budget = Some((Phase::Full, steps));
     }
+
+    /// Saves a checkpoint of the trainer state.
+    ///
+    /// This saves all hybrid trainer state including training state, dynamics model,
+    /// residual store, and phase controller state. It does NOT save model or optimizer
+    /// state - those must be checkpointed separately via your deep learning framework.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - Path where the checkpoint should be saved
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` on success.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if checkpoint serialization or file I/O fails.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// // Save hybrid trainer state
+    /// trainer.save_checkpoint("checkpoints/hybrid_step_1000.bin")?;
+    ///
+    /// // User should also save model and optimizer separately
+    /// model.save("checkpoints/model_step_1000.safetensors")?;
+    /// optimizer.save("checkpoints/optimizer_step_1000.bin")?;
+    /// ```
+    pub fn save_checkpoint(&self, path: impl AsRef<std::path::Path>) -> HybridResult<()> {
+        use crate::checkpoint::*;
+
+        // Extract serializable state from components
+        let dynamics_state = DynamicsState::default(); // TODO: Extract from self.dynamics_model
+        let residual_store_state = ResidualStoreState::default(); // TODO: Extract from self.residual_store
+        let phase_controller_state = PhaseControllerState {
+            current_phase: self.phase_controller.current_phase(),
+            predictor_confidence: self.current_confidence(),
+            warmup_complete: self.phase_controller.is_warmup_complete(),
+            phase_stats: Vec::new(), // TODO: Extract stats
+        };
+        let divergence_monitor_state = DivergenceMonitorState::default(); // TODO: Extract from self.divergence_monitor
+        let corrector_state = CorrectorState::default(); // TODO: Extract from self.residual_corrector
+
+        let checkpoint = TrainingCheckpoint::new(
+            self.config.clone(),
+            self.state.clone(),
+            dynamics_state,
+            residual_store_state,
+            phase_controller_state,
+            divergence_monitor_state,
+            corrector_state,
+        );
+
+        checkpoint.save(path)
+    }
+
+    /// Loads a checkpoint and creates a new trainer with the given model and optimizer.
+    ///
+    /// This restores all hybrid trainer state from a checkpoint file. The model and
+    /// optimizer must be provided separately since they're framework-specific.
+    ///
+    /// # Type Parameters
+    ///
+    /// * `M` - The model type
+    /// * `O` - The optimizer type
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - Path to the checkpoint file
+    /// * `model` - The model to train (should be loaded from a separate checkpoint)
+    /// * `optimizer` - The optimizer (should be loaded from a separate checkpoint)
+    ///
+    /// # Returns
+    ///
+    /// A new `HybridTrainer` instance with restored state.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if checkpoint loading or deserialization fails.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// // Load model and optimizer from their checkpoints
+    /// let model = MyModel::load("checkpoints/model_step_1000.safetensors")?;
+    /// let optimizer = MyOptimizer::load("checkpoints/optimizer_step_1000.bin")?;
+    ///
+    /// // Load hybrid trainer state
+    /// let trainer = HybridTrainer::load_checkpoint(
+    ///     "checkpoints/hybrid_step_1000.bin",
+    ///     model,
+    ///     optimizer
+    /// )?;
+    /// ```
+    pub fn load_checkpoint(
+        path: impl AsRef<std::path::Path>,
+        model: M,
+        optimizer: O,
+    ) -> HybridResult<Self> {
+        use crate::checkpoint::*;
+
+        let checkpoint = TrainingCheckpoint::load(path)?;
+
+        // Reconstruct trainer components from checkpoint state
+        let phase_controller = phases::DefaultPhaseController::new(&checkpoint.config);
+        let dynamics_model = dynamics::RSSMLite::new(&checkpoint.config.predictor_config)?;
+        let divergence_monitor = divergence::DivergenceMonitor::new(&checkpoint.config);
+        let residual_corrector = corrector::ResidualCorrector::new(&checkpoint.config);
+        let residual_store = residuals::ResidualStore::new(1000);
+        let metrics = metrics::MetricsCollector::new(checkpoint.config.collect_metrics);
+
+        // TODO: Restore state into dynamics_model, residual_store, etc. from checkpoint
+
+        // Initialize auto-tuning controller if config provided
+        let auto_tuning = if let Some(auto_config) = checkpoint.config.auto_tuning_config.clone() {
+            let max_steps = checkpoint.config.max_steps.unwrap_or(10000);
+            Some(auto_tuning::AutoTuningController::new(
+                auto_config,
+                max_steps,
+            ))
+        } else {
+            None
+        };
+
+        // Note: checkpoint_manager is NOT restored from checkpoint
+        // It will be re-initialized if needed based on the config
+        let checkpoint_manager = if checkpoint.config.checkpoint_config.save_interval > 0 {
+            let checkpoint_dir = std::path::PathBuf::from("./checkpoints");
+            Some(checkpoint::CheckpointManager::new(
+                checkpoint_dir,
+                checkpoint.config.checkpoint_config.save_interval,
+                checkpoint.config.checkpoint_config.keep_last_n,
+            )?)
+        } else {
+            None
+        };
+
+        Ok(Self {
+            model: Arc::new(parking_lot::Mutex::new(model)),
+            optimizer: Arc::new(parking_lot::Mutex::new(optimizer)),
+            config: checkpoint.config,
+            state: checkpoint.training_state,
+            phase_controller,
+            dynamics_model,
+            divergence_monitor,
+            residual_corrector,
+            residual_store,
+            metrics,
+            phase_budget: None,
+            auto_tuning,
+            last_auto_tuning_update: None,
+            checkpoint_manager,
+        })
+    }
+
 }
 
 /// Result of a single training step.

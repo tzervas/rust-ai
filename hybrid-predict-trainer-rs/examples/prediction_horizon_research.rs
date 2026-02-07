@@ -114,7 +114,7 @@ struct ExperimentConfig {
 }
 
 /// Detailed experiment results
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct ExperimentResult {
     config: ExperimentConfig,
     final_loss: f32,

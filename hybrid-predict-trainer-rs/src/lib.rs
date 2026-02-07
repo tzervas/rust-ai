@@ -163,6 +163,9 @@ pub mod burn_integration;
 // VRAM budget management
 pub mod vram_budget;
 
+// VRAM manager for tracking and cleaning up GPU memory
+pub mod vram_manager;
+
 // GPU acceleration (feature-gated)
 #[cfg(feature = "cuda")]
 #[cfg_attr(docsrs, doc(cfg(feature = "cuda")))]
@@ -410,6 +413,9 @@ pub struct HybridTrainer<M, O> {
 
     /// Last auto-tuning update (for external access).
     last_auto_tuning_update: Option<AutoTuningUpdate>,
+
+    /// VRAM manager for tracking and cleaning up GPU memory.
+    vram_manager: vram_manager::VramManager,
 }
 
 impl<M, O> HybridTrainer<M, O> {
@@ -462,6 +468,7 @@ impl<M, O> HybridTrainer<M, O> {
             phase_budget: None,
             auto_tuning,
             last_auto_tuning_update: None,
+            vram_manager: vram_manager::VramManager::new(),
         })
     }
 

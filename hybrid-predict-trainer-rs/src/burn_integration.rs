@@ -757,6 +757,10 @@ where
         device: device.clone(),
     };
 
+    // Record model copy for VRAM tracking
+    // Burn's .map() creates a full model copy (496 MB for GPT-2 Small)
+    crate::vram_manager::VramManager::record_model_copy();
+
     model.map(&mut mapper)
 }
 

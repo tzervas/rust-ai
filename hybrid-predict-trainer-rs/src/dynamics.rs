@@ -849,14 +849,21 @@ impl RSSMLite {
     // ─── Decode heads ────────────────────────────────────────────────────
 
     /// Decodes loss prediction from combined state.
+    ///
+    /// Clamps logit values to prevent numerical overflow/underflow.
     fn decode_loss(&self, combined_state: &[f32]) -> f32 {
         let logit: f32 = combined_state
             .iter()
             .zip(self.loss_head_weights.iter())
             .map(|(&s, &w)| s * w)
             .sum();
+
+        // Clamp logit to prevent extreme exp() values
+        // exp(10) ≈ 22026, exp(-10) ≈ 0.000045 - reasonable range for loss
+        let clamped_logit = logit.clamp(-10.0, 10.0);
+
         // Use exp to ensure positive loss values
-        logit.exp().max(1e-6)
+        clamped_logit.exp().max(1e-6)
     }
 
     /// Decodes weight delta prediction from combined state.
@@ -1195,8 +1202,23 @@ impl RSSMLite {
             (1.0 / (1.0 + mean_error)).min(0.99)
         };
 
-        // Combine confidences
-        let confidence = (agreement_confidence * 0.6 + historical_confidence * 0.4).clamp(0.0, 1.0);
+        // Loss stability confidence - reduce confidence when loss is highly variable
+        // Use EMA spread (fast - slow) as a measure of recent volatility
+        let loss_spread = state.loss_ema.spread().abs();
+        let loss_slow = state.loss_ema.slow();
+        let relative_spread = if loss_slow.abs() > 1e-6 {
+            loss_spread / loss_slow.abs()
+        } else {
+            1.0 // High volatility assumption if loss near zero
+        };
+        // Map spread to confidence: spread=0 (stable) → 1.0, spread≥50% (volatile) → 0.5
+        let stability_confidence = (1.0 / (1.0 + 2.0 * relative_spread)).max(0.5);
+
+        // Combine confidences: agreement 50%, historical 30%, stability 20%
+        let confidence = (agreement_confidence * 0.5
+            + historical_confidence * 0.3
+            + stability_confidence * 0.2)
+            .clamp(0.0, 1.0);
 
         // Cache the computed confidence for this step
         *self.cached_confidence.lock() = Some((state.step, confidence));

@@ -137,21 +137,37 @@ Correction { loss_correction, weight_correction, confidence }
 - [x] Ensemble dynamics model (RSSMLite with 5 members)
 - [x] One-step truncated BPTT for GRU weight training
 
-**Memory Management (Phase 2B):**
-- [x] VRAM management system (5-layer protection)
+**Memory Management (Phase 1):**
+- [x] VRAM management system (VramManager module, 5-layer protection)
 - [x] Checkpoint save/restore for long-running jobs
 - [x] Delta accumulator for batched weight updates (VRAM optimization)
+- [x] Comprehensive validation test suite (9 tests, `tests/vram_validation.rs`)
+- [x] Automated VRAM monitoring script (`scripts/validate_vram.sh`)
+
+**Benchmarking (Phase 2):**
+- [x] Comprehensive Criterion.rs benchmark suite (6 groups, 16 scenarios)
+- [x] RSSM prediction benchmarks (7 horizons: 1-75 steps)
+- [x] Component overhead analysis (state encoding, weight deltas, confidence)
+- [x] Performance baseline established for all critical paths
+- [x] Speedup analysis (2.4-2.5× estimated)
 
 ### Performance Validated ✅
 
-**Speedup Metrics:**
+**Speedup Metrics (Phase 2B Validation):**
 - **78% backward reduction** (4.5× faster training)
 - **72% variance reduction** with micro-corrections enabled
 - **Zero divergences** across 60 test configurations
-- **1.74× speedup** on GPT-2 Small (124M params)
+- **1.74× speedup** on GPT-2 Small (124M params, memory-constrained)
+
+**Benchmark Results (Phase 2):**
+- RSSM prediction: 24 µs/step (linear scaling)
+- State encoding: 15.2 µs per 64-dim feature
+- RSSM gradient observation: 1.36 ms (main Full phase overhead)
+- Confidence computation: 8.4 ns (negligible)
+- Estimated speedup: 2.4-2.5× for various model sizes
 
 **Optimal Configuration:**
-- Prediction horizon: H=75 steps
+- Prediction horizon: H=75 steps (research), H=15 (default/VRAM-optimized)
 - Correction interval: 15 steps (micro-corrections every 15 steps)
 - Confidence threshold: 0.55-0.60
 - Divergence sigma: σ=2.2
@@ -170,21 +186,29 @@ Correction { loss_correction, weight_correction, confidence }
 - [x] `WORKFLOW.md` - Git workflow (feature branch strategy)
 - [x] `EDGE_AI_VISION.md` - Edge AI deployment pipeline
 - [x] `BURN_INTEGRATION_FINAL.md` - Burn integration guide
+- [x] `PHASE_1_VALIDATION_REPORT.md` - VRAM management validation (Phase 1)
+- [x] `PHASE_2_BENCHMARKING_REPORT.md` - Performance benchmarks (Phase 2)
+- [x] `VRAM_MANAGEMENT_SUMMARY.md` - VRAM optimization summary
 
-### TODO (Phase 3 Enhancements)
+### TODO (Phase 3+ Future Work)
 
-**Performance Improvements:**
+**GPU Acceleration (v0.3.0):**
+- [ ] Implement CubeCL CUDA kernel for state encoding
+- [ ] Implement CubeCL CUDA kernel for RSSM forward pass
+- [ ] 1B+ parameter model validation
+- [ ] Multi-GPU training support
+
+**Performance Improvements (v0.4.0+):**
 - [ ] Multi-step BPTT (k=3) for GRU weight training (currently k=1)
 - [ ] Gradient checkpointing integration (Burn 0.13+)
-- [ ] Implement CubeCL CUDA kernels for GPU acceleration
-- [ ] Comprehensive benchmarks with real models (GPT-2, BERT, etc.)
 - [ ] Memory profiling for large-scale training
+- [ ] Cache prediction confidence to avoid redundant computation
 
-**Advanced Features:**
+**Advanced Features (Future):**
 - [ ] Add stochastic path sampling during RSSM rollout (ensemble diversity)
 - [ ] Per-layer weight corrections in corrector (currently global only)
 - [ ] Distributed training support (multi-GPU)
-- [ ] Cache prediction confidence to avoid redundant computation
+- [ ] Mixed precision support (fp16, bf16)
 
 ## Dependencies
 

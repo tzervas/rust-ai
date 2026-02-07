@@ -209,7 +209,10 @@ where
     F: BurnForwardFn<B, M, T>,
 {
     /// The wrapped Burn model (Option for ownership dance)
-    model: Arc<RwLock<Option<M>>>,
+    ///
+    /// Uses `Mutex` instead of `RwLock` because the model itself may be `!Sync`
+    /// in autodiff backends. `Mutex<T>` only requires `T: Send` to be `Send + Sync`.
+    model: Arc<parking_lot::Mutex<Option<M>>>,
     /// User-provided forward function for loss computation
     forward_fn: Arc<F>,
     /// Device for tensor operations
@@ -217,7 +220,10 @@ where
     /// Last computed loss (for backward pass)
     last_loss: Arc<RwLock<Option<Tensor<B, 1>>>>,
     /// Last computed gradients (for optimizer)
-    last_gradients: Arc<RwLock<Option<<B as AutodiffBackend>::Gradients>>>,
+    ///
+    /// Uses `Mutex` instead of `RwLock` because gradients may be `!Sync`
+    /// in autodiff backends. `Mutex<T>` only requires `T: Send` to be `Send + Sync`.
+    last_gradients: Arc<parking_lot::Mutex<Option<<B as AutodiffBackend>::Gradients>>>,
     /// Cache of parameter names and shapes
     param_metadata: Arc<RwLock<HashMap<String, Vec<usize>>>>,
     _phantom: PhantomData<T>,
@@ -242,11 +248,11 @@ where
     /// A wrapped model ready for use with `HybridTrainer`.
     pub fn new(model: M, forward_fn: F, device: burn::tensor::Device<B>) -> Self {
         Self {
-            model: Arc::new(RwLock::new(Some(model))),
+            model: Arc::new(parking_lot::Mutex::new(Some(model))),
             forward_fn: Arc::new(forward_fn),
             device,
             last_loss: Arc::new(RwLock::new(None)),
-            last_gradients: Arc::new(RwLock::new(None)),
+            last_gradients: Arc::new(parking_lot::Mutex::new(None)),
             param_metadata: Arc::new(RwLock::new(HashMap::new())),
             _phantom: PhantomData,
         }
@@ -327,14 +333,14 @@ where
 impl<B, M, T, F> Model<BurnBatch<B, T>> for BurnModelWrapper<B, M, T, F>
 where
     B: AutodiffBackend,
-    M: AutodiffModule<B> + Send + Sync,
+    M: AutodiffModule<B> + Send,
     F: BurnForwardFn<B, M, T>,
     T: Send + Sync,
-    <B as AutodiffBackend>::Gradients: Send + Sync,
+    <B as AutodiffBackend>::Gradients: Send,
 {
     fn forward(&mut self, batch: &BurnBatch<B, T>) -> crate::error::HybridResult<f32> {
         // 1. Take model from Option (ownership dance)
-        let mut model_lock = self.model.write();
+        let mut model_lock = self.model.lock();
         let model = model_lock.take().ok_or_else(|| {
             (
                 crate::error::HybridTrainingError::IntegrationError {
@@ -389,7 +395,7 @@ where
         let gradients = loss_tensor.backward();
 
         // 3. Get model to extract gradients
-        let model_lock = self.model.read();
+        let model_lock = self.model.lock();
         let model = model_lock.as_ref().ok_or_else(|| {
             (
                 crate::error::HybridTrainingError::IntegrationError {
@@ -418,7 +424,7 @@ where
             .collect();
 
         // 7. Store gradients for optimizer
-        *self.last_gradients.write() = Some(gradients);
+        *self.last_gradients.lock() = Some(gradients);
 
         // Note: loss is not available here (was consumed by backward())
         // The caller (HybridTrainer) will fill in the loss from forward()
@@ -450,7 +456,7 @@ where
             }
         }
 
-        let model_lock = self.model.read();
+        let model_lock = self.model.lock();
         if let Some(ref model) = *model_lock {
             let mut counter = ParamCounter { count: 0 };
             model.visit(&mut counter);
@@ -462,7 +468,7 @@ where
 
     fn apply_weight_delta(&mut self, delta: &WeightDelta) -> crate::error::HybridResult<()> {
         // 1. Take model from Option
-        let mut model_lock = self.model.write();
+        let mut model_lock = self.model.lock();
         let model = model_lock.take().ok_or_else(|| {
             (
                 crate::error::HybridTrainingError::IntegrationError {
@@ -545,11 +551,11 @@ impl<B, M, O, T, F> Optimizer<BurnModelWrapper<B, M, T, F>, BurnBatch<B, T>>
     for BurnOptimizerWrapper<B, M, O, T>
 where
     B: AutodiffBackend,
-    M: AutodiffModule<B> + Send + Sync,
+    M: AutodiffModule<B> + Send,
     O: burn::optim::Optimizer<M, B> + Send + Sync,
     F: BurnForwardFn<B, M, T>,
     T: Send + Sync,
-    <B as AutodiffBackend>::Gradients: Send + Sync,
+    <B as AutodiffBackend>::Gradients: Send,
 {
     fn step(
         &mut self,
@@ -560,7 +566,7 @@ where
         let lr = *self.learning_rate.read() as f64;
 
         // 2. Take model from wrapper (ownership dance)
-        let mut model_lock = model.model.write();
+        let mut model_lock = model.model.lock();
         let model_inner = model_lock.take().ok_or_else(|| {
             (
                 crate::error::HybridTrainingError::IntegrationError {
@@ -572,7 +578,7 @@ where
         })?;
 
         // 3. Take gradients from wrapper
-        let gradients = model.last_gradients.write().take().ok_or_else(|| {
+        let gradients = model.last_gradients.lock().take().ok_or_else(|| {
             (
                 crate::error::HybridTrainingError::IntegrationError {
                     crate_name: "burn".to_string(),

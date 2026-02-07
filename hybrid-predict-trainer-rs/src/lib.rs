@@ -186,7 +186,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 // External crate imports
-use parking_lot::RwLock;
+// Note: Mutex used instead of RwLock for model/optimizer storage to support !Sync types
 
 /// Batch of training data.
 ///
@@ -242,7 +242,16 @@ pub struct GradientInfo {
 ///     }
 /// }
 /// ```
-pub trait Model<B: Batch>: Send + Sync {
+///
+/// # Thread Safety
+///
+/// Models must be `Send` to allow moving between threads, but `Sync` is not
+/// required. This enables integration with autodiff frameworks (like Burn)
+/// that use gradient types which are `!Sync` by design.
+///
+/// For multi-threaded access to models, use `Arc<Mutex<>>` rather than
+/// `Arc<RwLock<>>` since the model itself may not be `Sync`.
+pub trait Model<B: Batch>: Send {
     /// Executes the forward pass and returns the loss.
     ///
     /// # Arguments
@@ -298,7 +307,12 @@ pub trait Model<B: Batch>: Send + Sync {
 ///     }
 /// }
 /// ```
-pub trait Optimizer<M, B: Batch>: Send + Sync
+///
+/// # Thread Safety
+///
+/// Optimizers must be `Send` to allow moving between threads, but `Sync` is not
+/// required. This matches the `Model` trait's threading constraints.
+pub trait Optimizer<M, B: Batch>: Send
 where
     M: Model<B>,
 {
@@ -354,10 +368,15 @@ where
 /// ```
 pub struct HybridTrainer<M, O> {
     /// The model being trained.
-    model: Arc<RwLock<M>>,
+    ///
+    /// Uses `Mutex` instead of `RwLock` because models may not be `Sync`
+    /// (e.g., when using autodiff frameworks with !Sync gradient types).
+    model: Arc<parking_lot::Mutex<M>>,
 
     /// The optimizer for parameter updates.
-    optimizer: Arc<RwLock<O>>,
+    ///
+    /// Uses `Mutex` instead of `RwLock` for consistency with model storage.
+    optimizer: Arc<parking_lot::Mutex<O>>,
 
     /// Training configuration.
     config: HybridTrainerConfig,
@@ -430,8 +449,8 @@ impl<M, O> HybridTrainer<M, O> {
         };
 
         Ok(Self {
-            model: Arc::new(RwLock::new(model)),
-            optimizer: Arc::new(RwLock::new(optimizer)),
+            model: Arc::new(parking_lot::Mutex::new(model)),
+            optimizer: Arc::new(parking_lot::Mutex::new(optimizer)),
             config,
             state,
             phase_controller,
@@ -501,15 +520,15 @@ impl<M, O> HybridTrainer<M, O> {
     /// Returns a read lock on the model.
     ///
     /// Use this to access model state for checkpointing or inspection.
-    pub fn model(&self) -> parking_lot::RwLockReadGuard<'_, M> {
-        self.model.read()
+    pub fn model(&self) -> parking_lot::MutexGuard<'_, M> {
+        self.model.lock()
     }
 
     /// Returns a write lock on the model.
     ///
     /// Use this for operations that need to modify the model directly.
-    pub fn model_mut(&self) -> parking_lot::RwLockWriteGuard<'_, M> {
-        self.model.write()
+    pub fn model_mut(&self) -> parking_lot::MutexGuard<'_, M> {
+        self.model.lock()
     }
 
     /// Sets the learning rate on the underlying optimizer.
@@ -533,7 +552,7 @@ impl<M, O> HybridTrainer<M, O> {
         M: Model<B>,
         O: Optimizer<M, B>,
     {
-        self.optimizer.write().set_learning_rate(lr);
+        self.optimizer.lock().set_learning_rate(lr);
     }
 
     /// Returns the current learning rate from the optimizer.
@@ -547,7 +566,7 @@ impl<M, O> HybridTrainer<M, O> {
         M: Model<B>,
         O: Optimizer<M, B>,
     {
-        self.optimizer.read().learning_rate()
+        self.optimizer.lock().learning_rate()
     }
 
     // TODO: Enable when auto_tuning fields are added to struct
@@ -765,8 +784,8 @@ impl<M, O> HybridTrainer<M, O> {
         M: Model<B>,
         O: Optimizer<M, B>,
     {
-        let mut model = self.model.write();
-        let mut optimizer = self.optimizer.write();
+        let mut model = self.model.lock();
+        let mut optimizer = self.optimizer.lock();
 
         // Zero gradients
         optimizer.zero_grad();
@@ -809,7 +828,7 @@ impl<M, O> HybridTrainer<M, O> {
         B: Batch,
         M: Model<B>,
     {
-        let mut model = self.model.write();
+        let mut model = self.model.lock();
 
         // Capture state before prediction for residual extraction
         let state_features_before = self.state.compute_features();
@@ -862,7 +881,7 @@ impl<M, O> HybridTrainer<M, O> {
         B: Batch,
         M: Model<B>,
     {
-        let mut model = self.model.write();
+        let mut model = self.model.lock();
 
         // Compute correction using stored residuals for context-aware adjustment
         let correction = if self.residual_store.is_empty() {

@@ -240,6 +240,7 @@ struct TrainingResult {
     wall_clock_sec: f64,
     final_test_accuracy: f32,
     peak_memory_mb: f32,
+    #[allow(dead_code)]
     final_loss: f32,
 }
 

@@ -225,6 +225,7 @@ where
     /// in autodiff backends. `Mutex<T>` only requires `T: Send` to be `Send + Sync`.
     last_gradients: Arc<parking_lot::Mutex<Option<<B as AutodiffBackend>::Gradients>>>,
     /// Cache of parameter names and shapes
+    #[allow(dead_code)]
     param_metadata: Arc<RwLock<HashMap<String, Vec<usize>>>>,
     _phantom: PhantomData<T>,
 }
@@ -261,6 +262,7 @@ where
     /// Extracts parameter count from the model.
     ///
     /// This walks the model's parameters and sums their element counts.
+    #[allow(dead_code)]
     fn count_parameters(&self) -> usize {
         // TODO: Implement parameter counting via Burn's module introspection
         // For now, return a placeholder value
@@ -280,6 +282,7 @@ where
     /// # Returns
     ///
     /// A flattened vector of f32 values.
+    #[allow(dead_code)]
     fn tensor_to_vec<const D: usize>(tensor: &Tensor<B, D>) -> Vec<f32> {
         // Extract tensor data and convert to Vec<f32>
         // Note: to_data() creates a copy without consuming the tensor
@@ -300,6 +303,7 @@ where
     /// # Returns
     ///
     /// A tensor with the specified shape.
+    #[allow(dead_code)]
     fn vec_to_tensor<const D: usize>(
         vec: Vec<f32>,
         shape: Shape,
@@ -316,12 +320,13 @@ where
     ///
     /// # Arguments
     ///
-    /// * `model` - The model with computed gradients
+    /// * `_model` - The model with computed gradients
     ///
     /// # Returns
     ///
     /// The global gradient norm.
-    fn compute_gradient_norm(model: &M::InnerModule) -> f32 {
+    #[allow(dead_code)]
+    fn compute_gradient_norm(_model: &M::InnerModule) -> f32 {
         // TODO: Implement gradient norm computation via Burn's grad introspection
         // For now, return a placeholder
         // This will be implemented when we integrate with real Burn models

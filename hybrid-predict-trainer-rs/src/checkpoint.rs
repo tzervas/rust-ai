@@ -279,6 +279,12 @@ impl Default for CheckpointMetadata {
 /// Serializable state of the dynamics model (RSSMLite).
 ///
 /// Contains all trainable parameters and prediction statistics.
+///
+/// # TODO
+///
+/// - Implement `extract_from_rssmlite()` to serialize GRU weights, ensemble states
+/// - Implement `restore_to_rssmlite()` to deserialize into RSSMLite instance
+/// - Add version field for compatibility checking
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DynamicsState {
     /// GRU weights (serialized).
@@ -299,6 +305,7 @@ pub struct DynamicsState {
 
 impl Default for DynamicsState {
     fn default() -> Self {
+        // TODO: Replace with actual extraction from RSSMLite (see lib.rs:1122)
         Self {
             gru_weights: Vec::new(),
             ensemble_states: Vec::new(),
@@ -310,6 +317,11 @@ impl Default for DynamicsState {
 }
 
 /// Serializable state of the residual store.
+///
+/// # TODO
+///
+/// - Implement `extract_from_residual_store()` to serialize residuals
+/// - Implement `restore_to_residual_store()` to deserialize into ResidualStore
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResidualStoreState {
     /// Stored residuals (serialized).
@@ -324,6 +336,7 @@ pub struct ResidualStoreState {
 
 impl Default for ResidualStoreState {
     fn default() -> Self {
+        // TODO: Replace with actual extraction from ResidualStore (see lib.rs:1123)
         Self {
             residuals: Vec::new(),
             count: 0,
@@ -333,6 +346,11 @@ impl Default for ResidualStoreState {
 }
 
 /// Serializable state of the phase controller.
+///
+/// # TODO
+///
+/// - Implement `extract_from_phase_controller()` to capture phase state
+/// - Implement `restore_to_phase_controller()` to restore phase state
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PhaseControllerState {
     /// Current phase.
@@ -350,6 +368,7 @@ pub struct PhaseControllerState {
 
 impl Default for PhaseControllerState {
     fn default() -> Self {
+        // TODO: Replace with actual extraction from DefaultPhaseController (see lib.rs:1128)
         Self {
             current_phase: crate::Phase::Warmup,
             predictor_confidence: 0.0,
@@ -360,6 +379,11 @@ impl Default for PhaseControllerState {
 }
 
 /// Serializable state of the divergence monitor.
+///
+/// # TODO
+///
+/// - Implement `extract_from_divergence_monitor()` to capture EMA statistics
+/// - Implement `restore_to_divergence_monitor()` to restore monitor state
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DivergenceMonitorState {
     /// Loss EMA.
@@ -377,6 +401,7 @@ pub struct DivergenceMonitorState {
 
 impl Default for DivergenceMonitorState {
     fn default() -> Self {
+        // TODO: Replace with actual extraction from DivergenceMonitor (see lib.rs:1130)
         Self {
             loss_ema: 0.0,
             loss_ema_variance: 0.0,
@@ -387,6 +412,11 @@ impl Default for DivergenceMonitorState {
 }
 
 /// Serializable state of the residual corrector.
+///
+/// # TODO
+///
+/// - Implement `extract_from_residual_corrector()` to serialize correction weights
+/// - Implement `restore_to_residual_corrector()` to restore corrector state
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CorrectorState {
     /// Online correction model weights.
@@ -398,6 +428,7 @@ pub struct CorrectorState {
 
 impl Default for CorrectorState {
     fn default() -> Self {
+        // TODO: Replace with actual extraction from ResidualCorrector (see lib.rs:1131)
         Self {
             correction_weights: Vec::new(),
             correction_stats: Vec::new(),

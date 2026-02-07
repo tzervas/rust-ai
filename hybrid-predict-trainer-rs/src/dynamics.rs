@@ -433,6 +433,7 @@ struct GRUStepCache {
 #[derive(Debug, Clone)]
 struct BPTTHistoryEntry {
     /// The latent state at this step.
+    #[allow(dead_code)]
     latent: LatentState,
     /// The GRU cache from the forward pass.
     cache: GRUStepCache,

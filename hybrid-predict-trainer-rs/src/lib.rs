@@ -154,6 +154,15 @@ pub mod metrics;
 // High-precision timing utilities
 pub mod timing;
 
+// Mixed precision training support
+pub mod mixed_precision;
+
+// Gradient accumulation for memory efficiency
+pub mod gradient_accumulation;
+
+// Predict-aware memory management (unique to HybridTrainer)
+pub mod predict_aware_memory;
+
 // Automatic tuning and optimization
 pub mod auto_tuning;
 

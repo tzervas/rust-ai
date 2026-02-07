@@ -597,8 +597,12 @@ impl MetricsCollector {
         self.statistics.correct_steps = *self.phase_step_counts.get(&Phase::Correct).unwrap_or(&0);
 
         // Compute backward reduction
+        // Backward passes occur in: Warmup, Full, and Correct phases
+        // Predict phase skips backward passes (that's the whole point!)
         let total = self.statistics.total_steps as f32;
-        let backward_steps = (self.statistics.warmup_steps + self.statistics.full_steps) as f32;
+        let backward_steps = (self.statistics.warmup_steps
+            + self.statistics.full_steps
+            + self.statistics.correct_steps) as f32;
         if total > 0.0 {
             self.statistics.backward_reduction_pct = 100.0 * (1.0 - backward_steps / total);
         }

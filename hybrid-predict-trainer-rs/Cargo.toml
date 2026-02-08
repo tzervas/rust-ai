@@ -22,8 +22,8 @@ ndarray = { version = "0.16", optional = true }
 
 # GPU compute acceleration
 # CubeCL for custom CUDA kernels (conflict resolved via workspace wasm-bindgen-futures patch)
-cubecl = { version = "0.9", optional = true }
-cubecl-cuda = { version = "0.9", optional = true }
+cubecl = { workspace = true, optional = true }
+cubecl-cuda = { workspace = true, optional = true }
 
 # Candle for additional tensor ops and model compatibility
 candle-core = { version = "0.9", default-features = false, optional = true }
@@ -33,27 +33,27 @@ candle-nn = { version = "0.9", default-features = false, optional = true }
 rust-ai-core = { version = "0.3", optional = true }
 
 # Serialization and configuration
-serde = { version = "1.0", features = ["derive"] }
-serde_json = { version = "1.0" }
+serde = { workspace = true }
+serde_json = { workspace = true }
 toml = { version = "0.9" }
-safetensors = { version = "0.7" }
+safetensors = { workspace = true }
 bincode = { version = "1.3" }
 chrono = { version = "0.4", features = ["serde"] }
 hostname = { version = "0.4" }
 
 # Error handling
-thiserror = { version = "2.0" }
-anyhow = { version = "1.0" }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
 
 # Async runtime
-tokio = { version = "1.49", features = ["full"], optional = true }
+tokio = { workspace = true, optional = true }
 
 # Logging and diagnostics
-tracing = { version = "0.1" }
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 
 # Numeric types
-half = { version = "2.7", features = ["serde"] }
+half = { workspace = true, features = ["serde"] }
 
 # Synchronization primitives
 parking_lot = { version = "0.12" }

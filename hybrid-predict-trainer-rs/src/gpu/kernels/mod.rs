@@ -6,4 +6,10 @@
 pub mod attention;
 
 #[cfg(feature = "cuda")]
+pub mod ternary;
+
+#[cfg(feature = "cuda")]
 pub use attention::*;
+
+#[cfg(feature = "cuda")]
+pub use ternary::*;

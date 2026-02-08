@@ -52,6 +52,15 @@ pub mod norm;
 pub mod tokenizer;
 pub mod trainer;
 
+// Re-export data module types
+pub use data::{
+    collate_batch, collate_batch_with_max_len, create_data_loader, CompositeDataset, DataConfig,
+    DataLoader, DatasetBlendingStrategy, JsonlDataset, StreamingDataset, TokenizedExample,
+};
+
+#[cfg(feature = "parquet")]
+pub use data::ParquetDataset;
+
 pub use bitnet::TritterLinear;
 pub use checkpoint::{CheckpointStore, GradientCheckpointConfig};
 pub use config::{TrainingMemoryEstimate, TritterConfig};

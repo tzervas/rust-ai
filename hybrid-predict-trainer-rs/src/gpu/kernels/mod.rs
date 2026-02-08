@@ -15,6 +15,9 @@ pub mod common;
 pub mod gru;
 
 #[cfg(feature = "cuda")]
+pub mod gru_burn;
+
+#[cfg(feature = "cuda")]
 pub mod rssm_rollout;
 
 #[cfg(feature = "cuda")]
@@ -31,6 +34,9 @@ pub use common::*;
 
 #[cfg(feature = "cuda")]
 pub use gru::*;
+
+#[cfg(feature = "cuda")]
+pub use gru_burn::*;
 
 #[cfg(feature = "cuda")]
 pub use rssm_rollout::*;

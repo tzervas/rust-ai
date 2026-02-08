@@ -18,6 +18,9 @@ pub mod gru;
 pub mod gru_burn;
 
 #[cfg(feature = "cuda")]
+pub mod gru_batched;
+
+#[cfg(feature = "cuda")]
 pub mod rssm_rollout;
 
 #[cfg(feature = "cuda")]
@@ -37,6 +40,9 @@ pub use gru::*;
 
 #[cfg(feature = "cuda")]
 pub use gru_burn::*;
+
+#[cfg(feature = "cuda")]
+pub use gru_batched::*;
 
 #[cfg(feature = "cuda")]
 pub use rssm_rollout::*;

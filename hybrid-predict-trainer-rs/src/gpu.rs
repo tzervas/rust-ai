@@ -146,9 +146,12 @@ impl<B: GpuBackend> GpuAccelerator<B> {
         // 1. Transfer state data to GPU
         // 2. Launch parallel feature extraction kernel
         // 3. Return encoded tensor
+        //
+        // FIXED: Output shape should be 64 (not 32) to match
+        // TrainingState::compute_features() output dimension
         Ok(GpuTensor {
             data: Vec::new(),
-            shape: vec![32],
+            shape: vec![64],
             device: B::name().to_string(),
         })
     }
@@ -213,6 +216,7 @@ impl<B: GpuBackend> GpuAccelerator<B> {
 }
 
 /// GPU tensor representation.
+#[cfg(not(feature = "cuda"))]
 #[derive(Debug, Clone)]
 pub struct GpuTensor {
     /// Data (may be on host for inspection).
@@ -223,6 +227,20 @@ pub struct GpuTensor {
 
     /// Device identifier.
     #[allow(dead_code)]
+    device: String,
+}
+
+/// GPU tensor representation with CubeCL backend.
+#[cfg(feature = "cuda")]
+#[derive(Debug, Clone)]
+pub struct GpuTensor {
+    /// Data on host (for inspection).
+    data: Vec<f32>,
+
+    /// Tensor shape.
+    shape: Vec<usize>,
+
+    /// Device identifier.
     device: String,
 }
 
@@ -237,6 +255,16 @@ impl GpuTensor {
         }
     }
 
+    /// Creates a GPU tensor from host data.
+    #[must_use]
+    pub fn from_slice(data: &[f32], shape: Vec<usize>) -> Self {
+        Self {
+            data: data.to_vec(),
+            shape,
+            device: "cuda".to_string(),
+        }
+    }
+
     /// Returns the tensor shape.
     #[must_use]
     pub fn shape(&self) -> &[usize] {
@@ -246,6 +274,9 @@ impl GpuTensor {
     /// Returns the total number of elements.
     #[must_use]
     pub fn numel(&self) -> usize {
+        if self.shape.is_empty() {
+            return 0;
+        }
         self.shape.iter().product()
     }
 
@@ -329,6 +360,101 @@ pub struct MemoryUsage {
 
     /// Peak usage.
     pub peak_usage: usize,
+}
+
+/// GPU buffer handle (simplified for Phase 1).
+///
+/// In Phase 2, this will be replaced with actual CubeCL buffer handles.
+#[cfg(feature = "cuda")]
+pub type GpuHandle = Vec<f32>;
+
+/// GPU client for kernel launches (CUDA backend).
+///
+/// Simplified implementation for Phase 1 infrastructure setup.
+/// Will be expanded with actual CubeCL integration in Phase 2.
+#[cfg(feature = "cuda")]
+pub struct GpuClient {
+    /// Device ID.
+    device_id: usize,
+}
+
+#[cfg(feature = "cuda")]
+impl GpuClient {
+    /// Creates a new GPU client on the specified device.
+    ///
+    /// # Arguments
+    ///
+    /// - `device_id`: CUDA device ID (0 for first GPU)
+    ///
+    /// # Errors
+    ///
+    /// Returns error if CUDA initialization fails or device is unavailable.
+    pub fn new(device_id: usize) -> HybridResult<Self> {
+        // Phase 1: Simplified implementation
+        // Phase 2 will add actual CubeCL runtime initialization
+        Ok(Self { device_id })
+    }
+
+    /// Returns the device ID.
+    #[must_use]
+    pub fn device_id(&self) -> usize {
+        self.device_id
+    }
+
+    /// Creates a GPU buffer from host data.
+    ///
+    /// # Arguments
+    ///
+    /// - `data`: Slice of f32 values to upload
+    ///
+    /// # Returns
+    ///
+    /// Handle to GPU buffer containing the data.
+    ///
+    /// # Phase 1 Note
+    ///
+    /// Currently returns a copy of the data. Phase 2 will implement
+    /// actual GPU memory allocation via CubeCL.
+    pub fn create_buffer(&self, data: &[f32]) -> GpuHandle {
+        data.to_vec()
+    }
+
+    /// Reads data from GPU buffer to host.
+    ///
+    /// # Arguments
+    ///
+    /// - `handle`: GPU buffer handle
+    /// - `_length`: Number of f32 elements to read (unused in Phase 1)
+    ///
+    /// # Returns
+    ///
+    /// Vector of f32 values read from GPU.
+    pub fn read_buffer(&self, handle: &GpuHandle, _length: usize) -> Vec<f32> {
+        handle.clone()
+    }
+
+    /// Synchronizes GPU execution (waits for all kernels to complete).
+    pub fn sync(&self) {
+        // Phase 1: No-op
+        // Phase 2 will call cudaDeviceSynchronize()
+    }
+}
+
+/// Placeholder for non-CUDA builds.
+#[cfg(not(feature = "cuda"))]
+pub struct GpuClient;
+
+#[cfg(not(feature = "cuda"))]
+impl GpuClient {
+    /// Creates a placeholder client (returns error).
+    pub fn new(_device_id: usize) -> HybridResult<Self> {
+        Err((
+            HybridTrainingError::GpuError {
+                detail: "CUDA feature not enabled".to_string(),
+            },
+            None,
+        ))
+    }
 }
 
 /// `CubeCL` kernel implementations.

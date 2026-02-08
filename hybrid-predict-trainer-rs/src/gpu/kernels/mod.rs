@@ -9,7 +9,19 @@ pub mod attention;
 pub mod ternary;
 
 #[cfg(feature = "cuda")]
+pub mod common;
+
+#[cfg(feature = "cuda")]
+pub mod gru;
+
+#[cfg(feature = "cuda")]
 pub use attention::*;
 
 #[cfg(feature = "cuda")]
 pub use ternary::*;
+
+#[cfg(feature = "cuda")]
+pub use common::*;
+
+#[cfg(feature = "cuda")]
+pub use gru::*;

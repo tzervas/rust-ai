@@ -323,25 +323,29 @@ pub struct RSSMLite {
 
 /// Weights for a GRU cell.
 #[derive(Debug, Clone)]
-struct GRUWeights {
+pub struct GRUWeights {
     /// Update gate weights (`hidden_dim` x `input_dim`).
-    w_z: Vec<f32>,
+    pub w_z: Vec<f32>,
     /// Reset gate weights (`hidden_dim` x `input_dim`).
-    w_r: Vec<f32>,
+    pub w_r: Vec<f32>,
     /// Candidate hidden state weights (`hidden_dim` x `input_dim`).
-    w_h: Vec<f32>,
+    pub w_h: Vec<f32>,
     /// Update gate recurrent weights (`hidden_dim` x `hidden_dim`).
-    u_z: Vec<f32>,
+    pub u_z: Vec<f32>,
     /// Reset gate recurrent weights (`hidden_dim` x `hidden_dim`).
-    u_r: Vec<f32>,
+    pub u_r: Vec<f32>,
     /// Candidate hidden state recurrent weights (`hidden_dim` x `hidden_dim`).
-    u_h: Vec<f32>,
+    pub u_h: Vec<f32>,
     /// Update gate biases.
-    b_z: Vec<f32>,
+    pub b_z: Vec<f32>,
     /// Reset gate biases.
-    b_r: Vec<f32>,
+    pub b_r: Vec<f32>,
     /// Candidate hidden state biases.
-    b_h: Vec<f32>,
+    pub b_h: Vec<f32>,
+    /// Hidden dimension.
+    pub hidden_dim: usize,
+    /// Input dimension.
+    pub input_dim: usize,
 }
 
 impl GRUWeights {
@@ -366,6 +370,8 @@ impl GRUWeights {
             b_z: vec![0.0; hidden_dim],
             b_r: vec![0.0; hidden_dim],
             b_h: vec![0.0; hidden_dim],
+            hidden_dim,
+            input_dim,
         }
     }
 

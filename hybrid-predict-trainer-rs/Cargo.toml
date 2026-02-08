@@ -29,6 +29,9 @@ cubecl-cuda = { version = "0.9", optional = true }
 candle-core = { version = "0.9", default-features = false, optional = true }
 candle-nn = { version = "0.9", default-features = false, optional = true }
 
+# Rust AI ecosystem integration
+rust-ai-core = { version = "0.3", optional = true }
+
 # Serialization and configuration
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }
@@ -80,6 +83,9 @@ autodiff = ["burn/autodiff"]
 
 # Candle integration for model compatibility
 candle = ["candle-core", "candle-nn"]
+
+# Ecosystem integration (GpuDispatchable trait)
+ecosystem = ["rust-ai-core", "candle-core"]
 
 # Async support
 async = ["tokio"]

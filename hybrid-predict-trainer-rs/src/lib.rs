@@ -179,6 +179,11 @@ pub mod checkpoint;
 // VRAM manager for tracking and cleaning up GPU memory
 pub mod vram_manager;
 
+// Rust AI ecosystem integration (GpuDispatchable trait)
+#[cfg(feature = "ecosystem")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ecosystem")))]
+pub mod ecosystem;
+
 // Reference model implementations for validation
 #[cfg(feature = "autodiff")]
 pub mod models;

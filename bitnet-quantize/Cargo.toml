@@ -21,6 +21,7 @@ serde_json = { workspace = true }
 
 # Sister crate dependencies
 trit-vsa = { version = "0.3.0", path = "../trit-vsa" }
+# Note: peft-rs and qlora-rs are separate repos, version-only for CI compatibility
 peft-rs = { version = "1.0.0", optional = true }
 qlora-rs = { version = "1.0.0", optional = true }
 

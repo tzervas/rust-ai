@@ -20,9 +20,10 @@ burn = { version = "0.20", default-features = false }
 # Backend support (optional)
 ndarray = { version = "0.16", optional = true }
 
-# GPU compute acceleration (burn provides CUDA via burn-cuda internally)
-# NOTE: Direct cubecl dependency removed to avoid uuid/js-sys conflict
-# Use burn/cuda feature instead which handles the cubecl integration
+# GPU compute acceleration
+# CubeCL for custom CUDA kernels (conflict resolved via workspace wasm-bindgen-futures patch)
+cubecl = { version = "0.9", optional = true }
+cubecl-cuda = { version = "0.9", optional = true }
 
 # Candle for additional tensor ops and model compatibility
 candle-core = { version = "0.9", default-features = false, optional = true }
@@ -72,7 +73,7 @@ std = ["burn/std"]
 # Backend selection (choose one or more)
 ndarray = ["burn/ndarray", "dep:ndarray"]
 wgpu = ["burn/wgpu"]
-cuda = ["burn/cuda"]
+cuda = ["burn/cuda", "cubecl", "cubecl-cuda"]
 
 # Burn autodiff support (required for training)
 autodiff = ["burn/autodiff"]

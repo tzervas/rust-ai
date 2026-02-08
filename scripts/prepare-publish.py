@@ -2,18 +2,20 @@
 """
 prepare-publish.py - Convert workspace dependencies to explicit versions for publishing
 
-Usage: ./scripts/prepare-publish.py <crate-name> [--dry-run] [--output PATH]
+Usage: ./scripts/prepare-publish.py <crate-name> [--dry-run] [--output PATH] [--validate]
 
 This script implements Option C: Workspace Development + Pre-Publish Script
 - Local development uses { workspace = true } for DRY dependency management
 - Publishing uses explicit versions for standalone compatibility
+- Strips path = "../..." dependencies (crates.io requirement)
 """
 
 import argparse
 import re
+import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 def extract_workspace_versions(workspace_toml: Path) -> Dict[str, str]:
     """Extract version mappings from workspace [workspace.dependencies] section."""
@@ -58,8 +60,13 @@ def convert_workspace_to_explicit(
     crate_toml: Path,
     workspace_versions: Dict[str, str],
     output_path: Optional[Path] = None
-) -> int:
-    """Convert { workspace = true } references to explicit versions."""
+) -> Tuple[int, int]:
+    """
+    Convert { workspace = true } references to explicit versions and strip path dependencies.
+
+    Returns:
+        Tuple of (replacements, warnings) counts
+    """
 
     if output_path is None:
         output_path = crate_toml.with_suffix('.toml.publish')
@@ -69,20 +76,17 @@ def convert_workspace_to_explicit(
 
     with open(crate_toml) as infile, open(output_path, 'w') as outfile:
         for line in infile:
-            original_line = line
-
-            # Match: dep-name = { workspace = true }
-            # or: dep-name = { workspace = true, features = [...] }
-            match = re.match(
+            # Match: dep-name = { workspace = true, ... }
+            workspace_match = re.match(
                 r'^(\s*)([a-zA-Z0-9_-]+)\s*=\s*\{\s*workspace\s*=\s*true\s*(.*?)\}(.*)$',
                 line
             )
 
-            if match:
-                indent = match.group(1)
-                dep_name = match.group(2)
-                rest = match.group(3).strip()  # e.g., ", features = [...]"
-                comment = match.group(4)  # trailing comment
+            if workspace_match:
+                indent = workspace_match.group(1)
+                dep_name = workspace_match.group(2)
+                rest = workspace_match.group(3).strip()  # e.g., ", features = [...]"
+                comment = workspace_match.group(4)  # trailing comment
 
                 # Get version from workspace
                 if dep_name in workspace_versions:
@@ -91,7 +95,6 @@ def convert_workspace_to_explicit(
                     # Build replacement
                     if rest:
                         # Has additional properties (e.g., features)
-                        # Clean up comma if present
                         rest = rest.lstrip(', ')
                         line = f'{indent}{dep_name} = {{ version = "{version}", {rest} }}{comment}\n'
                     else:
@@ -104,6 +107,44 @@ def convert_workspace_to_explicit(
                     print(f'  ⚠  {dep_name}: workspace version not found, keeping as-is', file=sys.stderr)
                     warnings += 1
 
+            # Match: dep-name = { version = "...", path = "../...", ... }
+            # CRITICAL: Strip path dependencies for crates.io publishing
+            path_match = re.match(
+                r'^(\s*)([a-zA-Z0-9_-]+)\s*=\s*\{([^}]+)\}(.*)$',
+                line
+            )
+
+            if path_match and 'path' in line:
+                indent = path_match.group(1)
+                dep_name = path_match.group(2)
+                dep_spec = path_match.group(3)
+                comment = path_match.group(4)
+
+                # Parse the dependency spec
+                parts = {}
+                for part in dep_spec.split(','):
+                    part = part.strip()
+                    if '=' in part:
+                        key_match = re.match(r'([a-zA-Z0-9_-]+)\s*=\s*(.+)', part)
+                        if key_match:
+                            parts[key_match.group(1)] = key_match.group(2).strip()
+
+                # If has path, strip it but keep version/features
+                if 'path' in parts:
+                    # Build new spec without path
+                    new_parts = []
+                    for key, value in parts.items():
+                        if key != 'path':
+                            new_parts.append(f'{key} = {value}')
+
+                    if new_parts:
+                        line = f'{indent}{dep_name} = {{ {", ".join(new_parts)} }}{comment}\n'
+                        print(f'  ✓ {dep_name}: stripped path dependency', file=sys.stderr)
+                        replacements += 1
+                    else:
+                        print(f'  ⚠  {dep_name}: path-only dependency, needs version!', file=sys.stderr)
+                        warnings += 1
+
             outfile.write(line)
 
     return replacements, warnings
@@ -113,6 +154,7 @@ def main():
     parser.add_argument('crate_name', help='Name of the crate to prepare')
     parser.add_argument('--dry-run', action='store_true', help='Show what would be done without writing')
     parser.add_argument('--output', type=Path, help='Output file path (default: Cargo.toml.publish)')
+    parser.add_argument('--validate', action='store_true', help='Run cargo publish --dry-run after conversion')
     args = parser.parse_args()
 
     # Paths
@@ -142,7 +184,7 @@ def main():
     print('', file=sys.stderr)
 
     # Convert
-    print('Converting workspace references to explicit versions...', file=sys.stderr)
+    print('Converting workspace references and stripping path dependencies...', file=sys.stderr)
 
     if args.dry_run:
         output_path = Path('/tmp/dry-run-Cargo.toml')
@@ -158,12 +200,41 @@ def main():
     )
 
     print('', file=sys.stderr)
-    print(f'✓ Converted {replacements} workspace dependencies', file=sys.stderr)
+    print(f'✓ Processed {replacements} dependencies', file=sys.stderr)
     if warnings > 0:
-        print(f'⚠  {warnings} warnings (versions not found in workspace)', file=sys.stderr)
+        print(f'⚠  {warnings} warnings (check manually)', file=sys.stderr)
 
     print('', file=sys.stderr)
     print(f'Output: {output_path}', file=sys.stderr)
+
+    # Optional validation
+    if args.validate and not args.dry_run:
+        print('', file=sys.stderr)
+        print('Running cargo publish --dry-run...', file=sys.stderr)
+
+        # Temporarily swap Cargo.toml
+        backup_path = crate_toml.with_suffix('.toml.backup')
+        crate_toml.rename(backup_path)
+        output_path.rename(crate_toml)
+
+        try:
+            result = subprocess.run(
+                ['cargo', 'publish', '--dry-run'],
+                cwd=crate_dir,
+                capture_output=True,
+                text=True
+            )
+
+            if result.returncode == 0:
+                print('✓ Dry-run passed! Ready to publish.', file=sys.stderr)
+            else:
+                print('✗ Dry-run failed:', file=sys.stderr)
+                print(result.stderr, file=sys.stderr)
+
+        finally:
+            # Restore original
+            crate_toml.rename(output_path)
+            backup_path.rename(crate_toml)
 
     if args.dry_run:
         print('', file=sys.stderr)

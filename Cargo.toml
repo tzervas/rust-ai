@@ -34,6 +34,7 @@ hybrid-predict-trainer-rs = { path = "hybrid-predict-trainer-rs" }
 
 # Fix UUID/js-sys conflict: patch wasm-bindgen-futures to use latest main
 # This resolves cubecl → wasm-bindgen-futures → js-sys 0.3.72 vs burn-core → uuid → js-sys >= 0.3.74 conflict
+# TODO: Pin to specific commit (rev) or tagged release for reproducibility once upstream stabilizes
 wasm-bindgen-futures = { git = "https://github.com/rustwasm/wasm-bindgen", branch = "main" }
 
 # Use maintained candle fork with qlora-gemm

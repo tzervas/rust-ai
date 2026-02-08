@@ -40,19 +40,20 @@ Before publishing a crate to crates.io:
 
 ```bash
 # 1. Prepare publish-ready Cargo.toml
-./scripts/prepare-publish.sh <crate-name> --dry-run
+./scripts/prepare-publish.py <crate-name> --dry-run
 
 # Example: peft-rs
-./scripts/prepare-publish.sh peft-rs --dry-run
+./scripts/prepare-publish.py peft-rs --dry-run
 
-# This creates <crate>/Cargo.toml.publish with explicit versions
+# This creates <crate>/Cargo.toml.publish with explicit versions and stripped paths
 ```
 
 The script will:
 1. Extract workspace dependency versions
 2. Replace `{ workspace = true }` with explicit versions
-3. Preserve features and other configuration
-4. Run `cargo publish --dry-run` to validate
+3. Strip `path = "../..."` from sister crate deps (crates.io requirement)
+4. Preserve features and other configuration
+5. Optionally run `cargo publish --dry-run` with `--validate` flag
 
 ### Publishing
 
@@ -77,10 +78,10 @@ git checkout Cargo.toml
 ### Example: Publishing peft-rs
 
 ```bash
-# 1. Prepare
-./scripts/prepare-publish.sh peft-rs --dry-run
+# 1. Prepare and validate
+./scripts/prepare-publish.py peft-rs --validate
 
-# 2. Review changes
+# 2. Review changes (if validation passed)
 diff peft-rs/Cargo.toml peft-rs/Cargo.toml.publish
 
 # 3. Publish
@@ -133,7 +134,7 @@ Crates that depend on other workspace crates use dual path+version specification
 trit-vsa = { version = "0.3", path = "../trit-vsa" }
 ```
 
-The `prepare-publish.sh` script preserves these as version-only:
+The `prepare-publish.py` script strips the path and preserves version-only:
 
 ```toml
 # After prepare-publish.sh

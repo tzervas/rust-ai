@@ -20,8 +20,6 @@ The INDEX provides:
 - Burn integration? Check [BURN_INTEGRATION_FINAL.md](BURN_INTEGRATION_FINAL.md)
 - **🆕 Cross-repo work? See [docs/CROSS_REPO_COORDINATION.md](docs/CROSS_REPO_COORDINATION.md)**
 - **🆕 GPU kernel extraction? See [docs/WORKSPACE_ANALYSIS_COMPLETE.md](docs/WORKSPACE_ANALYSIS_COMPLETE.md)**
-- **Cross-repo work? See [docs/CROSS_REPO_COORDINATION.md](docs/CROSS_REPO_COORDINATION.md)** ← NEW
-- **GPU kernel extraction? See [docs/WORKSPACE_ANALYSIS_COMPLETE.md](docs/WORKSPACE_ANALYSIS_COMPLETE.md)** ← NEW
 
 ## Project Overview
 

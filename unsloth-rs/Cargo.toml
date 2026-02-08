@@ -15,10 +15,10 @@ candle-core = { workspace = true }
 candle-nn = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
-bytemuck = { version = "1.21", features = ["derive"] }
+bytemuck = { workspace = true }
 
 # Core ternary types from trit-vsa
-trit-vsa = { path = "../trit-vsa" }
+trit-vsa = { version = "0.3", path = "../trit-vsa" }
 
 # GPU compute - CubeCL for cross-platform GPU kernels (optional to avoid uuid/js-sys conflict)
 cubecl = { workspace = true, optional = true }

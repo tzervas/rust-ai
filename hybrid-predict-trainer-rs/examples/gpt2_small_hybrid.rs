@@ -58,14 +58,8 @@ fn generate_synthetic_batch(
         .map(|_| rng.gen_range(0..vocab_size as i64))
         .collect();
 
-    let input_ids = Tensor::from_data(
-        TensorData::new(input_data, [batch_size, seq_len]),
-        device,
-    );
-    let targets = Tensor::from_data(
-        TensorData::new(target_data, [batch_size, seq_len]),
-        device,
-    );
+    let input_ids = Tensor::from_data(TensorData::new(input_data, [batch_size, seq_len]), device);
+    let targets = Tensor::from_data(TensorData::new(target_data, [batch_size, seq_len]), device);
 
     Gpt2Batch { input_ids, targets }
 }
@@ -130,21 +124,30 @@ fn main() {
 
     // HybridTrainer configuration (tuned for quick validation)
     let hybrid_config = HybridTrainerConfig::builder()
-        .warmup_steps(5)  // Reduced for quick test
-        .full_steps(10)   // Reduced for quick test
+        .warmup_steps(5) // Reduced for quick test
+        .full_steps(10) // Reduced for quick test
         .max_predict_steps(5)
-        .correction_interval(0)  // DISABLED: Fixes VRAM leak from model.map() copies
+        .correction_interval(0) // DISABLED: Fixes VRAM leak from model.map() copies
         .divergence_threshold(2.5)
-        .confidence_threshold(0.3)  // Lower to trigger Predict phase
+        .confidence_threshold(0.3) // Lower to trigger Predict phase
         .build();
 
     println!("HybridTrainer Configuration:");
     println!("  Warmup steps: {}", hybrid_config.warmup_steps);
     println!("  Full train steps: {}", hybrid_config.full_steps);
     println!("  Max predict steps: {}", hybrid_config.max_predict_steps);
-    println!("  Correction interval: {}", hybrid_config.correction_interval);
-    println!("  Divergence threshold: {}", hybrid_config.divergence_threshold);
-    println!("  Confidence threshold: {}\n", hybrid_config.confidence_threshold);
+    println!(
+        "  Correction interval: {}",
+        hybrid_config.correction_interval
+    );
+    println!(
+        "  Divergence threshold: {}",
+        hybrid_config.divergence_threshold
+    );
+    println!(
+        "  Confidence threshold: {}\n",
+        hybrid_config.confidence_threshold
+    );
 
     // Initialize model and optimizer
     let device = <MyBackend as Backend>::Device::default();
@@ -154,9 +157,7 @@ fn main() {
     let wrapped_model = BurnModelWrapper::new(model, forward_fn, device.clone());
 
     println!("✓ Creating optimizer (Adam, lr=6e-4)...");
-    let optim = AdamConfig::new()
-        .with_epsilon(1e-8)
-        .init();
+    let optim = AdamConfig::new().with_epsilon(1e-8).init();
     let wrapped_optimizer = BurnOptimizerWrapper::new(optim, 6e-4);
 
     // Create HybridTrainer
@@ -209,7 +210,10 @@ fn main() {
     println!("Performance:");
     println!("  Total time: {:.1}s", total_time_s);
     println!("  Avg time per step: {:.1}ms", total_time_ms / steps as f64);
-    println!("  Throughput: {:.1} tokens/sec", (batch_size * seq_len * steps) as f64 / total_time_s);
+    println!(
+        "  Throughput: {:.1} tokens/sec",
+        (batch_size * seq_len * steps) as f64 / total_time_s
+    );
 
     println!("\nPhase Distribution:");
     let mut phases: Vec<_> = phase_counts.iter().collect();

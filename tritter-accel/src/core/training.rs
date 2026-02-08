@@ -168,8 +168,11 @@ impl GradientCompressor {
             });
         }
 
-        let recovered =
-            sparse_random_projection_transpose(&compressed.data, compressed.original_dim, compressed.seed);
+        let recovered = sparse_random_projection_transpose(
+            &compressed.data,
+            compressed.original_dim,
+            compressed.seed,
+        );
 
         Ok(recovered)
     }
@@ -217,7 +220,11 @@ impl GradientCompressor {
             .collect();
 
         // Inverse projection
-        let recovered = sparse_random_projection_transpose(&dequantized, compressed.original_dim, compressed.seed);
+        let recovered = sparse_random_projection_transpose(
+            &dequantized,
+            compressed.original_dim,
+            compressed.seed,
+        );
 
         Ok(recovered)
     }

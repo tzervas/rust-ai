@@ -7,7 +7,7 @@
 //! - Phase transitions
 //! - Full vs predict step comparison
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use hybrid_predict_trainer_rs::{
     config::{HybridTrainerConfig, PredictorConfig},
     dynamics::{DynamicsModel, RSSMLite},
@@ -42,16 +42,13 @@ fn bench_rssm_prediction(c: &mut Criterion) {
 
     // Benchmark different prediction horizons
     for horizon in [1, 5, 10, 15, 25, 50, 75].iter() {
-        group.bench_with_input(
-            BenchmarkId::from_parameter(horizon),
-            horizon,
-            |b, &h| {
-                b.iter(|| {
-                    let (prediction, _uncertainty) = rssm.predict_y_steps(black_box(&state), black_box(h));
-                    black_box(prediction);
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::from_parameter(horizon), horizon, |b, &h| {
+            b.iter(|| {
+                let (prediction, _uncertainty) =
+                    rssm.predict_y_steps(black_box(&state), black_box(h));
+                black_box(prediction);
+            });
+        });
     }
 
     group.finish();

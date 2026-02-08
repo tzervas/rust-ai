@@ -272,10 +272,7 @@ impl InferenceEngine {
         // Compute mean and variance along last dimension
         let dim = input.dims().len() - 1;
         let mean = input.mean_keepdim(dim)?;
-        let var = input
-            .broadcast_sub(&mean)?
-            .sqr()?
-            .mean_keepdim(dim)?;
+        let var = input.broadcast_sub(&mean)?.sqr()?.mean_keepdim(dim)?;
 
         // Normalize
         let normalized = input
@@ -304,10 +301,7 @@ pub struct TernaryLayer {
 
 impl TernaryLayer {
     /// Create from float weight tensor.
-    pub fn from_tensor(
-        weight: &Tensor,
-        bias: Option<&Tensor>,
-    ) -> Result<Self, InferenceError> {
+    pub fn from_tensor(weight: &Tensor, bias: Option<&Tensor>) -> Result<Self, InferenceError> {
         let (out_features, in_features) = weight.dims2()?;
 
         // Quantize weights
@@ -459,8 +453,7 @@ mod tests {
         let engine = InferenceEngine::new(config).unwrap();
 
         let input = Tensor::from_vec(vec![1.0f32, 2.0, 3.0, 4.0], (1, 4), engine.device()).unwrap();
-        let weight =
-            Tensor::from_vec(vec![1.0f32; 8], (2, 4), engine.device()).unwrap();
+        let weight = Tensor::from_vec(vec![1.0f32; 8], (2, 4), engine.device()).unwrap();
 
         let output = engine.linear(&input, &weight, None).unwrap();
 
@@ -512,9 +505,7 @@ mod tests {
         let input = Tensor::randn(0f32, 1f32, (5, 4), engine.device()).unwrap();
 
         // Simple identity-like forward function
-        let output = engine
-            .batched_forward(&input, |x| Ok(x.clone()))
-            .unwrap();
+        let output = engine.batched_forward(&input, |x| Ok(x.clone())).unwrap();
 
         assert_eq!(output.dims(), &[5, 4]);
     }

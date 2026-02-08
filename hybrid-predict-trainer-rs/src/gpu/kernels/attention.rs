@@ -46,7 +46,7 @@ use crate::error::{HybridResult, HybridTrainingError};
 
 // Burn imports for tensor operations
 use burn::tensor::backend::AutodiffBackend;
-use burn::tensor::{Tensor, Shape};
+use burn::tensor::{Shape, Tensor};
 
 // CubeCL imports for kernel implementation
 use cubecl::prelude::*;

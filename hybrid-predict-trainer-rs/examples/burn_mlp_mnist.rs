@@ -92,7 +92,10 @@ impl BurnForwardFn<MyBackend, SimpleMLP<MyBackend>, MnistBatch<MyBackend>> for M
 /// Generates synthetic MNIST-like data for demonstration.
 ///
 /// In a real application, use burn::data::dataset::vision::MnistDataset.
-fn generate_synthetic_batch(batch_size: usize, device: &Device<MyBackend>) -> MnistBatch<MyBackend> {
+fn generate_synthetic_batch(
+    batch_size: usize,
+    device: &Device<MyBackend>,
+) -> MnistBatch<MyBackend> {
     let mut rng = rand::rng();
 
     // Generate random images (784 pixels each, values 0-1)
@@ -148,14 +151,14 @@ fn main() {
         .warmup_steps(5)
         .full_steps(3)
         .max_predict_steps(10)
-        .confidence_threshold(0.60)  // Lowered to achievable threshold after bugfixes
-        .collect_metrics(true)  // Enable metrics collection for speedup tracking
+        .confidence_threshold(0.60) // Lowered to achievable threshold after bugfixes
+        .collect_metrics(true) // Enable metrics collection for speedup tracking
         .build();
     println!("✓ HybridTrainer config: warmup=5, full=3, predict≤10");
 
     // Create trainer
-    let mut trainer =
-        HybridTrainer::new(wrapped_model, wrapped_optimizer, config).expect("Failed to create trainer");
+    let mut trainer = HybridTrainer::new(wrapped_model, wrapped_optimizer, config)
+        .expect("Failed to create trainer");
     println!("✓ HybridTrainer created");
     println!();
 
@@ -202,7 +205,10 @@ fn main() {
     println!("📊 Training Statistics");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!("Total steps:           {}", stats.total_steps);
-    println!("Backward reduction:    {:.1}%", stats.backward_reduction_pct);
+    println!(
+        "Backward reduction:    {:.1}%",
+        stats.backward_reduction_pct
+    );
     println!("Average confidence:    {:.3}", stats.avg_confidence);
     println!("Divergence events:     {}", stats.divergence_events);
     println!();

@@ -178,7 +178,7 @@ fn default_full_steps() -> usize {
     20
 }
 fn default_max_predict_steps() -> usize {
-    15  // Reduced from 80 to minimize VRAM pressure from Burn's model.map() copies
+    15 // Reduced from 80 to minimize VRAM pressure from Burn's model.map() copies
 }
 fn default_confidence_threshold() -> f32 {
     0.85
@@ -503,12 +503,8 @@ impl HybridTrainerConfigBuilder {
                 .correction_interval
                 .unwrap_or_else(default_correction_interval),
             mixed_precision_config: self.mixed_precision_config.unwrap_or_default(),
-            gradient_accumulation_config: self
-                .gradient_accumulation_config
-                .unwrap_or_default(),
-            predict_aware_memory_config: self
-                .predict_aware_memory_config
-                .unwrap_or_default(),
+            gradient_accumulation_config: self.gradient_accumulation_config.unwrap_or_default(),
+            predict_aware_memory_config: self.predict_aware_memory_config.unwrap_or_default(),
         }
     }
 }
@@ -700,7 +696,7 @@ pub struct CheckpointConfig {
 }
 
 fn default_save_interval() -> usize {
-    50  // Reduced from 1000 to enable VRAM recovery through checkpoint save/reload
+    50 // Reduced from 1000 to enable VRAM recovery through checkpoint save/reload
 }
 fn default_keep_last_n() -> usize {
     3

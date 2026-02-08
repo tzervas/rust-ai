@@ -69,7 +69,7 @@ impl VramManager {
         self.last_vram_mb = current_vram;
 
         // Warning thresholds
-        const WARNING_THRESHOLD_MB: usize = 10_000;  // 10 GB warning
+        const WARNING_THRESHOLD_MB: usize = 10_000; // 10 GB warning
         const CRITICAL_THRESHOLD_MB: usize = 14_000; // 14 GB critical
 
         // Log warnings when approaching limits
@@ -87,7 +87,10 @@ impl VramManager {
 
         // Force cleanup if threshold exceeded
         if current_vram > self.cleanup_threshold_mb {
-            println!("🧹 Forcing VRAM cleanup (threshold {} MB exceeded)", self.cleanup_threshold_mb);
+            println!(
+                "🧹 Forcing VRAM cleanup (threshold {} MB exceeded)",
+                self.cleanup_threshold_mb
+            );
             return true;
         }
 
@@ -176,7 +179,7 @@ fn measure_vram_mb() -> usize {
 /// **Note**: Called conditionally via `#[cfg(feature = "cuda")]` in `force_cleanup()`.
 /// The `#[cfg(not(feature = "cuda"))]` version below is used in non-CUDA builds.
 #[cfg(feature = "cuda")]
-#[allow(dead_code)]  // Called in force_cleanup() when feature = "cuda" is enabled
+#[allow(dead_code)] // Called in force_cleanup() when feature = "cuda" is enabled
 fn sync_cuda_memory() {
     // Burn uses cudarc internally, but doesn't expose sync APIs
     // We'll try to trigger cleanup through standard Rust mechanisms

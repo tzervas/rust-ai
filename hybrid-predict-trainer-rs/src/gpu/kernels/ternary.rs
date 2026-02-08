@@ -165,6 +165,9 @@ mod tests {
         let _weights_minus: Vec<u32> = vec![0; k_words * config.out_features];
 
         // This is correct: full precision in, ternary weights, full precision out
-        assert!(true, "Embeddings must be full precision, weights can be ternary");
+        assert!(
+            true,
+            "Embeddings must be full precision, weights can be ternary"
+        );
     }
 }

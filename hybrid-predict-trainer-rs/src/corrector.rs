@@ -258,10 +258,7 @@ impl ResidualCorrector {
 
         // Adaptive scaling based on recent prediction error magnitude
         // Scale correction up when predictions are inaccurate, down when accurate
-        let avg_abs_residual: f32 = similar
-            .iter()
-            .map(|r| r.loss_residual.abs())
-            .sum::<f32>()
+        let avg_abs_residual: f32 = similar.iter().map(|r| r.loss_residual.abs()).sum::<f32>()
             / similar.len().max(1) as f32;
         // Scale from 0.5x (very accurate predictions) to 1.5x (large errors)
         // Clamp error magnitude to [0, 1.0] for stability

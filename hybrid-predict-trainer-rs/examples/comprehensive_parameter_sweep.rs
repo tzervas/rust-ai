@@ -68,7 +68,9 @@ struct QuadraticBatch<B: Backend> {
 
 struct QuadraticForward;
 
-impl BurnForwardFn<MyBackend, QuadraticModel<MyBackend>, QuadraticBatch<MyBackend>> for QuadraticForward {
+impl BurnForwardFn<MyBackend, QuadraticModel<MyBackend>, QuadraticBatch<MyBackend>>
+    for QuadraticForward
+{
     fn forward(
         &self,
         model: QuadraticModel<MyBackend>,
@@ -110,9 +112,9 @@ fn generate_batch(batch_size: usize, device: &Device<MyBackend>) -> QuadraticBat
 #[derive(Debug, Clone)]
 struct ExperimentConfig {
     name: String,
-    correction_interval: usize,  // 0 = disabled, >0 = micro-correction frequency
-    max_predict_steps: usize,    // Prediction horizon
-    confidence_threshold: f32,    // Confidence threshold
+    correction_interval: usize, // 0 = disabled, >0 = micro-correction frequency
+    max_predict_steps: usize,   // Prediction horizon
+    confidence_threshold: f32,  // Confidence threshold
 }
 
 /// Comprehensive experiment results
@@ -126,8 +128,8 @@ struct ExperimentResult {
     backward_reduction_pct: f32,
     divergence_count: usize,
     micro_corrections_count: usize,
-    quality_score: f32,           // 1 / (1 + variance)
-    effective_speedup: f32,       // Quality-adjusted speedup
+    quality_score: f32,     // 1 / (1 + variance)
+    effective_speedup: f32, // Quality-adjusted speedup
     runtime_ms: u128,
 }
 
@@ -155,13 +157,13 @@ fn run_experiment(config: ExperimentConfig, total_steps: usize) -> ExperimentRes
     let wrapped_optimizer = BurnOptimizerWrapper::new(optimizer, 0.01);
 
     let trainer_config = HybridTrainerConfig::builder()
-        .warmup_steps(20)  // Enough to establish baseline
-        .full_steps(3)     // Fixed for fair comparison
+        .warmup_steps(20) // Enough to establish baseline
+        .full_steps(3) // Fixed for fair comparison
         .max_predict_steps(config.max_predict_steps)
         .confidence_threshold(config.confidence_threshold)
         .correction_interval(config.correction_interval)
         .divergence_config(DivergenceConfig {
-            loss_sigma_threshold: 2.5,  // Fixed for comparison
+            loss_sigma_threshold: 2.5, // Fixed for comparison
             check_interval_steps: 5,
             ..Default::default()
         })
@@ -218,16 +220,15 @@ fn main() {
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!("Validating micro-correction optimizations across parameter space\n");
 
-    let total_steps = 200;  // Enough to see convergence patterns
+    let total_steps = 200; // Enough to see convergence patterns
 
     // Define parameter space
-    let correction_intervals = vec![0, 5, 10, 15, 20];  // 0 = baseline (disabled)
+    let correction_intervals = vec![0, 5, 10, 15, 20]; // 0 = baseline (disabled)
     let prediction_horizons = vec![30, 50, 75, 100];
     let confidence_thresholds = vec![0.55, 0.60, 0.65];
 
-    let total_experiments = correction_intervals.len()
-        * prediction_horizons.len()
-        * confidence_thresholds.len();
+    let total_experiments =
+        correction_intervals.len() * prediction_horizons.len() * confidence_thresholds.len();
 
     println!("📋 Experiment Plan:");
     println!("   - Correction intervals: {:?}", correction_intervals);
@@ -273,9 +274,7 @@ fn main() {
 
                 println!(
                     " → Speedup: {:.1}%, Variance: {:.4}, Diverge: {}",
-                    result.backward_reduction_pct,
-                    result.loss_variance,
-                    result.divergence_count
+                    result.backward_reduction_pct, result.loss_variance, result.divergence_count
                 );
 
                 all_results.push(result);
@@ -357,7 +356,11 @@ fn main() {
 
     // Best effective speedup (quality-adjusted)
     let mut by_effective = all_results.clone();
-    by_effective.sort_by(|a, b| b.effective_speedup.partial_cmp(&a.effective_speedup).unwrap());
+    by_effective.sort_by(|a, b| {
+        b.effective_speedup
+            .partial_cmp(&a.effective_speedup)
+            .unwrap()
+    });
     println!("\n⚡ Best Effective Speedup / Quality-Adjusted (Top 5):");
     for (i, result) in by_effective.iter().take(5).enumerate() {
         println!(
@@ -420,11 +423,20 @@ fn main() {
             .filter(|r| r.config.correction_interval == interval)
             .collect();
 
-        let avg_effective = interval_results.iter().map(|r| r.effective_speedup).sum::<f32>()
+        let avg_effective = interval_results
+            .iter()
+            .map(|r| r.effective_speedup)
+            .sum::<f32>()
             / interval_results.len() as f32;
-        let avg_variance =
-            interval_results.iter().map(|r| r.loss_variance).sum::<f32>() / interval_results.len() as f32;
-        let total_corrections: usize = interval_results.iter().map(|r| r.micro_corrections_count).sum();
+        let avg_variance = interval_results
+            .iter()
+            .map(|r| r.loss_variance)
+            .sum::<f32>()
+            / interval_results.len() as f32;
+        let total_corrections: usize = interval_results
+            .iter()
+            .map(|r| r.micro_corrections_count)
+            .sum();
 
         println!("   Interval = {} steps:", interval);
         println!("     - Avg effective speedup: {:.2}×", avg_effective);
@@ -438,20 +450,33 @@ fn main() {
     for &confidence in &confidence_thresholds {
         let no_correction: Vec<_> = all_results
             .iter()
-            .filter(|r| r.config.confidence_threshold == confidence && r.config.correction_interval == 0)
+            .filter(|r| {
+                r.config.confidence_threshold == confidence && r.config.correction_interval == 0
+            })
             .collect();
         let with_correction: Vec<_> = all_results
             .iter()
-            .filter(|r| r.config.confidence_threshold == confidence && r.config.correction_interval > 0)
+            .filter(|r| {
+                r.config.confidence_threshold == confidence && r.config.correction_interval > 0
+            })
             .collect();
 
-        let no_corr_speedup =
-            no_correction.iter().map(|r| r.backward_reduction_pct).sum::<f32>() / no_correction.len() as f32;
-        let with_corr_speedup = with_correction.iter().map(|r| r.backward_reduction_pct).sum::<f32>()
+        let no_corr_speedup = no_correction
+            .iter()
+            .map(|r| r.backward_reduction_pct)
+            .sum::<f32>()
+            / no_correction.len() as f32;
+        let with_corr_speedup = with_correction
+            .iter()
+            .map(|r| r.backward_reduction_pct)
+            .sum::<f32>()
             / with_correction.len() as f32;
 
         println!("   Confidence = {:.2}:", confidence);
-        println!("     - Without corrections: {:.1}% speedup", no_corr_speedup);
+        println!(
+            "     - Without corrections: {:.1}% speedup",
+            no_corr_speedup
+        );
         println!("     - With corrections: {:.1}% speedup", with_corr_speedup);
         println!(
             "     → Improvement: +{:.1}%\n",

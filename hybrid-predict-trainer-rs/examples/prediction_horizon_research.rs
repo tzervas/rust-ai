@@ -106,11 +106,11 @@ fn generate_batch(batch_size: usize, device: &Device<MyBackend>) -> MnistBatch<M
 #[derive(Debug, Clone)]
 struct ExperimentConfig {
     name: String,
-    max_predict_steps: usize,  // Prediction horizon length
-    full_steps: usize,          // Steps between predictions
-    sigma: f32,                  // Loss sigma threshold
-    confidence: f32,             // Confidence threshold
-    check_interval: usize,      // Divergence check frequency
+    max_predict_steps: usize, // Prediction horizon length
+    full_steps: usize,        // Steps between predictions
+    sigma: f32,               // Loss sigma threshold
+    confidence: f32,          // Confidence threshold
+    check_interval: usize,    // Divergence check frequency
 }
 
 /// Detailed experiment results
@@ -125,13 +125,15 @@ struct ExperimentResult {
     backward_reduction_pct: f32,
     effective_speedup: f32,
     runtime_ms: u128,
-    correction_effectiveness: f32,  // How well corrections fix divergences
+    correction_effectiveness: f32, // How well corrections fix divergences
 }
 
 fn run_experiment(config: ExperimentConfig, total_steps: usize) -> ExperimentResult {
     println!("\n🔬 Experiment: {}", config.name);
-    println!("   Horizon: {} steps, Sigma: {:.1}, Confidence: {:.2}",
-             config.max_predict_steps, config.sigma, config.confidence);
+    println!(
+        "   Horizon: {} steps, Sigma: {:.1}, Confidence: {:.2}",
+        config.max_predict_steps, config.sigma, config.confidence
+    );
 
     let device = Device::<MyBackend>::Cpu;
     let model = SimpleMLP::<MyBackend>::new(&device);
@@ -142,7 +144,7 @@ fn run_experiment(config: ExperimentConfig, total_steps: usize) -> ExperimentRes
     let wrapped_optimizer = BurnOptimizerWrapper::new(optimizer, 0.001);
 
     let trainer_config = HybridTrainerConfig::builder()
-        .warmup_steps(10)  // Fixed warmup for fair comparison
+        .warmup_steps(10) // Fixed warmup for fair comparison
         .full_steps(config.full_steps)
         .max_predict_steps(config.max_predict_steps)
         .confidence_threshold(config.confidence)
@@ -151,7 +153,7 @@ fn run_experiment(config: ExperimentConfig, total_steps: usize) -> ExperimentRes
             check_interval_steps: config.check_interval,
             ..Default::default()
         })
-        .collect_metrics(true)  // Enable detailed metrics
+        .collect_metrics(true) // Enable detailed metrics
         .build();
 
     let mut trainer = HybridTrainer::new(wrapped_model, wrapped_optimizer, trainer_config)
@@ -169,8 +171,10 @@ fn run_experiment(config: ExperimentConfig, total_steps: usize) -> ExperimentRes
         loss_history.push(result.loss);
 
         if step % 25 == 0 {
-            println!("   Step {:3}: Loss {:.4}, Phase: {:?}",
-                     step, result.loss, result.phase);
+            println!(
+                "   Step {:3}: Loss {:.4}, Phase: {:?}",
+                step, result.loss, result.phase
+            );
         }
 
         // Track correction effectiveness
@@ -184,22 +188,27 @@ fn run_experiment(config: ExperimentConfig, total_steps: usize) -> ExperimentRes
 
     // Calculate metrics
     let avg_loss = loss_history.iter().sum::<f32>() / loss_history.len() as f32;
-    let loss_variance = loss_history.iter()
+    let loss_variance = loss_history
+        .iter()
         .map(|&loss| (loss - avg_loss).powi(2))
-        .sum::<f32>() / loss_history.len() as f32;
+        .sum::<f32>()
+        / loss_history.len() as f32;
 
     let correction_effectiveness = if !divergence_corrections.is_empty() {
         1.0 / (divergence_corrections.iter().sum::<f32>() / divergence_corrections.len() as f32)
     } else {
-        1.0  // No divergences = perfect
+        1.0 // No divergences = perfect
     };
 
     // Calculate effective speedup (accounts for quality degradation)
     let quality_factor = 1.0 / (1.0 + loss_variance.sqrt());
     let effective_speedup = stats.backward_reduction_pct / 100.0 * quality_factor;
 
-    println!("   ✓ Complete - Final loss: {:.4}, Speedup: {:.1}%",
-             loss_history[loss_history.len() - 1], stats.backward_reduction_pct);
+    println!(
+        "   ✓ Complete - Final loss: {:.4}, Speedup: {:.1}%",
+        loss_history[loss_history.len() - 1],
+        stats.backward_reduction_pct
+    );
 
     ExperimentResult {
         config,
@@ -220,7 +229,7 @@ fn main() {
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!("Systematically exploring prediction horizon × sigma space\n");
 
-    let total_steps = 150;  // Enough steps to see patterns
+    let total_steps = 150; // Enough steps to see patterns
 
     // Define experiment matrix
     let sigma_values = vec![2.0, 2.2, 2.5, 3.0];
@@ -231,8 +240,10 @@ fn main() {
     println!("   - Sigma values: {:?}", sigma_values);
     println!("   - Horizon lengths: {:?}", horizon_lengths);
     println!("   - Confidence thresholds: {:?}", confidence_values);
-    println!("   - Total experiments: {}",
-             sigma_values.len() * horizon_lengths.len());
+    println!(
+        "   - Total experiments: {}",
+        sigma_values.len() * horizon_lengths.len()
+    );
     println!();
 
     let mut all_results = Vec::new();
@@ -243,10 +254,10 @@ fn main() {
             let config = ExperimentConfig {
                 name: format!("σ={:.1}_h={}", sigma, horizon),
                 max_predict_steps: horizon,
-                full_steps: 3,  // Consistent across experiments
+                full_steps: 3, // Consistent across experiments
                 sigma,
-                confidence: 0.60,  // Achievable with ensemble=5 after warmup
-                check_interval: if sigma <= 2.2 { 3 } else { 5 },  // Tighter check for tighter sigma
+                confidence: 0.60, // Achievable with ensemble=5 after warmup
+                check_interval: if sigma <= 2.2 { 3 } else { 5 }, // Tighter check for tighter sigma
             };
 
             all_results.push(run_experiment(config, total_steps));
@@ -257,20 +268,24 @@ fn main() {
     println!("\n");
     println!("📊 COMPREHENSIVE RESULTS");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println!("{:<15} | {:>10} | {:>10} | {:>10} | {:>10} | {:>12} | {:>10}",
-             "Config", "Final Loss", "Variance", "Diverge", "Speedup%", "Effective×", "Quality");
+    println!(
+        "{:<15} | {:>10} | {:>10} | {:>10} | {:>10} | {:>12} | {:>10}",
+        "Config", "Final Loss", "Variance", "Diverge", "Speedup%", "Effective×", "Quality"
+    );
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
     for result in &all_results {
         let quality_score = 1.0 / (1.0 + result.loss_variance);
-        println!("{:<15} | {:>10.4} | {:>10.4} | {:>10} | {:>9.1}% | {:>12.2} | {:>10.3}",
-                 result.config.name,
-                 result.final_loss,
-                 result.loss_variance,
-                 result.divergence_count,
-                 result.backward_reduction_pct,
-                 result.effective_speedup,
-                 quality_score);
+        println!(
+            "{:<15} | {:>10.4} | {:>10.4} | {:>10} | {:>9.1}% | {:>12.2} | {:>10.3}",
+            result.config.name,
+            result.final_loss,
+            result.loss_variance,
+            result.divergence_count,
+            result.backward_reduction_pct,
+            result.effective_speedup,
+            quality_score
+        );
     }
 
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -280,12 +295,21 @@ fn main() {
 
     // Best for speedup
     let mut by_speedup = all_results.clone();
-    by_speedup.sort_by(|a, b| b.backward_reduction_pct.partial_cmp(&a.backward_reduction_pct).unwrap());
+    by_speedup.sort_by(|a, b| {
+        b.backward_reduction_pct
+            .partial_cmp(&a.backward_reduction_pct)
+            .unwrap()
+    });
     println!("🚀 Best Speedup:");
     for (i, result) in by_speedup.iter().take(3).enumerate() {
-        println!("   {}. {} - {:.1}% speedup, {:.4} variance, {} divergences",
-                 i + 1, result.config.name, result.backward_reduction_pct,
-                 result.loss_variance, result.divergence_count);
+        println!(
+            "   {}. {} - {:.1}% speedup, {:.4} variance, {} divergences",
+            i + 1,
+            result.config.name,
+            result.backward_reduction_pct,
+            result.loss_variance,
+            result.divergence_count
+        );
     }
 
     // Best for quality (low variance)
@@ -293,19 +317,33 @@ fn main() {
     by_quality.sort_by(|a, b| a.loss_variance.partial_cmp(&b.loss_variance).unwrap());
     println!("\n✨ Best Quality (Low Variance):");
     for (i, result) in by_quality.iter().take(3).enumerate() {
-        println!("   {}. {} - {:.4} variance, {:.1}% speedup, {} divergences",
-                 i + 1, result.config.name, result.loss_variance,
-                 result.backward_reduction_pct, result.divergence_count);
+        println!(
+            "   {}. {} - {:.4} variance, {:.1}% speedup, {} divergences",
+            i + 1,
+            result.config.name,
+            result.loss_variance,
+            result.backward_reduction_pct,
+            result.divergence_count
+        );
     }
 
     // Best for effective speedup (accounts for quality)
     let mut by_effective = all_results.clone();
-    by_effective.sort_by(|a, b| b.effective_speedup.partial_cmp(&a.effective_speedup).unwrap());
+    by_effective.sort_by(|a, b| {
+        b.effective_speedup
+            .partial_cmp(&a.effective_speedup)
+            .unwrap()
+    });
     println!("\n⚡ Best Effective Speedup (Quality-Adjusted):");
     for (i, result) in by_effective.iter().take(3).enumerate() {
-        println!("   {}. {} - {:.2}× effective, {:.1}% raw speedup, {:.4} variance",
-                 i + 1, result.config.name, result.effective_speedup,
-                 result.backward_reduction_pct, result.loss_variance);
+        println!(
+            "   {}. {} - {:.2}× effective, {:.1}% raw speedup, {:.4} variance",
+            i + 1,
+            result.config.name,
+            result.effective_speedup,
+            result.backward_reduction_pct,
+            result.loss_variance
+        );
     }
 
     // === INSIGHTS & RECOMMENDATIONS ===
@@ -314,42 +352,74 @@ fn main() {
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
     // Analyze sigma effect
-    let tight_sigma_results: Vec<_> = all_results.iter()
+    let tight_sigma_results: Vec<_> = all_results
+        .iter()
         .filter(|r| r.config.sigma <= 2.2)
         .collect();
-    let loose_sigma_results: Vec<_> = all_results.iter()
+    let loose_sigma_results: Vec<_> = all_results
+        .iter()
         .filter(|r| r.config.sigma >= 2.5)
         .collect();
 
-    let tight_avg_variance = tight_sigma_results.iter()
-        .map(|r| r.loss_variance).sum::<f32>() / tight_sigma_results.len() as f32;
-    let loose_avg_variance = loose_sigma_results.iter()
-        .map(|r| r.loss_variance).sum::<f32>() / loose_sigma_results.len() as f32;
+    let tight_avg_variance = tight_sigma_results
+        .iter()
+        .map(|r| r.loss_variance)
+        .sum::<f32>()
+        / tight_sigma_results.len() as f32;
+    let loose_avg_variance = loose_sigma_results
+        .iter()
+        .map(|r| r.loss_variance)
+        .sum::<f32>()
+        / loose_sigma_results.len() as f32;
 
     println!("📉 Sigma Analysis:");
-    println!("   Tight σ (≤2.2): avg variance = {:.4}", tight_avg_variance);
-    println!("   Loose σ (≥2.5): avg variance = {:.4}", loose_avg_variance);
-    println!("   → Tighter sigma reduces variance by {:.1}%",
-             ((loose_avg_variance - tight_avg_variance) / loose_avg_variance * 100.0));
+    println!(
+        "   Tight σ (≤2.2): avg variance = {:.4}",
+        tight_avg_variance
+    );
+    println!(
+        "   Loose σ (≥2.5): avg variance = {:.4}",
+        loose_avg_variance
+    );
+    println!(
+        "   → Tighter sigma reduces variance by {:.1}%",
+        ((loose_avg_variance - tight_avg_variance) / loose_avg_variance * 100.0)
+    );
 
     // Analyze horizon effect
-    let short_horizon: Vec<_> = all_results.iter()
+    let short_horizon: Vec<_> = all_results
+        .iter()
         .filter(|r| r.config.max_predict_steps <= 15)
         .collect();
-    let long_horizon: Vec<_> = all_results.iter()
+    let long_horizon: Vec<_> = all_results
+        .iter()
         .filter(|r| r.config.max_predict_steps >= 30)
         .collect();
 
-    let short_avg_speedup = short_horizon.iter()
-        .map(|r| r.backward_reduction_pct).sum::<f32>() / short_horizon.len() as f32;
-    let long_avg_speedup = long_horizon.iter()
-        .map(|r| r.backward_reduction_pct).sum::<f32>() / long_horizon.len() as f32;
+    let short_avg_speedup = short_horizon
+        .iter()
+        .map(|r| r.backward_reduction_pct)
+        .sum::<f32>()
+        / short_horizon.len() as f32;
+    let long_avg_speedup = long_horizon
+        .iter()
+        .map(|r| r.backward_reduction_pct)
+        .sum::<f32>()
+        / long_horizon.len() as f32;
 
     println!("\n📏 Horizon Analysis:");
-    println!("   Short horizon (≤15): avg speedup = {:.1}%", short_avg_speedup);
-    println!("   Long horizon (≥30): avg speedup = {:.1}%", long_avg_speedup);
-    println!("   → Longer horizons increase speedup by {:.1}%",
-             long_avg_speedup - short_avg_speedup);
+    println!(
+        "   Short horizon (≤15): avg speedup = {:.1}%",
+        short_avg_speedup
+    );
+    println!(
+        "   Long horizon (≥30): avg speedup = {:.1}%",
+        long_avg_speedup
+    );
+    println!(
+        "   → Longer horizons increase speedup by {:.1}%",
+        long_avg_speedup - short_avg_speedup
+    );
 
     println!("\n🎯 RECOMMENDED CONFIGURATION");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -357,19 +427,37 @@ fn main() {
         println!("For production use, we recommend:");
         println!();
         println!("   HybridTrainerConfig::builder()");
-        println!("       .max_predict_steps({})  // Optimal horizon", best.config.max_predict_steps);
-        println!("       .confidence_threshold({:.2})", best.config.confidence);
+        println!(
+            "       .max_predict_steps({})  // Optimal horizon",
+            best.config.max_predict_steps
+        );
+        println!(
+            "       .confidence_threshold({:.2})",
+            best.config.confidence
+        );
         println!("       .divergence_config(DivergenceConfig {{");
         println!("           loss_sigma_threshold: {:.1},", best.config.sigma);
-        println!("           check_interval_steps: {},", best.config.check_interval);
+        println!(
+            "           check_interval_steps: {},",
+            best.config.check_interval
+        );
         println!("           ..Default::default()");
         println!("       }})");
         println!("       .build()");
         println!();
         println!("Expected results:");
-        println!("   - Speedup: {:.1}% (vs baseline full training)", best.backward_reduction_pct);
-        println!("   - Quality: {:.3} stability score", 1.0 / (1.0 + best.loss_variance));
-        println!("   - Divergence rate: {:.2}%", best.divergence_count as f32 / total_steps as f32 * 100.0);
+        println!(
+            "   - Speedup: {:.1}% (vs baseline full training)",
+            best.backward_reduction_pct
+        );
+        println!(
+            "   - Quality: {:.3} stability score",
+            1.0 / (1.0 + best.loss_variance)
+        );
+        println!(
+            "   - Divergence rate: {:.2}%",
+            best.divergence_count as f32 / total_steps as f32 * 100.0
+        );
     }
 
     println!("\n✅ Research complete! Save these results for your production config.");

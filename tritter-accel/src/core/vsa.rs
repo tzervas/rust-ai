@@ -195,7 +195,11 @@ impl VsaOps {
     /// Unbind two ternary vectors (inverse association).
     ///
     /// If bound = bind(a, b), then unbind(bound, b) recovers a.
-    pub fn unbind(&self, bound: &PackedTritVec, key: &PackedTritVec) -> Result<PackedTritVec, VsaError> {
+    pub fn unbind(
+        &self,
+        bound: &PackedTritVec,
+        key: &PackedTritVec,
+    ) -> Result<PackedTritVec, VsaError> {
         if bound.len() != key.len() {
             return Err(VsaError::DimensionMismatch {
                 expected: bound.len(),
@@ -307,7 +311,11 @@ impl VsaOps {
     /// Compute Hamming distance between two vectors.
     ///
     /// Returns the number of positions where the vectors differ.
-    pub fn hamming_distance(&self, a: &PackedTritVec, b: &PackedTritVec) -> Result<usize, VsaError> {
+    pub fn hamming_distance(
+        &self,
+        a: &PackedTritVec,
+        b: &PackedTritVec,
+    ) -> Result<usize, VsaError> {
         if a.len() != b.len() {
             return Err(VsaError::DimensionMismatch {
                 expected: a.len(),

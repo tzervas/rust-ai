@@ -4,13 +4,13 @@
 //! via the `GpuDispatchable` trait from `rust-ai-core`.
 
 #[cfg(feature = "ecosystem")]
-use rust_ai_core::traits::GpuDispatchable;
+use candle_core::{Device, Tensor};
 #[cfg(feature = "ecosystem")]
 use rust_ai_core::error::{CoreError, Result};
 #[cfg(feature = "ecosystem")]
-use candle_core::{Device, Tensor};
+use rust_ai_core::traits::GpuDispatchable;
 
-use crate::error::{HybridTrainingError};
+use crate::error::HybridTrainingError;
 use crate::state::TrainingState;
 
 /// GPU operation dispatcher for hybrid training.
@@ -107,16 +107,14 @@ impl From<HybridTrainingError> for CoreError {
     fn from(err: HybridTrainingError) -> Self {
         match err {
             #[cfg(feature = "cuda")]
-            HybridTrainingError::GpuError { detail } => CoreError::KernelError {
-                message: detail,
-            },
+            HybridTrainingError::GpuError { detail } => CoreError::KernelError { message: detail },
             HybridTrainingError::ConfigError { detail } => CoreError::InvalidConfig(detail),
-            HybridTrainingError::MemoryError { detail } => CoreError::OutOfMemory {
-                message: detail,
-            },
-            HybridTrainingError::StateEncodingError { detail } => CoreError::KernelError {
-                message: detail,
-            },
+            HybridTrainingError::MemoryError { detail } => {
+                CoreError::OutOfMemory { message: detail }
+            }
+            HybridTrainingError::StateEncodingError { detail } => {
+                CoreError::KernelError { message: detail }
+            }
             _ => CoreError::KernelError {
                 message: format!("Hybrid training error: {}", err),
             },

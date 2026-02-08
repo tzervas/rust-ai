@@ -78,7 +78,8 @@ impl DeltaAccumulator {
 
         for (param_name, delta_vec) in &delta.deltas {
             // Get or create entry for this parameter
-            let accumulated_vec = self.accumulated
+            let accumulated_vec = self
+                .accumulated
                 .entry(param_name.clone())
                 .or_insert_with(|| vec![0.0; delta_vec.len()]);
 

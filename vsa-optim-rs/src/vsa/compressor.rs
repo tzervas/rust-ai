@@ -137,7 +137,7 @@ impl VSAGradientCompressor {
 
         let data: Vec<f32> = (0..grad_size * self.hypervector_dim)
             .map(|_| {
-                    // Sparse random projection for efficiency: ~68% zeros
+                // Sparse random projection for efficiency: ~68% zeros
                 let r: f32 = (rng.next_u32() as f64 / u32::MAX as f64) as f32;
                 if r < 0.16 {
                     scale * 3.0_f32.sqrt() // sqrt(3) to maintain variance

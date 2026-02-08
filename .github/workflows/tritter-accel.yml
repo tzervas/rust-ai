@@ -47,13 +47,16 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Check compilation
-        run: cargo check -p tritter-accel --all-features --no-default-members
+        working-directory: ./tritter-accel
+        run: cargo check --all-features
 
       - name: Check formatting
-        run: cargo fmt -p tritter-accel -- --check
+        working-directory: ./tritter-accel
+        run: cargo fmt -- --check
 
       - name: Clippy lints
-        run: cargo clippy -p tritter-accel --all-features -- -D warnings
+        working-directory: ./tritter-accel
+        run: cargo clippy --all-features -- -D warnings
 
   test:
     name: Test
@@ -77,10 +80,12 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Run tests
-        run: cargo test -p tritter-accel --all-features
+        working-directory: ./tritter-accel
+        run: cargo test --all-features
 
       - name: Run doc tests
-        run: cargo test -p tritter-accel --doc
+        working-directory: ./tritter-accel
+        run: cargo test --doc
 
   docs:
     name: Documentation
@@ -104,7 +109,8 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Build documentation
-        run: cargo doc -p tritter-accel --no-deps --all-features
+        working-directory: ./tritter-accel
+        run: cargo doc --no-deps --all-features
         env:
           RUSTDOCFLAGS: -D warnings
 
@@ -130,7 +136,8 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Check benchmarks compile
-        run: cargo check -p tritter-accel --benches
+        working-directory: ./tritter-accel
+        run: cargo check --benches
 
   python:
     name: Python Bindings

@@ -19,6 +19,7 @@ burn = { version = "0.20", default-features = false }
 
 # Backend support (optional)
 ndarray = { version = "0.16", optional = true }
+burn-cuda = { version = "0.20", optional = true }
 
 # GPU compute acceleration
 # CubeCL for custom CUDA kernels (conflict resolved via workspace wasm-bindgen-futures patch)
@@ -76,7 +77,7 @@ std = ["burn/std"]
 # Backend selection (choose one or more)
 ndarray = ["burn/ndarray", "dep:ndarray"]
 wgpu = ["burn/wgpu"]
-cuda = ["burn/cuda", "cubecl", "cubecl-cuda"]
+cuda = ["burn/cuda", "cubecl", "cubecl-cuda", "burn-cuda"]
 
 # Burn autodiff support (required for training)
 autodiff = ["burn/autodiff"]

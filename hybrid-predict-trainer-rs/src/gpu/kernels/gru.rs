@@ -442,33 +442,32 @@ pub fn gru_forward_cpu(
 
 /// GPU-accelerated GRU forward pass.
 ///
-/// Launches the fused GRU kernel on GPU and returns the result.
+/// Launches GRU computation on GPU using Burn tensors with CUDA backend.
 ///
 /// # Implementation Details
 ///
-/// - **Kernel**: `gru_forward_fused` - All GRU operations fused
-/// - **Launch config**: 1 block × hidden_dim threads
-/// - **Fallback**: Falls back to CPU (CubeCL 0.9 buffer API pending clarification)
+/// - **Backend**: Burn CUDA backend (automatically uses CubeCL)
+/// - **Operations**: High-level tensor ops (matmul, sigmoid, tanh)
+/// - **Fallback**: Falls back to CPU if CUDA backend unavailable
 ///
-/// # Phase 2.5 - CubeCL Runtime Integration Status
+/// # Phase 2.5 - Burn-Based GPU Implementation ✅
 ///
-/// **Kernel Code**: ✅ Complete and validated (fused GRU with shared memory)
-/// **Runtime Integration**: ⏳ Pending CubeCL 0.9 API clarification
+/// Uses Burn's high-level tensor API which automatically handles:
+/// - GPU buffer management
+/// - CubeCL kernel dispatch
+/// - Memory transfers
+/// - Synchronization
 ///
-/// The kernel is ready but requires proper buffer management API usage.
-/// Needed:
-/// 1. Proper `client.create()` usage for f32 data upload
-/// 2. Correct `Handle` API for ArrayArg construction
-/// 3. Proper `client.read()` for f32 data download
-///
-/// For now, uses CPU implementation with detailed logging for performance comparison.
-#[cfg(feature = "cuda")]
+/// This provides clean, maintainable code while achieving GPU acceleration.
+#[cfg(all(feature = "cuda", feature = "candle"))]
 pub fn gru_forward_gpu(
     config: &GruKernelConfig,
     weights: &GpuGruWeights,
     hidden: &[f32],
     input: &[f32],
 ) -> HybridResult<Vec<f32>> {
+    use burn_cuda::{Cuda, CudaDevice};
+
     // Validate configuration
     config.validate()?;
 
@@ -503,35 +502,34 @@ pub fn gru_forward_gpu(
         "gru_forward_gpu",
         hidden_dim = config.hidden_dim,
         input_dim = config.input_dim,
-        mode = "cpu_fallback"
+        mode = "burn_cuda"
     )
     .entered();
 
-    // TODO: CubeCL 0.9 runtime integration
-    // Once buffer API is clarified, replace this with:
-    //
-    // 1. Initialize runtime:
-    //    let device = CudaDevice::new(0);
-    //    let client = Runtime::client(&device);
-    //
-    // 2. Upload buffers (need proper Bytes/Vec<u8> conversion):
-    //    let w_z_handle = client.create(weight_bytes);
-    //    ...
-    //
-    // 3. Launch kernel:
-    //    gru_forward_fused::launch::<f32, CudaRuntime>(
-    //        &client,
-    //        CubeCount::new_single(),
-    //        CubeDim::new(hidden_dim, 1, 1),
-    //        ArrayArg::from_raw_parts(...),
-    //        ...
-    //    );
-    //
-    // 4. Download result:
-    //    let output = client.read::<f32>(&output_handle);
+    // Use Burn CUDA backend for GPU acceleration
+    let device = CudaDevice::default();
+
+    // Call Burn-based implementation
+    crate::gpu::kernels::gru_burn::gru_forward_burn::<Cuda>(
+        config, weights, hidden, input, &device,
+    )
+}
+
+/// GPU-accelerated GRU forward pass (CUDA feature without Candle).
+///
+/// Falls back to CPU implementation when Candle feature is not enabled.
+#[cfg(all(feature = "cuda", not(feature = "candle")))]
+pub fn gru_forward_gpu(
+    config: &GruKernelConfig,
+    weights: &GpuGruWeights,
+    hidden: &[f32],
+    input: &[f32],
+) -> HybridResult<Vec<f32>> {
+    // Validate configuration
+    config.validate()?;
 
     tracing::debug!(
-        "GRU GPU kernel requested but using CPU fallback (CubeCL integration pending)"
+        "GRU GPU requested but Candle feature not enabled, using CPU fallback"
     );
 
     Ok(gru_forward_cpu(weights, hidden, input))

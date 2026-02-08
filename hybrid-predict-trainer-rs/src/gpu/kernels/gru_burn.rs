@@ -98,23 +98,31 @@ pub fn gru_forward_burn<B: Backend>(
     let b_h = Tensor::<B, 1>::from_data(TensorData::from(&weights.b_h[..]), device);
 
     // Compute update gate: z = σ(W_z·x + U_z·h + b_z)
+    // Note: W_z is [hidden_dim, input_dim], x is [input_dim]
+    // We need x as [input_dim, 1] for proper matmul
     use burn::tensor::activation;
-    let z_input = w_z.matmul(x.clone().unsqueeze());
-    let z_hidden = u_z.matmul(h.clone().unsqueeze());
-    let z_pre = z_input.squeeze::<1>() + z_hidden.squeeze::<1>() + b_z;
+
+    // Reshape vectors to column vectors for matmul
+    let x_col = x.clone().unsqueeze_dim(1); // [input_dim, 1]
+    let h_col = h.clone().unsqueeze_dim(1); // [hidden_dim, 1]
+
+    let z_input = w_z.matmul(x_col.clone()); // [hidden_dim, input_dim] × [input_dim, 1] = [hidden_dim, 1]
+    let z_hidden = u_z.matmul(h_col.clone()); // [hidden_dim, hidden_dim] × [hidden_dim, 1] = [hidden_dim, 1]
+    let z_pre = z_input.squeeze::<1>() + z_hidden.squeeze::<1>() + b_z; // [hidden_dim]
     let z = activation::sigmoid(z_pre);
 
     // Compute reset gate: r = σ(W_r·x + U_r·h + b_r)
-    let r_input = w_r.matmul(x.clone().unsqueeze());
-    let r_hidden = u_r.matmul(h.clone().unsqueeze());
-    let r_pre = r_input.squeeze::<1>() + r_hidden.squeeze::<1>() + b_r;
+    let r_input = w_r.matmul(x_col.clone()); // [hidden_dim, 1]
+    let r_hidden = u_r.matmul(h_col.clone()); // [hidden_dim, 1]
+    let r_pre = r_input.squeeze::<1>() + r_hidden.squeeze::<1>() + b_r; // [hidden_dim]
     let r = activation::sigmoid(r_pre);
 
     // Compute candidate: h̃ = tanh(W_h·x + U_h·(r⊙h) + b_h)
     let r_h = r * h.clone();
-    let h_cand_input = w_h.matmul(x.unsqueeze());
-    let h_cand_hidden = u_h.matmul(r_h.unsqueeze());
-    let h_cand_pre = h_cand_input.squeeze::<1>() + h_cand_hidden.squeeze::<1>() + b_h;
+    let r_h_col = r_h.unsqueeze_dim(1); // [hidden_dim, 1]
+    let h_cand_input = w_h.matmul(x_col); // [hidden_dim, 1]
+    let h_cand_hidden = u_h.matmul(r_h_col); // [hidden_dim, 1]
+    let h_cand_pre = h_cand_input.squeeze::<1>() + h_cand_hidden.squeeze::<1>() + b_h; // [hidden_dim]
     let h_cand = activation::tanh(h_cand_pre);
 
     // Compute output: h' = (1-z)⊙h + z⊙h̃

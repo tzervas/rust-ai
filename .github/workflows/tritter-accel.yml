@@ -1,23 +1,28 @@
 name: tritter-accel CI
 
+# TEMPORARILY DISABLED: This workflow requires sister crates (peft-rs, qlora-rs,
+# rust-ai-core) that are separate repos in .gitignore and not available in CI.
+# Re-enable once publishing workflow is complete and all deps are on crates.io.
+
 on:
-  push:
-    branches: [master, main]
-    paths:
-      - 'tritter-accel/**'
-      - 'trit-vsa/**'
-      - 'bitnet-quantize/**'
-      - 'vsa-optim-rs/**'
-      - 'rust-ai-core/**'
-      - '.github/workflows/tritter-accel.yml'
-  pull_request:
-    branches: [master, main]
-    paths:
-      - 'tritter-accel/**'
-      - 'trit-vsa/**'
-      - 'bitnet-quantize/**'
-      - 'vsa-optim-rs/**'
-      - 'rust-ai-core/**'
+  workflow_dispatch:  # Manual trigger only
+  # push:
+  #   branches: [master, main]
+  #   paths:
+  #     - 'tritter-accel/**'
+  #     - 'trit-vsa/**'
+  #     - 'bitnet-quantize/**'
+  #     - 'vsa-optim-rs/**'
+  #     - 'rust-ai-core/**'
+  #     - '.github/workflows/tritter-accel.yml'
+  # pull_request:
+  #   branches: [master, main]
+  #   paths:
+  #     - 'tritter-accel/**'
+  #     - 'trit-vsa/**'
+  #     - 'bitnet-quantize/**'
+  #     - 'vsa-optim-rs/**'
+  #     - 'rust-ai-core/**'
 
 env:
   CARGO_TERM_COLOR: always

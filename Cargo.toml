@@ -1,12 +1,16 @@
 [workspace]
 resolver = "2"
 members = [
-    # Only crates tracked in this repository (others are separate repos in .gitignore)
+    # Crates tracked in this repository
     "bitnet-quantize",
     "hybrid-predict-trainer-rs",
+    "training-tools",
     "trit-vsa",
-    # Excluded: separate repositories (peft-rs, qlora-rs, rust-ai-core, training-tools,
-    # tritter-accel, tritter-model-rs, unsloth-rs, vsa-optim-rs, axolotl-rs)
+    "tritter-accel",
+    "tritter-model-rs",
+    "unsloth-rs",
+    "vsa-optim-rs",
+    # Excluded: separate repositories in .gitignore (peft-rs, qlora-rs, rust-ai-core, axolotl-rs)
 ]
 exclude = [
     "moltbook-proposal/src/web/wasm",

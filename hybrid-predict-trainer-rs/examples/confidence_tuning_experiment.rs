@@ -99,11 +99,7 @@ struct ExperimentResult {
     backward_reduction_pct: f32,
 }
 
-fn run_experiment(
-    name: &str,
-    config: HybridTrainerConfig,
-    steps: usize,
-) -> ExperimentResult {
+fn run_experiment(name: &str, config: HybridTrainerConfig, steps: usize) -> ExperimentResult {
     println!("\n🧪 Running experiment: {}", name);
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
@@ -115,8 +111,8 @@ fn run_experiment(
     let optimizer = AdamConfig::new().init();
     let wrapped_optimizer = BurnOptimizerWrapper::new(optimizer, 0.001);
 
-    let mut trainer =
-        HybridTrainer::new(wrapped_model, wrapped_optimizer, config).expect("Failed to create trainer");
+    let mut trainer = HybridTrainer::new(wrapped_model, wrapped_optimizer, config)
+        .expect("Failed to create trainer");
 
     let mut last_loss = 0.0;
     for step in 0..steps {
@@ -196,17 +192,21 @@ fn main() {
     println!("\n");
     println!("📊 RESULTS COMPARISON");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println!("{:<25} | {:>12} | {:>12} | {:>10} | {:>12}",
-             "Configuration", "Final Loss", "Avg Conf", "Divergences", "Speedup %");
+    println!(
+        "{:<25} | {:>12} | {:>12} | {:>10} | {:>12}",
+        "Configuration", "Final Loss", "Avg Conf", "Divergences", "Speedup %"
+    );
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
     for result in &[result1, result2, result3] {
-        println!("{:<25} | {:>12.4} | {:>12.3} | {:>10} | {:>11.1}%",
-                 result.name,
-                 result.final_loss,
-                 result.avg_confidence,
-                 result.divergence_count,
-                 result.backward_reduction_pct);
+        println!(
+            "{:<25} | {:>12.4} | {:>12.3} | {:>10} | {:>11.1}%",
+            result.name,
+            result.final_loss,
+            result.avg_confidence,
+            result.divergence_count,
+            result.backward_reduction_pct
+        );
     }
 
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");

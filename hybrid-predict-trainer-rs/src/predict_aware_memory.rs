@@ -104,9 +104,9 @@ impl MemoryOffloadStrategy {
     pub fn estimated_vram_savings(self) -> f32 {
         match self {
             Self::None => 0.0,
-            Self::CpuOffload | Self::PinnedCpuOffload => 0.5,     // 50%
-            Self::CompressInPlace => 0.35,                       // 35%
-            Self::DropAndReinitialize => 0.6,                    // 60% (+ gradients)
+            Self::CpuOffload | Self::PinnedCpuOffload => 0.5, // 50%
+            Self::CompressInPlace => 0.35,                    // 35%
+            Self::DropAndReinitialize => 0.6,                 // 60% (+ gradients)
         }
     }
 
@@ -323,8 +323,7 @@ impl PredictAwareMemoryConfig {
         if self.enabled {
             if self.async_restore && self.async_restore_lookahead == 0 {
                 return Err(
-                    "async_restore_lookahead must be > 0 when async_restore is enabled"
-                        .to_string(),
+                    "async_restore_lookahead must be > 0 when async_restore is enabled".to_string(),
                 );
             }
 
@@ -463,7 +462,10 @@ mod tests {
     #[test]
     fn test_offload_strategy_savings() {
         assert_eq!(MemoryOffloadStrategy::None.estimated_vram_savings(), 0.0);
-        assert_eq!(MemoryOffloadStrategy::CpuOffload.estimated_vram_savings(), 0.5);
+        assert_eq!(
+            MemoryOffloadStrategy::CpuOffload.estimated_vram_savings(),
+            0.5
+        );
         assert_eq!(
             MemoryOffloadStrategy::PinnedCpuOffload.estimated_vram_savings(),
             0.5

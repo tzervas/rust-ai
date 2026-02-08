@@ -331,13 +331,15 @@ pub struct MemoryUsage {
     pub peak_usage: usize,
 }
 
-/// `CubeCL` kernel definitions.
-///
 /// `CubeCL` kernel implementations.
 ///
-/// These kernels are compiled to CUDA/PTX at runtime using `CubeCL`.
-pub mod kernels {
+/// Production GPU kernels extracted and adapted from unsloth-rs.
+/// Contains Flash Attention and other performance-critical operations.
+#[cfg(feature = "cuda")]
+pub mod kernels;
 
+/// Kernel configuration types (available without CUDA feature).
+pub mod kernel_config {
     /// State encoding kernel configuration.
     #[derive(Debug, Clone)]
     pub struct EncodeStateConfig {
@@ -426,10 +428,10 @@ mod tests {
 
     #[test]
     fn test_kernel_config_defaults() {
-        let encode_config = kernels::EncodeStateConfig::default();
+        let encode_config = kernel_config::EncodeStateConfig::default();
         assert_eq!(encode_config.block_size, 256);
 
-        let gru_config = kernels::GruConfig::default();
+        let gru_config = kernel_config::GruConfig::default();
         assert_eq!(gru_config.hidden_dim, 256);
     }
 }

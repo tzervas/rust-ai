@@ -23,7 +23,7 @@ candle-core = { workspace = true, optional = true }
 
 [dev-dependencies]
 criterion = { workspace = true }
-proptest = "1.9.0"
+proptest = { workspace = true }
 
 [features]
 default = []

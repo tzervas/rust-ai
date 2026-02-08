@@ -64,14 +64,8 @@ fn generate_synthetic_batch(
         .map(|_| rng.gen_range(0..vocab_size as i64))
         .collect();
 
-    let input_ids = Tensor::from_data(
-        TensorData::new(input_data, [batch_size, seq_len]),
-        device,
-    );
-    let targets = Tensor::from_data(
-        TensorData::new(target_data, [batch_size, seq_len]),
-        device,
-    );
+    let input_ids = Tensor::from_data(TensorData::new(input_data, [batch_size, seq_len]), device);
+    let targets = Tensor::from_data(TensorData::new(target_data, [batch_size, seq_len]), device);
 
     Gpt2Batch { input_ids, targets }
 }
@@ -132,7 +126,11 @@ fn main() {
     println!("  Layers: {}", config.n_layer);
     println!("  Heads: {}", config.n_head);
     println!("  Physical batch: {}", physical_batch);
-    println!("  Virtual batch: {} ({}x accumulation)", virtual_batch, virtual_batch / physical_batch);
+    println!(
+        "  Virtual batch: {} ({}x accumulation)",
+        virtual_batch,
+        virtual_batch / physical_batch
+    );
     println!("  Sequence length: {}", seq_len);
     println!("  Training steps: {}\n", steps);
 
@@ -147,17 +145,17 @@ fn main() {
     let grad_accumulation = GradientAccumulationConfig {
         enabled: true,
         accumulation_steps: virtual_batch / physical_batch, // 4x accumulation
-        scale_lr: false,            // Keep base LR as-is
-        normalize_gradients: true,  // Normalize gradients by accumulation steps
+        scale_lr: false,                                    // Keep base LR as-is
+        normalize_gradients: true, // Normalize gradients by accumulation steps
     };
 
     let predict_memory = PredictAwareMemoryConfig {
         enabled: true,
         offload_strategy: MemoryOffloadStrategy::CpuOffload, // CPU offload
-        async_restore: true,            // Async prefetch before full phase
-        async_restore_lookahead: 3,     // Start 3 steps early
-        discard_activations: true,      // Drop activations in predict phase
-        gradient_checkpointing: false,  // No checkpointing (simplicity)
+        async_restore: true,                                 // Async prefetch before full phase
+        async_restore_lookahead: 3,                          // Start 3 steps early
+        discard_activations: true,                           // Drop activations in predict phase
+        gradient_checkpointing: false,                       // No checkpointing (simplicity)
     };
 
     // HybridTrainer configuration (tuned for quick validation)
@@ -167,7 +165,7 @@ fn main() {
         .max_predict_steps(5)
         .correction_interval(2)
         .divergence_threshold(2.5)
-        .confidence_threshold(0.3)  // Lower to trigger Predict phase
+        .confidence_threshold(0.3) // Lower to trigger Predict phase
         .mixed_precision_config(mixed_precision)
         .gradient_accumulation_config(grad_accumulation)
         .predict_aware_memory_config(predict_memory)
@@ -175,26 +173,69 @@ fn main() {
 
     println!("Memory Optimization Configuration:");
     println!("  Mixed Precision:");
-    println!("    Enabled: {}", hybrid_config.mixed_precision_config.enabled);
-    println!("    Default precision: {:?}", hybrid_config.mixed_precision_config.default_precision);
-    println!("    Auto recommend: {}", hybrid_config.mixed_precision_config.auto_recommend);
+    println!(
+        "    Enabled: {}",
+        hybrid_config.mixed_precision_config.enabled
+    );
+    println!(
+        "    Default precision: {:?}",
+        hybrid_config.mixed_precision_config.default_precision
+    );
+    println!(
+        "    Auto recommend: {}",
+        hybrid_config.mixed_precision_config.auto_recommend
+    );
     println!("  Gradient Accumulation:");
-    println!("    Enabled: {}", hybrid_config.gradient_accumulation_config.enabled);
-    println!("    Accumulation steps: {}", hybrid_config.gradient_accumulation_config.accumulation_steps);
-    println!("    Scale LR: {}", hybrid_config.gradient_accumulation_config.scale_lr);
+    println!(
+        "    Enabled: {}",
+        hybrid_config.gradient_accumulation_config.enabled
+    );
+    println!(
+        "    Accumulation steps: {}",
+        hybrid_config
+            .gradient_accumulation_config
+            .accumulation_steps
+    );
+    println!(
+        "    Scale LR: {}",
+        hybrid_config.gradient_accumulation_config.scale_lr
+    );
     println!("  Predict-Aware Memory:");
-    println!("    Enabled: {}", hybrid_config.predict_aware_memory_config.enabled);
-    println!("    Offload strategy: {:?}", hybrid_config.predict_aware_memory_config.offload_strategy);
-    println!("    Async restore: {}", hybrid_config.predict_aware_memory_config.async_restore);
-    println!("    Discard activations: {}\n", hybrid_config.predict_aware_memory_config.discard_activations);
+    println!(
+        "    Enabled: {}",
+        hybrid_config.predict_aware_memory_config.enabled
+    );
+    println!(
+        "    Offload strategy: {:?}",
+        hybrid_config.predict_aware_memory_config.offload_strategy
+    );
+    println!(
+        "    Async restore: {}",
+        hybrid_config.predict_aware_memory_config.async_restore
+    );
+    println!(
+        "    Discard activations: {}\n",
+        hybrid_config
+            .predict_aware_memory_config
+            .discard_activations
+    );
 
     println!("HybridTrainer Configuration:");
     println!("  Warmup steps: {}", hybrid_config.warmup_steps);
     println!("  Full train steps: {}", hybrid_config.full_steps);
     println!("  Max predict steps: {}", hybrid_config.max_predict_steps);
-    println!("  Correction interval: {}", hybrid_config.correction_interval);
-    println!("  Divergence threshold: {}", hybrid_config.divergence_threshold);
-    println!("  Confidence threshold: {}\n", hybrid_config.confidence_threshold);
+    println!(
+        "  Correction interval: {}",
+        hybrid_config.correction_interval
+    );
+    println!(
+        "  Divergence threshold: {}",
+        hybrid_config.divergence_threshold
+    );
+    println!(
+        "  Confidence threshold: {}\n",
+        hybrid_config.confidence_threshold
+    );
 
     // Initialize model and optimizer
     let device = <MyBackend as Backend>::Device::default();
@@ -204,9 +245,7 @@ fn main() {
     let wrapped_model = BurnModelWrapper::new(model, forward_fn, device.clone());
 
     println!("✓ Creating optimizer (Adam, lr=6e-4)...");
-    let optim = AdamConfig::new()
-        .with_epsilon(1e-8)
-        .init();
+    let optim = AdamConfig::new().with_epsilon(1e-8).init();
     let wrapped_optimizer = BurnOptimizerWrapper::new(optim, 6e-4);
 
     // Create HybridTrainer
@@ -231,7 +270,8 @@ fn main() {
         let step_start = Instant::now();
 
         // Generate batch (physical batch size)
-        let batch_data = generate_synthetic_batch(physical_batch, seq_len, config.vocab_size, &device);
+        let batch_data =
+            generate_synthetic_batch(physical_batch, seq_len, config.vocab_size, &device);
         let batch = BurnBatch::new(batch_data, physical_batch);
 
         // HybridTrainer step
@@ -273,10 +313,16 @@ fn main() {
     println!("Performance:");
     println!("  Total time: {:.1}s", total_time_s);
     println!("  Avg time per step: {:.1}ms", total_time_ms / steps as f64);
-    println!("  Effective batch: {} ({} physical × {} accumulation)",
-             virtual_batch, physical_batch, virtual_batch / physical_batch);
-    println!("  Throughput: {:.1} tokens/sec",
-             (virtual_batch * seq_len * steps) as f64 / total_time_s);
+    println!(
+        "  Effective batch: {} ({} physical × {} accumulation)",
+        virtual_batch,
+        physical_batch,
+        virtual_batch / physical_batch
+    );
+    println!(
+        "  Throughput: {:.1} tokens/sec",
+        (virtual_batch * seq_len * steps) as f64 / total_time_s
+    );
 
     println!("\nMemory Usage:");
     if final_vram > 0.0 {
@@ -299,6 +345,9 @@ fn main() {
 
     println!("\n💡 Memory Optimization Benefits:");
     println!("   1. Mixed precision: ~40-50% activation memory reduction");
-    println!("   2. Gradient accumulation: {}x larger effective batch", virtual_batch / physical_batch);
+    println!(
+        "   2. Gradient accumulation: {}x larger effective batch",
+        virtual_batch / physical_batch
+    );
     println!("   3. Predict-aware memory: ~60-70% weight offload during predict\n");
 }

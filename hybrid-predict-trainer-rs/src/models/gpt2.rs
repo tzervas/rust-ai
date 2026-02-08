@@ -7,7 +7,9 @@
 use burn::{
     module::Module,
     nn::{
-        attention::{generate_autoregressive_mask, MhaInput, MultiHeadAttention, MultiHeadAttentionConfig},
+        attention::{
+            generate_autoregressive_mask, MhaInput, MultiHeadAttention, MultiHeadAttentionConfig,
+        },
         Dropout, DropoutConfig, Embedding, EmbeddingConfig, Gelu, LayerNorm, LayerNormConfig,
         Linear, LinearConfig,
     },
@@ -182,11 +184,11 @@ impl<B: Backend> Gpt2Block<B> {
 /// Uses weight tying between token embeddings and output projection.
 #[derive(Module, Debug)]
 pub struct Gpt2Model<B: Backend> {
-    wte: Embedding<B>,        // Token embeddings
-    wpe: Embedding<B>,        // Position embeddings
+    wte: Embedding<B>, // Token embeddings
+    wpe: Embedding<B>, // Position embeddings
     drop: Dropout,
-    h: Vec<Gpt2Block<B>>,    // Transformer blocks
-    ln_f: LayerNorm<B>,       // Final layer norm
+    h: Vec<Gpt2Block<B>>, // Transformer blocks
+    ln_f: LayerNorm<B>,   // Final layer norm
 }
 
 impl<B: Backend> Gpt2Model<B> {

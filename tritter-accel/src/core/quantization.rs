@@ -274,7 +274,10 @@ pub fn quantize_activations(activations: &Tensor) -> Result<(Tensor, f32), Quant
 }
 
 /// Dequantize ternary values back to float.
-pub fn dequantize(result: &QuantizationResult, device: &Device) -> Result<Tensor, QuantizationError> {
+pub fn dequantize(
+    result: &QuantizationResult,
+    device: &Device,
+) -> Result<Tensor, QuantizationError> {
     result.to_tensor(device)
 }
 

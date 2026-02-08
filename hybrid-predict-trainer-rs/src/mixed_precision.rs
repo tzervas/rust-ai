@@ -195,7 +195,9 @@ impl MixedPrecisionConfig {
             phase_precisions: HashMap::new(),
             auto_recommend: true,
         };
-        config.phase_precisions.insert(Phase::Predict, Precision::Bf16);
+        config
+            .phase_precisions
+            .insert(Phase::Predict, Precision::Bf16);
         config
     }
 
@@ -323,10 +325,22 @@ mod tests {
 
     #[test]
     fn test_precision_recommended() {
-        assert_eq!(Precision::recommended_for_phase(Phase::Warmup), Precision::Fp32);
-        assert_eq!(Precision::recommended_for_phase(Phase::Full), Precision::Fp32);
-        assert_eq!(Precision::recommended_for_phase(Phase::Predict), Precision::Bf16);
-        assert_eq!(Precision::recommended_for_phase(Phase::Correct), Precision::Fp32);
+        assert_eq!(
+            Precision::recommended_for_phase(Phase::Warmup),
+            Precision::Fp32
+        );
+        assert_eq!(
+            Precision::recommended_for_phase(Phase::Full),
+            Precision::Fp32
+        );
+        assert_eq!(
+            Precision::recommended_for_phase(Phase::Predict),
+            Precision::Bf16
+        );
+        assert_eq!(
+            Precision::recommended_for_phase(Phase::Correct),
+            Precision::Fp32
+        );
     }
 
     #[test]

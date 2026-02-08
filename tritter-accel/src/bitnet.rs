@@ -7,6 +7,6 @@
 
 // Re-export key types for library users
 #[allow(unused_imports)]
-pub use bitnet_quantize::{BitLinear, BitNetConfig, TernaryWeight};
-#[allow(unused_imports)]
 pub use bitnet_quantize::{dequantize_weights, quantize_weights};
+#[allow(unused_imports)]
+pub use bitnet_quantize::{BitLinear, BitNetConfig, TernaryWeight};

@@ -9,10 +9,10 @@
 //! - Numerical stability issues
 //! - Serialization/deserialization
 
+use hybrid_predict_trainer_rs::config::{DivergenceConfig, HybridTrainerConfig, PredictorConfig};
+use hybrid_predict_trainer_rs::error::{DivergenceLevel, RecoveryAction};
 use hybrid_predict_trainer_rs::prelude::*;
 use hybrid_predict_trainer_rs::state::WeightDelta;
-use hybrid_predict_trainer_rs::config::{HybridTrainerConfig, DivergenceConfig, PredictorConfig};
-use hybrid_predict_trainer_rs::error::{DivergenceLevel, RecoveryAction};
 
 // ============================================================================
 // Test Fixtures and Helpers

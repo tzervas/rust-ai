@@ -25,7 +25,8 @@ use burn::backend::Cuda;
 use hybrid_predict_trainer_rs::{
     burn_integration::{BurnBatch, BurnForwardFn, BurnModelWrapper, BurnOptimizerWrapper},
     models::gpt2::{Gpt2Batch, Gpt2Config, Gpt2Model},
-    Model, Optimizer, // Import traits for forward/backward/step
+    Model,
+    Optimizer, // Import traits for forward/backward/step
 };
 use std::time::Instant;
 
@@ -56,14 +57,8 @@ fn generate_synthetic_batch(
         .map(|_| rng.gen_range(0..vocab_size as i64))
         .collect();
 
-    let input_ids = Tensor::from_data(
-        TensorData::new(input_data, [batch_size, seq_len]),
-        device,
-    );
-    let targets = Tensor::from_data(
-        TensorData::new(target_data, [batch_size, seq_len]),
-        device,
-    );
+    let input_ids = Tensor::from_data(TensorData::new(input_data, [batch_size, seq_len]), device);
+    let targets = Tensor::from_data(TensorData::new(target_data, [batch_size, seq_len]), device);
 
     Gpt2Batch { input_ids, targets }
 }
@@ -135,9 +130,7 @@ fn main() {
     let mut wrapped_model = BurnModelWrapper::new(model, forward_fn, device.clone());
 
     println!("✓ Creating optimizer (Adam, lr=6e-4)...");
-    let optim = AdamConfig::new()
-        .with_epsilon(1e-8)
-        .init();
+    let optim = AdamConfig::new().with_epsilon(1e-8).init();
     let mut wrapped_optimizer = BurnOptimizerWrapper::new(optim, 6e-4);
 
     println!("✓ Starting training...\n");
@@ -187,7 +180,10 @@ fn main() {
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
     println!("Total time: {:.1}s", total_time_s);
     println!("Avg time per step: {:.1}ms", total_time_ms / steps as f64);
-    println!("Throughput: {:.1} tokens/sec", (batch_size * seq_len * steps) as f64 / total_time_s);
+    println!(
+        "Throughput: {:.1} tokens/sec",
+        (batch_size * seq_len * steps) as f64 / total_time_s
+    );
     println!("\n💡 Next: Run with HybridTrainer for speedup comparison");
     println!("   cargo run --release --example gpt2_small_hybrid --features autodiff,ndarray\n");
 }

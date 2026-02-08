@@ -179,6 +179,11 @@ pub mod checkpoint;
 // VRAM manager for tracking and cleaning up GPU memory
 pub mod vram_manager;
 
+// Rust AI ecosystem integration (GpuDispatchable trait)
+#[cfg(feature = "ecosystem")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ecosystem")))]
+pub mod ecosystem;
+
 // Reference model implementations for validation
 #[cfg(feature = "autodiff")]
 pub mod models;
@@ -860,11 +865,9 @@ impl<M, O> HybridTrainer<M, O> {
         const VRAM_CHECKPOINT_THRESHOLD_MB: usize = 14_000; // 14 GB triggers emergency checkpoint
         let vram_critical = self.vram_manager.last_vram_mb() > VRAM_CHECKPOINT_THRESHOLD_MB;
 
-        let checkpoint_to_save = if self
-            .checkpoint_manager
-            .as_ref()
-            .map_or(false, |mgr| mgr.should_save(self.state.step) || vram_critical)
-        {
+        let checkpoint_to_save = if self.checkpoint_manager.as_ref().map_or(false, |mgr| {
+            mgr.should_save(self.state.step) || vram_critical
+        }) {
             if vram_critical {
                 eprintln!(
                     "🚨 Emergency checkpoint triggered by high VRAM ({} MB > {} MB)",
@@ -975,7 +978,7 @@ impl<M, O> HybridTrainer<M, O> {
                     .map(|(idx, &actual_norm)| residuals::LayerResidual {
                         layer_name: format!("layer_{}", idx),
                         magnitude: actual_norm,
-                        compressed: None, // TODO: Add compression support
+                        compressed: None,       // TODO: Add compression support
                         cosine_similarity: 1.0, // Perfect match when no prediction available
                     })
                     .collect()
@@ -1330,7 +1333,6 @@ impl<M, O> HybridTrainer<M, O> {
             vram_manager: vram_manager::VramManager::new(),
         })
     }
-
 }
 
 /// Result of a single training step.
@@ -1387,7 +1389,7 @@ mod tests {
         let config = HybridTrainerConfig::default();
         assert_eq!(config.warmup_steps, 100);
         assert_eq!(config.full_steps, 20);
-        assert_eq!(config.max_predict_steps, 15);  // Updated: default reduced for VRAM optimization
+        assert_eq!(config.max_predict_steps, 15); // Updated: default reduced for VRAM optimization
         assert!((config.confidence_threshold - 0.85).abs() < f32::EPSILON);
     }
 

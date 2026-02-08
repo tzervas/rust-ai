@@ -31,9 +31,7 @@ use burn::{
     nn::{Linear, LinearConfig},
     tensor::{backend::Backend, Tensor},
 };
-use hybrid_predict_trainer_rs::{
-    config::{DivergenceConfig, HybridTrainerConfig},
-};
+use hybrid_predict_trainer_rs::config::{DivergenceConfig, HybridTrainerConfig};
 use std::time::Instant;
 
 type B = Autodiff<NdArray>;
@@ -144,9 +142,13 @@ impl ExperimentConfig {
 
 fn run_experiment(config: ExperimentConfig, steps: usize) -> CorrectionStats {
     println!("\n🔬 Running: {}", config.name);
-    println!("   Config: H={}, conf={}, interval={}, σ={}",
-        config.max_predict_steps, config.confidence_threshold,
-        config.correction_interval, config.sigma);
+    println!(
+        "   Config: H={}, conf={}, interval={}, σ={}",
+        config.max_predict_steps,
+        config.confidence_threshold,
+        config.correction_interval,
+        config.sigma
+    );
 
     let device = <NdArray as Backend>::Device::default();
     let _model = QuadraticModel::new(&device);
@@ -203,8 +205,10 @@ fn run_experiment(config: ExperimentConfig, steps: usize) -> CorrectionStats {
                 // Calculate error reduction for this correction
                 if pred_error > 1e-6 {
                     let reduction_pct = ((pred_error - corr_error) / pred_error) * 100.0;
-                    stats.min_error_reduction_pct = stats.min_error_reduction_pct.min(reduction_pct);
-                    stats.max_error_reduction_pct = stats.max_error_reduction_pct.max(reduction_pct);
+                    stats.min_error_reduction_pct =
+                        stats.min_error_reduction_pct.min(reduction_pct);
+                    stats.max_error_reduction_pct =
+                        stats.max_error_reduction_pct.max(reduction_pct);
                 }
             }
         }
@@ -220,14 +224,17 @@ fn run_experiment(config: ExperimentConfig, steps: usize) -> CorrectionStats {
 
     // Calculate statistics
     if !prediction_errors.is_empty() {
-        stats.avg_prediction_error = prediction_errors.iter().sum::<f32>() / prediction_errors.len() as f32;
+        stats.avg_prediction_error =
+            prediction_errors.iter().sum::<f32>() / prediction_errors.len() as f32;
     }
     if !correction_errors.is_empty() {
-        stats.avg_correction_error = correction_errors.iter().sum::<f32>() / correction_errors.len() as f32;
+        stats.avg_correction_error =
+            correction_errors.iter().sum::<f32>() / correction_errors.len() as f32;
     }
     if stats.avg_prediction_error > 1e-6 {
-        stats.avg_error_reduction_pct =
-            ((stats.avg_prediction_error - stats.avg_correction_error) / stats.avg_prediction_error) * 100.0;
+        stats.avg_error_reduction_pct = ((stats.avg_prediction_error - stats.avg_correction_error)
+            / stats.avg_prediction_error)
+            * 100.0;
     }
 
     let total_time = stats.prediction_time_ms + stats.correction_time_ms;
@@ -268,10 +275,14 @@ fn main() {
     println!("📊 RESULTS");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!();
-    println!("{:<20} | {:>12} | {:>12} | {:>12} | {:>10} | {:>8}",
-        "Config", "Pred Error", "Corr Error", "Error Reduct", "Overhead%", "Diverge");
-    println!("{:-<20}-+-{:-<12}-+-{:-<12}-+-{:-<12}-+-{:-<10}-+-{:-<8}",
-        "", "", "", "", "", "");
+    println!(
+        "{:<20} | {:>12} | {:>12} | {:>12} | {:>10} | {:>8}",
+        "Config", "Pred Error", "Corr Error", "Error Reduct", "Overhead%", "Diverge"
+    );
+    println!(
+        "{:-<20}-+-{:-<12}-+-{:-<12}-+-{:-<12}-+-{:-<10}-+-{:-<8}",
+        "", "", "", "", "", ""
+    );
 
     for (i, stats) in results.iter().enumerate() {
         let config_name = match i {
@@ -281,13 +292,15 @@ fn main() {
             _ => "Unknown",
         };
 
-        println!("{:<20} | {:>12.6} | {:>12.6} | {:>11.1}% | {:>9.1}% | {:>8}",
+        println!(
+            "{:<20} | {:>12.6} | {:>12.6} | {:>11.1}% | {:>9.1}% | {:>8}",
             config_name,
             stats.avg_prediction_error,
             stats.avg_correction_error,
             stats.avg_error_reduction_pct,
             stats.overhead_pct,
-            stats.divergences);
+            stats.divergences
+        );
     }
 
     println!();
@@ -309,15 +322,27 @@ fn main() {
     } else {
         if results[0].is_insanely_accurate() {
             println!("⚠️  AGGRESSIVE CONFIG: Accurate but not efficient enough");
-            println!("   Error reduction: {:.1}% ✓", results[0].avg_error_reduction_pct);
-            println!("   Overhead: {:.1}% ✗ (target <5%)", results[0].overhead_pct);
+            println!(
+                "   Error reduction: {:.1}% ✓",
+                results[0].avg_error_reduction_pct
+            );
+            println!(
+                "   Overhead: {:.1}% ✗ (target <5%)",
+                results[0].overhead_pct
+            );
         } else if results[0].is_extremely_efficient() {
             println!("⚠️  AGGRESSIVE CONFIG: Efficient but not accurate enough");
-            println!("   Error reduction: {:.1}% ✗ (target ≥95%)", results[0].avg_error_reduction_pct);
+            println!(
+                "   Error reduction: {:.1}% ✗ (target ≥95%)",
+                results[0].avg_error_reduction_pct
+            );
             println!("   Overhead: {:.1}% ✓", results[0].overhead_pct);
         } else {
             println!("❌ AGGRESSIVE CONFIG NOT RECOMMENDED");
-            println!("   Error reduction: {:.1}% (target ≥95%)", results[0].avg_error_reduction_pct);
+            println!(
+                "   Error reduction: {:.1}% (target ≥95%)",
+                results[0].avg_error_reduction_pct
+            );
             println!("   Overhead: {:.1}% (target <5%)", results[0].overhead_pct);
         }
         println!();

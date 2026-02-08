@@ -668,8 +668,7 @@ mod tests {
     #[test]
     fn test_checkpoint_manager_rotation() {
         let temp_dir = TempDir::new().unwrap();
-        let mut manager =
-            CheckpointManager::new(temp_dir.path(), 100, 2).unwrap();
+        let mut manager = CheckpointManager::new(temp_dir.path(), 100, 2).unwrap();
 
         // Create and save 3 checkpoints
         for step in [100, 200, 300] {
@@ -719,8 +718,7 @@ mod tests {
     #[test]
     fn test_checkpoint_load_latest() {
         let temp_dir = TempDir::new().unwrap();
-        let mut manager =
-            CheckpointManager::new(temp_dir.path(), 100, 3).unwrap();
+        let mut manager = CheckpointManager::new(temp_dir.path(), 100, 3).unwrap();
 
         // No checkpoints initially
         assert!(manager.load_latest().unwrap().is_none());

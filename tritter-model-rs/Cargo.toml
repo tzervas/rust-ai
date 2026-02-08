@@ -10,10 +10,13 @@ repository = "https://github.com/tzervas/rust-ai"
 keywords = ["llm", "transformer", "bitnet", "ternary", "training"]
 categories = ["science", "algorithms"]
 
+[lints]
+workspace = true
+
 [dependencies]
 # Core tensor operations
-candle-core = "0.9"
-candle-nn = "0.9"
+candle-core = { workspace = true }
+candle-nn = { workspace = true }
 
 # BitNet quantization (published on crates.io)
 bitnet-quantize = "0.2"
@@ -23,23 +26,23 @@ trit-vsa = "0.3"
 hybrid-predict-trainer-rs = { version = "0.2", path = "../hybrid-predict-trainer-rs" }
 
 # Serialization
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 # Error handling
-thiserror = "2.0"
+thiserror = { workspace = true }
 
 # Tokenization (HuggingFace tokenizers for BPE backend)
-tokenizers = "0.21"
+tokenizers = { workspace = true }
 
 # Random number generation
-rand = "0.8"
+rand = { workspace = true }
 
 # Logging
-log = "0.4"
+log = { workspace = true }
 
 # Half precision
-half = { version = "2.7", features = ["serde"] }
+half = { workspace = true, features = ["serde"] }
 
 # Arrow/Parquet for data loading (optional)
 arrow-array = { version = "54", optional = true }
@@ -57,12 +60,12 @@ cuda = [
 parquet = ["dep:arrow-array", "dep:arrow-schema", "dep:parquet"]
 
 [dev-dependencies]
-criterion = "0.5"
-tokio = { version = "1", features = ["rt", "macros"] }
-anyhow = "1.0"
-tempfile = "3.15"
+criterion = { workspace = true }
+tokio = { workspace = true, features = ["rt", "macros"] }
+anyhow = { workspace = true }
+tempfile = { workspace = true }
 training-tools = { path = "../training-tools", default-features = false }
-chrono = { version = "0.4", features = ["serde"] }
+chrono = { workspace = true }
 
 [[example]]
 name = "train"

@@ -195,7 +195,11 @@ impl VsaOps {
     /// Unbind two ternary vectors (inverse association).
     ///
     /// If bound = bind(a, b), then unbind(bound, b) recovers a.
-    pub fn unbind(&self, bound: &PackedTritVec, key: &PackedTritVec) -> Result<PackedTritVec, VsaError> {
+    pub fn unbind(
+        &self,
+        bound: &PackedTritVec,
+        key: &PackedTritVec,
+    ) -> Result<PackedTritVec, VsaError> {
         if bound.len() != key.len() {
             return Err(VsaError::DimensionMismatch {
                 expected: bound.len(),
@@ -307,7 +311,11 @@ impl VsaOps {
     /// Compute Hamming distance between two vectors.
     ///
     /// Returns the number of positions where the vectors differ.
-    pub fn hamming_distance(&self, a: &PackedTritVec, b: &PackedTritVec) -> Result<usize, VsaError> {
+    pub fn hamming_distance(
+        &self,
+        a: &PackedTritVec,
+        b: &PackedTritVec,
+    ) -> Result<usize, VsaError> {
         if a.len() != b.len() {
             return Err(VsaError::DimensionMismatch {
                 expected: a.len(),
@@ -358,14 +366,14 @@ impl VsaOps {
 // CPU implementations
 
 fn cpu_random(dim: usize, seed: u32) -> PackedTritVec {
-    use rand::{Rng, SeedableRng};
+    use rand_chacha::rand_core::{Rng, RngCore, SeedableRng};
     use rand_chacha::ChaCha8Rng;
 
     let mut rng = ChaCha8Rng::seed_from_u64(u64::from(seed));
     let mut packed = PackedTritVec::new(dim);
 
     for i in 0..dim {
-        let r: f32 = rng.gen();
+        let r: f32 = (rng.next_u32() as f64 / u32::MAX as f64) as f32;
         let trit = if r < 0.333 {
             Trit::N
         } else if r < 0.666 {

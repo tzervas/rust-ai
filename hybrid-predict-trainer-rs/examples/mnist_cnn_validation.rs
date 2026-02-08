@@ -287,7 +287,10 @@ fn run_experiment(config: ExperimentConfig, device: &Device<MyBackend>) -> Train
             "  - Correction interval: {}",
             hybrid_config.correction_interval
         );
-        println!("  - Divergence σ: {:.1}", hybrid_config.divergence_config.loss_sigma_threshold);
+        println!(
+            "  - Divergence σ: {:.1}",
+            hybrid_config.divergence_config.loss_sigma_threshold
+        );
         println!();
 
         // Wrap model
@@ -436,7 +439,10 @@ fn print_summary(results: Vec<TrainingResult>) {
     for (i, result) in results.iter().enumerate() {
         println!("Configuration {}: {}", i + 1, result.config_name);
         println!("  Time: {:.1}s", result.wall_clock_sec);
-        println!("  Test accuracy: {:.2}%", result.final_test_accuracy * 100.0);
+        println!(
+            "  Test accuracy: {:.2}%",
+            result.final_test_accuracy * 100.0
+        );
         println!("  Peak VRAM: {:.1} MB", result.peak_memory_mb);
 
         if i > 0 {
@@ -606,7 +612,9 @@ fn main() {
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!();
     println!("💡 Next steps:");
-    println!("   - Replace synthetic data with real MNIST: burn::data::dataset::vision::MnistDataset");
+    println!(
+        "   - Replace synthetic data with real MNIST: burn::data::dataset::vision::MnistDataset"
+    );
     println!("   - Increase training steps to full epoch (60K samples / 64 batch = 937 steps)");
     println!("   - Run with --features autodiff,cuda for GPU acceleration");
     println!("   - Profile memory usage with system tools (nvidia-smi, htop)");

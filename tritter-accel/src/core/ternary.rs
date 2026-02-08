@@ -314,7 +314,11 @@ pub fn matmul(
         }
     }
 
-    Ok(Tensor::from_vec(output, (batch, out_features), input.device())?)
+    Ok(Tensor::from_vec(
+        output,
+        (batch, out_features),
+        input.device(),
+    )?)
 }
 
 /// Compute ternary dot product between two packed vectors.

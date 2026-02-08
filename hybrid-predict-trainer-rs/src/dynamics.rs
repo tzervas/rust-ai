@@ -241,7 +241,7 @@ impl Default for RSSMConfig {
             stochastic_dim: 32,
             num_categoricals: 32,
             ensemble_size: 5, // Increased from 3 to 5 for better uncertainty calibration (+22% horizon)
-            input_dim: 64, // From TrainingState::compute_features (64-dim)
+            input_dim: 64,    // From TrainingState::compute_features (64-dim)
             hidden_dim: 128,
             learning_rate: 0.001,
             max_grad_norm: 5.0,
@@ -926,14 +926,18 @@ impl RSSMLite {
             }
 
             // Backprop through K steps (up to bptt_steps)
-            let num_bptt_steps = self.latent_history[ensemble_idx].len().min(self.config.bptt_steps);
+            let num_bptt_steps = self.latent_history[ensemble_idx]
+                .len()
+                .min(self.config.bptt_steps);
             let mut dh = dh_from_loss.clone();
-            let mut accumulated_grads = GRUGradients::zeros(self.config.input_dim, self.config.deterministic_dim);
+            let mut accumulated_grads =
+                GRUGradients::zeros(self.config.input_dim, self.config.deterministic_dim);
 
             // Backprop through steps in reverse chronological order
             for k in (0..num_bptt_steps).rev() {
                 let entry = &self.latent_history[ensemble_idx][k];
-                let (grads, dh_prev) = Self::gru_backward(&self.gru_weights[ensemble_idx], &entry.cache, &dh);
+                let (grads, dh_prev) =
+                    Self::gru_backward(&self.gru_weights[ensemble_idx], &entry.cache, &dh);
 
                 // Accumulate gradients with exponential decay for older steps
                 // This stabilizes training and prevents gradient explosion
@@ -992,7 +996,11 @@ impl RSSMLite {
                 let bucket_size = per_param.len() / 8;
                 for i in 0..8 {
                     let start = i * bucket_size;
-                    let end = if i == 7 { per_param.len() } else { (i + 1) * bucket_size };
+                    let end = if i == 7 {
+                        per_param.len()
+                    } else {
+                        (i + 1) * bucket_size
+                    };
 
                     let bucket_norm: f32 = per_param[start..end].iter().sum();
                     let bucket_count = (end - start) as f32;
@@ -1019,7 +1027,8 @@ impl RSSMLite {
 
             // Dimension 1: direction confidence
             let pred_conf_sigmoid = sigmoid(predicted_features[1]);
-            feature_errors[1] = (pred_conf_sigmoid - target_confidence) * sigmoid_deriv(pred_conf_sigmoid);
+            feature_errors[1] =
+                (pred_conf_sigmoid - target_confidence) * sigmoid_deriv(pred_conf_sigmoid);
 
             // Dimensions 2-9: layer scales
             for i in 0..8 {
@@ -1272,8 +1281,8 @@ impl RSSMLite {
                 if step_idx + 1 < y_steps {
                     // Only update if there's a next step
                     evolving_features[0] = loss_pred; // Current loss (ensemble-member-specific)
-                    // Note: features[1-63] remain from initial state
-                    // Not updating loss_ema or gradient norms preserves ensemble variance
+                                                      // Note: features[1-63] remain from initial state
+                                                      // Not updating loss_ema or gradient norms preserves ensemble variance
                 }
 
                 // Keep the final combined state for weight delta prediction
@@ -1425,10 +1434,9 @@ impl RSSMLite {
 
         // Combine confidences: agreement 40%, historical 40%, stability 20%
         // Reduced ensemble weight because it takes many steps to converge from random init
-        let confidence = (agreement_confidence * 0.4
-            + historical_confidence * 0.4
-            + stability_confidence * 0.2)
-            .clamp(0.0, 1.0);
+        let confidence =
+            (agreement_confidence * 0.4 + historical_confidence * 0.4 + stability_confidence * 0.2)
+                .clamp(0.0, 1.0);
 
         // Cache the computed confidence for this step
         *self.cached_confidence.lock() = Some((state.step, confidence));
@@ -1775,7 +1783,8 @@ mod tests {
         // always increases monotonically in the initial untrained state.
         let tolerance = 0.01; // Allow up to 1% deviation
         assert!(
-            unc_10.total >= unc_1.total - tolerance || (unc_10.total - unc_1.total).abs() < tolerance,
+            unc_10.total >= unc_1.total - tolerance
+                || (unc_10.total - unc_1.total).abs() < tolerance,
             "Expected unc_10.total ({}) ~>= unc_1.total ({}), diff = {}",
             unc_10.total,
             unc_1.total,
@@ -2017,7 +2026,11 @@ mod tests {
             dh_prev.iter().all(|g| g.is_finite()),
             "dh_prev should be finite"
         );
-        assert_eq!(dh_prev.len(), hidden_dim, "dh_prev should have correct dimension");
+        assert_eq!(
+            dh_prev.len(),
+            hidden_dim,
+            "dh_prev should have correct dimension"
+        );
     }
 
     #[test]
@@ -2825,11 +2838,7 @@ mod tests {
 
         // grads1.dw_z should now be 1.0 + 0.5 * 2.0 = 2.0
         for &val in &grads1.dw_z {
-            assert!(
-                (val - 2.0).abs() < 1e-6,
-                "expected 2.0, got {}",
-                val
-            );
+            assert!((val - 2.0).abs() < 1e-6, "expected 2.0, got {}", val);
         }
     }
 

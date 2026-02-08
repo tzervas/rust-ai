@@ -15,7 +15,10 @@ fn test_vram_manager_cleanup_triggers() {
 
     // Should not cleanup for first 9 steps
     for _ in 0..9 {
-        assert!(!manager.should_cleanup(), "Should not cleanup before interval");
+        assert!(
+            !manager.should_cleanup(),
+            "Should not cleanup before interval"
+        );
     }
 
     // Should cleanup on 10th step (force interval)
@@ -58,7 +61,10 @@ fn test_vram_status_string() {
 
     // Should include VRAM, copies, and cleanups
     assert!(status.contains("VRAM:"), "Status should include VRAM");
-    assert!(status.contains("Copies:"), "Status should include copy count");
+    assert!(
+        status.contains("Copies:"),
+        "Status should include copy count"
+    );
     assert!(
         status.contains("Cleanups:"),
         "Status should include cleanup count"
@@ -166,10 +172,7 @@ mod expected_behavior {
         // - Expected cleanups: 5 (every 10 steps)
         // - If VRAM exceeds 12 GB: additional cleanups
 
-        assert!(
-            true,
-            "This test documents cleanup frequency for reference"
-        );
+        assert!(true, "This test documents cleanup frequency for reference");
     }
 
     #[test]
@@ -187,9 +190,6 @@ mod expected_behavior {
         // - Drop and reload model (would interrupt training)
         // - Clear VRAM (CUDA limitation)
 
-        assert!(
-            true,
-            "This test documents emergency checkpoint behavior"
-        );
+        assert!(true, "This test documents emergency checkpoint behavior");
     }
 }

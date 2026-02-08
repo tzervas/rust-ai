@@ -1,23 +1,28 @@
 name: tritter-accel CI
 
+# TEMPORARILY DISABLED: This workflow requires sister crates (peft-rs, qlora-rs,
+# rust-ai-core) that are separate repos in .gitignore and not available in CI.
+# Re-enable once publishing workflow is complete and all deps are on crates.io.
+
 on:
-  push:
-    branches: [master, main]
-    paths:
-      - 'tritter-accel/**'
-      - 'trit-vsa/**'
-      - 'bitnet-quantize/**'
-      - 'vsa-optim-rs/**'
-      - 'rust-ai-core/**'
-      - '.github/workflows/tritter-accel.yml'
-  pull_request:
-    branches: [master, main]
-    paths:
-      - 'tritter-accel/**'
-      - 'trit-vsa/**'
-      - 'bitnet-quantize/**'
-      - 'vsa-optim-rs/**'
-      - 'rust-ai-core/**'
+  workflow_dispatch:  # Manual trigger only
+  # push:
+  #   branches: [master, main]
+  #   paths:
+  #     - 'tritter-accel/**'
+  #     - 'trit-vsa/**'
+  #     - 'bitnet-quantize/**'
+  #     - 'vsa-optim-rs/**'
+  #     - 'rust-ai-core/**'
+  #     - '.github/workflows/tritter-accel.yml'
+  # pull_request:
+  #   branches: [master, main]
+  #   paths:
+  #     - 'tritter-accel/**'
+  #     - 'trit-vsa/**'
+  #     - 'bitnet-quantize/**'
+  #     - 'vsa-optim-rs/**'
+  #     - 'rust-ai-core/**'
 
 env:
   CARGO_TERM_COLOR: always
@@ -31,7 +36,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
 
@@ -47,13 +52,16 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Check compilation
-        run: cargo check -p tritter-accel --all-features
+        working-directory: ./tritter-accel
+        run: cargo check --features python
 
       - name: Check formatting
-        run: cargo fmt -p tritter-accel -- --check
+        working-directory: ./tritter-accel
+        run: cargo fmt -- --check
 
       - name: Clippy lints
-        run: cargo clippy -p tritter-accel --all-features -- -D warnings
+        working-directory: ./tritter-accel
+        run: cargo clippy --features python -- -D warnings
 
   test:
     name: Test
@@ -63,7 +71,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Cache cargo registry
         uses: actions/cache@v4
@@ -77,10 +85,12 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Run tests
-        run: cargo test -p tritter-accel --all-features
+        working-directory: ./tritter-accel
+        run: cargo test --features python
 
       - name: Run doc tests
-        run: cargo test -p tritter-accel --doc
+        working-directory: ./tritter-accel
+        run: cargo test --doc
 
   docs:
     name: Documentation
@@ -90,7 +100,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Cache cargo registry
         uses: actions/cache@v4
@@ -104,7 +114,8 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Build documentation
-        run: cargo doc -p tritter-accel --no-deps --all-features
+        working-directory: ./tritter-accel
+        run: cargo doc --no-deps --features python
         env:
           RUSTDOCFLAGS: -D warnings
 
@@ -116,7 +127,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Cache cargo registry
         uses: actions/cache@v4
@@ -130,7 +141,8 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Check benchmarks compile
-        run: cargo check -p tritter-accel --benches
+        working-directory: ./tritter-accel
+        run: cargo check --benches
 
   python:
     name: Python Bindings

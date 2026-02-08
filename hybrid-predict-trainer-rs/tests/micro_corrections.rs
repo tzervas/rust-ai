@@ -3,8 +3,8 @@
 //! Verifies that micro-corrections are applied at the correct intervals
 //! during the Predict phase and that they help prevent error accumulation.
 
-use hybrid_predict_trainer_rs::prelude::*;
 use hybrid_predict_trainer_rs::config::HybridTrainerConfig;
+use hybrid_predict_trainer_rs::prelude::*;
 use hybrid_predict_trainer_rs::state::TrainingState;
 
 #[test]
@@ -73,7 +73,10 @@ fn test_micro_correction_disabled_when_zero() {
 
     for step in 1..=100 {
         let should_trigger = correction_interval > 0 && step % correction_interval == 0;
-        assert!(!should_trigger, "Micro-corrections should never trigger when interval is 0");
+        assert!(
+            !should_trigger,
+            "Micro-corrections should never trigger when interval is 0"
+        );
     }
 }
 

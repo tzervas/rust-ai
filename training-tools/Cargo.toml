@@ -11,8 +11,8 @@ categories = ["command-line-utilities", "science"]
 
 [dependencies]
 # Workspace crates
-tritter-model-rs = { path = "../tritter-model-rs" }
-hybrid-predict-trainer-rs = { path = "../hybrid-predict-trainer-rs" }
+tritter-model-rs = { version = "0.1.1", path = "../tritter-model-rs" }
+hybrid-predict-trainer-rs = { version = "0.2", path = "../hybrid-predict-trainer-rs" }
 # Note: rust-ai-core excluded due to peft-rs safetensors version conflict
 
 # Tensor operations

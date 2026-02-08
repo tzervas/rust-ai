@@ -47,7 +47,7 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Check compilation
-        run: cargo check -p tritter-accel --all-features
+        run: cargo check -p tritter-accel --all-features --no-default-members
 
       - name: Check formatting
         run: cargo fmt -p tritter-accel -- --check

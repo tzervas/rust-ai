@@ -845,7 +845,7 @@ fn compress_gradients_vsa<'py>(
     compression_ratio: f32,
     seed: u64,
 ) -> PyResult<(Bound<'py, PyArray1<f32>>, u64)> {
-    use rand::{Rng, SeedableRng};
+    use rand_chacha::rand_core::{Rng, RngCore, SeedableRng};
     use rand_chacha::ChaCha8Rng;
 
     let gradients = gradients.as_array();
@@ -860,7 +860,7 @@ fn compress_gradients_vsa<'py>(
     for &g in gradients.iter() {
         for c in compressed.iter_mut() {
             // Sparse random projection: ~68% zeros, 16% +1, 16% -1
-            let r: f32 = rng.gen();
+            let r: f32 = (rng.next_u32() as f64 / u32::MAX as f64) as f32;
             if r < 0.16 {
                 *c += g * scale;
             } else if r < 0.32 {
@@ -891,7 +891,7 @@ fn decompress_gradients_vsa<'py>(
     original_dim: usize,
     seed: u64,
 ) -> PyResult<Bound<'py, PyArray1<f32>>> {
-    use rand::{Rng, SeedableRng};
+    use rand_chacha::rand_core::{Rng, RngCore, SeedableRng};
     use rand_chacha::ChaCha8Rng;
 
     let compressed = compressed.as_array();
@@ -903,7 +903,7 @@ fn decompress_gradients_vsa<'py>(
     let scale = 1.0 / (original_dim as f32).sqrt();
     for g in gradients.iter_mut() {
         for &c in compressed.iter() {
-            let r: f32 = rng.gen();
+            let r: f32 = (rng.next_u32() as f64 / u32::MAX as f64) as f32;
             if r < 0.16 {
                 *g += c * scale;
             } else if r < 0.32 {

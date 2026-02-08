@@ -265,7 +265,7 @@ fn clip_gradients(gradients: &[f32], max_norm: f32) -> Vec<f32> {
 
 #[allow(clippy::cast_precision_loss)]
 fn sparse_random_projection(input: &[f32], output_dim: usize, seed: u64) -> Vec<f32> {
-    use rand::{Rng, SeedableRng};
+    use rand_chacha::rand_core::{Rng, RngCore, SeedableRng};
     use rand_chacha::ChaCha8Rng;
 
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
@@ -277,7 +277,7 @@ fn sparse_random_projection(input: &[f32], output_dim: usize, seed: u64) -> Vec<
     // Sparse random projection: ~68% zeros, 16% +1, 16% -1
     for &g in input {
         for o in output.iter_mut() {
-            let r: f32 = rng.gen();
+            let r: f32 = (rng.next_u32() as f64 / u32::MAX as f64) as f32;
             if r < 0.16 {
                 *o += g * scale;
             } else if r < 0.32 {
@@ -291,7 +291,7 @@ fn sparse_random_projection(input: &[f32], output_dim: usize, seed: u64) -> Vec<
 
 #[allow(clippy::cast_precision_loss)]
 fn sparse_random_projection_transpose(input: &[f32], output_dim: usize, seed: u64) -> Vec<f32> {
-    use rand::{Rng, SeedableRng};
+    use rand_chacha::rand_core::{Rng, RngCore, SeedableRng};
     use rand_chacha::ChaCha8Rng;
 
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
@@ -302,7 +302,7 @@ fn sparse_random_projection_transpose(input: &[f32], output_dim: usize, seed: u6
     // Transpose of sparse random projection
     for o in output.iter_mut() {
         for &c in input {
-            let r: f32 = rng.gen();
+            let r: f32 = (rng.next_u32() as f64 / u32::MAX as f64) as f32;
             if r < 0.16 {
                 *o += c * scale;
             } else if r < 0.32 {

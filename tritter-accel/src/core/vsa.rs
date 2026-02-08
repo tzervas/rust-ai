@@ -358,14 +358,14 @@ impl VsaOps {
 // CPU implementations
 
 fn cpu_random(dim: usize, seed: u32) -> PackedTritVec {
-    use rand::{Rng, SeedableRng};
+    use rand_chacha::rand_core::{Rng, RngCore, SeedableRng};
     use rand_chacha::ChaCha8Rng;
 
     let mut rng = ChaCha8Rng::seed_from_u64(u64::from(seed));
     let mut packed = PackedTritVec::new(dim);
 
     for i in 0..dim {
-        let r: f32 = rng.gen();
+        let r: f32 = (rng.next_u32() as f64 / u32::MAX as f64) as f32;
         let trit = if r < 0.333 {
             Trit::N
         } else if r < 0.666 {

@@ -1,18 +1,12 @@
 [workspace]
 resolver = "2"
 members = [
-    # "axolotl-rs",  # Temporarily excluded: reqwest brings js-sys conflict with uuid
+    # Only crates tracked in this repository (others are separate repos in .gitignore)
     "bitnet-quantize",
     "hybrid-predict-trainer-rs",
-    "peft-rs",
-    "qlora-rs",
-    "rust-ai-core",
-    "training-tools",
     "trit-vsa",
-    "tritter-accel",
-    "tritter-model-rs",
-    "unsloth-rs",
-    "vsa-optim-rs",
+    # Excluded: separate repositories (peft-rs, qlora-rs, rust-ai-core, training-tools,
+    # tritter-accel, tritter-model-rs, unsloth-rs, vsa-optim-rs, axolotl-rs)
 ]
 exclude = [
     "moltbook-proposal/src/web/wasm",

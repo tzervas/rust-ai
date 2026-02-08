@@ -18,6 +18,10 @@ The INDEX provides:
 - Implementing features? See [docs/ENGINEERING_SPEC.md](docs/ENGINEERING_SPEC.md)
 - Research analysis? Start with [docs/research/START_HERE.md](docs/research/START_HERE.md)
 - Burn integration? Check [BURN_INTEGRATION_FINAL.md](BURN_INTEGRATION_FINAL.md)
+- **🆕 Cross-repo work? See [docs/CROSS_REPO_COORDINATION.md](docs/CROSS_REPO_COORDINATION.md)**
+- **🆕 GPU kernel extraction? See [docs/WORKSPACE_ANALYSIS_COMPLETE.md](docs/WORKSPACE_ANALYSIS_COMPLETE.md)**
+- **Cross-repo work? See [docs/CROSS_REPO_COORDINATION.md](docs/CROSS_REPO_COORDINATION.md)** ← NEW
+- **GPU kernel extraction? See [docs/WORKSPACE_ANALYSIS_COMPLETE.md](docs/WORKSPACE_ANALYSIS_COMPLETE.md)** ← NEW
 
 ## Project Overview
 
@@ -32,10 +36,17 @@ The training loop cycles through four phases:
 4. **Correct**: Apply residual corrections to predictions
 
 **Performance Achieved:**
-- **4.5× training speedup** (78% backward pass reduction)
+- **Phase 1:** 4.5× training speedup (78% backward pass reduction)
 - **99.9% quality retention** (<0.1% loss degradation)
 - **72% variance reduction** with intra-horizon micro-corrections
 - **Zero divergences** in validated configurations
+- **Target Phase 2:** 8.7× speedup with GPU acceleration (Flash Attention + ternary kernels)
+
+**Workspace Context:**
+- Part of **rust-ai** monorepo (12 crates, 9 active + 3 excluded)
+- Downstream consumers: tritter-model-rs, training-tools
+- GPU kernels available: unsloth-rs (Flash Attention, ternary matmul) - ready to extract
+- Ecosystem: rust-ai-core defines GpuDispatchable + ValidatableConfig traits
 
 ## Architecture
 

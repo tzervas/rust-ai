@@ -274,9 +274,8 @@ impl GpuTensor {
     /// Returns the total number of elements.
     #[must_use]
     pub fn numel(&self) -> usize {
-        if self.shape.is_empty() {
-            return 0;
-        }
+        // Empty shape [] represents a scalar with 1 element
+        // Shape [0] or [3, 0] would have 0 elements
         self.shape.iter().product()
     }
 

@@ -105,6 +105,14 @@ harness = false
 name = "residual_extraction"
 harness = false
 
+[[bench]]
+name = "gpu_kernels"
+harness = false
+
+[[bench]]
+name = "gpu_memory_profile"
+harness = false
+
 [[example]]
 name = "basic_training"
 

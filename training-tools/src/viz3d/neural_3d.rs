@@ -1108,17 +1108,20 @@ impl Neural3DScene {
         }
 
         // Right side - hex data
-        for (i, line) in self
-            .config
-            .overlay_data
-            .iter()
-            .skip(15)
-            .take(10)
-            .enumerate()
-        {
-            let y = margin + i as u32 * line_height;
-            for (j, ch) in line.chars().take(24).enumerate() {
-                let x = width - margin - 24 * char_width + j as u32 * char_width;
+        // Check if there's enough space for the right-side overlay
+        let right_side_width = margin + 24 * char_width;
+        if width > right_side_width {
+            for (i, line) in self
+                .config
+                .overlay_data
+                .iter()
+                .skip(15)
+                .take(10)
+                .enumerate()
+            {
+                let y = margin + i as u32 * line_height;
+                for (j, ch) in line.chars().take(24).enumerate() {
+                    let x = width - margin - 24 * char_width + j as u32 * char_width;
 
                 let brightness = if ch.is_ascii_hexdigit() {
                     0.3 + (self.time * 1.5 + i as f32 - j as f32).cos().abs() * 0.2
@@ -1138,6 +1141,7 @@ impl Neural3DScene {
                     color,
                 );
             }
+        }
         }
     }
 

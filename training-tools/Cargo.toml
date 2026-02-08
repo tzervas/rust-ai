@@ -54,8 +54,8 @@ flate2 = "1.0"
 zstd = "0.13"
 
 # Random for training
-rand = "0.8"
-rand_distr = "0.4"
+rand = { workspace = true }
+rand_distr = { workspace = true }
 
 # CLI argument parsing
 clap = { version = "4.5", features = ["derive"] }
@@ -131,3 +131,6 @@ path = "src/bin/train.rs"
 name = "viz3d-viewer"
 path = "src/bin/viz3d_viewer.rs"
 required-features = ["viz3d"]
+
+[lints]
+workspace = true
